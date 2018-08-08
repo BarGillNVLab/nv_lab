@@ -81,10 +81,18 @@ classdef SaveLoad < Savable & EventSender
             % has different behaviour - it needs to listen to the
             % StageScanner (on events of type EVENT_SCAN_FINISH) to save
             % the scans
+            
             try
                 getObjByName(SaveLoadCatImage.NAME);
             catch               % i.e. no available object
-                SaveLoadCatImage;	% init this object
+                % For dev purposes, we eant to be able to save & load from
+                % another directory
+                setupNum = JsonInfoReader.setupNumber;
+                if strcmp(setupNum, '999')
+                    SaveLoadImageLocal;
+                else
+                    SaveLoadCatImage;	% init this object
+                end
             end
         end
     end
@@ -142,7 +150,7 @@ classdef SaveLoad < Savable & EventSender
         end
         
         function setLoadingFolder(obj, newLoadingFolderString)
-            % set the loading folder to be 'autosave' or another path
+            % Set the loading folder to be 'autosave' or another path
             % if newLoadingFolderString == 'autosave':
             %       loading folder will point to PATH_DEFAULT_AUTO_SAVE
             % else if newLoadingFolderString == 'manual_saves':
@@ -455,7 +463,8 @@ classdef SaveLoad < Savable & EventSender
             structEvent.(obj.EVENT_STATUS_LOCAL_STRUCT) = obj.mLocalStructStatus;
             
             % Handle the notes
-            if isfield(obj.mLocalSaveStruct.(obj.name), 'mNotes')
+            if isfield(obj.mLocalSaveStruct, obj.name) ...
+                    && isfield(obj.mLocalSaveStruct.(obj.name), 'mNotes')
                 obj.setNotes(obj.mLocalSaveStruct.(obj.name).mNotes)
                 obj.notesStatus = obj.STRUCT_STATUS_LOADED;
             end

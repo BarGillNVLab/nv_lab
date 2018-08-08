@@ -153,17 +153,24 @@ classdef (Abstract) Savable < BaseObject
             % Extract all the readable strings
             fields = fieldnames(loadedStruct);
             longString = '';
+            if isfield(loadedStruct, Savable.PROPERTY_TIMESTAMP_END)
+                timeString = loadedStruct.(Savable.PROPERTY_TIMESTAMP_END);
+                time = datenum(timeString, Savable.TIMESTAMP_FORMAT);
+                longString = sprintf('Scan time: %s\n', datestr(time));
+            end
             for i = 1 : length(fields)
                 fieldCell = fields(i);
                 field = fieldCell{:};
                 value = loadedStruct.(field);
                 if isstruct(value) && isfield(value, Savable.CHILD_PROPERTY_READABLE_STRING)
-                    % Found a value with a readable string! extract the readable string...
+                    % Found a value with a readable string! Extract the readable string...
                     readableString = value.(Savable.CHILD_PROPERTY_READABLE_STRING);
                     longString = sprintf('%s%s\n', longString, readableString);
                 end
             end
-            longString = longString(1 : end - 1);  % remove the last "\n"
+            if ~isempty(longString)
+                longString(end) = [];  % remove the last "\n"
+            end
             
         end
         

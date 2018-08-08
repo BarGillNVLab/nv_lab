@@ -18,9 +18,7 @@ classdef PathHelper
             % Determines whether to use dev(elopment) or prod(uction)
             % folder for saving and loading, according to json
             jsonStruct = JsonInfoReader.getJson();
-            if strcmp(JsonInfoReader.setupNumber, '999')  % The only setup in dev mode is 999, all else are in prod.
-                modeString = 'dev';
-            elseif jsonStruct.debugMode
+            if jsonStruct.debugMode
                 modeString = 'beta';
             else
                 modeString = 'prod';

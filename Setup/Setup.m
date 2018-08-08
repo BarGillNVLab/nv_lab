@@ -65,13 +65,14 @@ classdef Setup < handle
             % Find working mode
             mode = PathHelper.SetupMode;
             switch mode
-                case 'dev'
+                case 'beta'
                     mode = 'develeoper';
                 case 'prod'
                     mode = 'production';
             end
             
             % Display
+            
             fprintf('...\nInitializing Setup %s in %s mode...\n', setupNum, mode)
             
         end

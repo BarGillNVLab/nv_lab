@@ -220,7 +220,8 @@ classdef ExpEcho < Experiment
                         end
                         obj.signal(:, t, nIter) = sig;
                         
-                        Tracker.compareReference(sig(2), Tracker.REFERENCE_TYPE_KCPS, TrackablePosition.EXP_NAME);
+                        tracker = getObjByName(Tracker.NAME);
+                        tracker.compareReference(sig(2), Tracker.REFERENCE_TYPE_KCPS, TrackablePosition.EXP_NAME);
                         success = true;     % Since we got till here
                         break;
                     catch err

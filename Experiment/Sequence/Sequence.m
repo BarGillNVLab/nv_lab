@@ -214,10 +214,13 @@ classdef Sequence < handle
             elseif isnumeric(in2)
                 n = in2;
                 T = in1;
-            else
-                error('Operation is undefined! (for now?)')
             end
-            S = Sequence(repmat(T.pulses, 1, n));
+            try
+                S = Sequence(repmat(T.pulses, 1, n));
+            catch err
+                err.message = sprintf('%s\n%s', 'Operation is undefined! (for now?)', err.message);
+                rethrow(err);
+            end
         end
     end
     

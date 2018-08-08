@@ -729,12 +729,13 @@ classdef StageScanner < EventSender & EventListener & Savable
             % Getting initial information from scan parameters, ...
             params = savedStruct.scanParams;
             scanAxes = find(~params.isFixed);
+            axesLetters = upper(ClassStage.GetLetterFromAxis(scanAxes));
             fixAxes = find(params.isFixed);
             
             stageName = savedStruct.stageName;
             
             % so we can create the output string
-            string = sprintf('Scanning %s %s:', stageName, upper(scanAxes));
+            string = sprintf('Scanning %s %s:', stageName, axesLetters);
             
             indentation = 5;
             for i = 1:length(fixAxes)

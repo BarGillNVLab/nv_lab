@@ -14,7 +14,7 @@ classdef SerialControlled < matlab.mixin.SetGet
     end
     
     properties
-        keepConnected  % logical. Should this connection stay open
+        keepConnected = true; % logical. Should this connection stay open. True by default
         
         % Properties of s we want available
         port
@@ -61,6 +61,15 @@ classdef SerialControlled < matlab.mixin.SetGet
         end
         
         function delete(obj)
+            if strcmp(obj.status, 'open')
+                % Free the instrument for other procceses
+                try
+                    obj.close;
+                catch
+                    msg = sprintf('Could not disconnect %s upon deletion!', obj.name);
+                    obj.sendWarning(msg)
+                end
+            end
             delete(obj.s);
         end
     end

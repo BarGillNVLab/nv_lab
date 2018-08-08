@@ -20,9 +20,6 @@ classdef SpcmCounter < Experiment
     
     properties (Constant)
         EVENT_SPCM_COUNTER_RESET = 'SpcmCounterReset';
-        EVENT_SPCM_COUNTER_STARTED = 'SpcmCounterStarted';
-        EVENT_SPCM_COUNTER_UPDATED = 'SpcmCounterUpdated';
-        EVENT_SPCM_COUNTER_STOPPED = 'SpcmCounterStopped';
         
         INTEGRATION_TIME_DEFAULT_MILLISEC = 100;
         DEFAULT_EMPTY_STRUCT = struct('time', 0, 'kcps', NaN, 'std', NaN);
@@ -58,7 +55,9 @@ classdef SpcmCounter < Experiment
             end
             obj.records(end + 1) = struct('time', time, 'kcps', kcps, 'std', std);
         end
-        
+    end
+       
+    methods % Setters and getters
         function [time, kcps, std] = getRecords(obj, lenOpt)
             lenRecords = length(obj.records);
             if ~exist('lenOpt', 'var')
@@ -83,6 +82,16 @@ classdef SpcmCounter < Experiment
             time = [data.time];
             kcps = [data.kcps];
             std = [data.std];
+        end
+        
+        function set.integrationTimeMillisec(obj, newValue)
+            if ValidationHelper.isValuePositiveInteger(newValue)
+                obj.integrationTimeMillisec = newValue;
+            else
+                EventStation.anonymousWarning('Integration time needs to be a positive integer. Reverting.')
+            end
+            
+            obj.sendEventParamChanged;
         end
     end
     

@@ -10,7 +10,7 @@ classdef ViewSpcmInImage < GuiComponent
         function obj = ViewSpcmInImage(parent,controller)
             panel = ViewExpandablePanel(parent, controller, 'SPCM Counter');
             obj@GuiComponent(parent,controller);
-            spcmView = ViewSpcm(panel,controller, obj.VIEW_HEIGHT, obj.VIEW_WIDTH);
+            spcmView = ViewSpcm(panel,controller, 'isStandalone', false, obj.VIEW_HEIGHT, obj.VIEW_WIDTH);
             obj.component = spcmView.component;
         end
     end

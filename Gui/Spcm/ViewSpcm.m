@@ -7,6 +7,7 @@ classdef ViewSpcm < ViewVBox & EventListener
     
     properties
         vAxes           % axes view, to use for the plotting
+        btnPopout
         
         btnStartStop
         btnReset
@@ -15,6 +16,8 @@ classdef ViewSpcm < ViewVBox & EventListener
         wrap            % positive integer, how many records in plot
         cbxUsingWrap
         edtWrap
+        
+        isStandalone = false;
     end
     
     properties (Constant)
@@ -26,20 +29,33 @@ classdef ViewSpcm < ViewVBox & EventListener
     end
     
     methods
-        function obj = ViewSpcm(parent, controller, heightOpt, widthOpt)
+        function obj = ViewSpcm(parent, controller, varargin)
             padding = 5;
             obj@ViewVBox(parent, controller, padding);
             obj@EventListener(Experiment.NAME);
             
             obj.wrap = obj.DEFAULT_WRAP_VALUE;
             
-            %%%% Plot Area %%%%
-            obj.vAxes = axes('Parent', obj.component, 'ActivePositionProperty', 'outerposition');
+            %%% Plot Area %%%
+            % Clicking the axes will open a new window
+            obj.vAxes = axes('Parent', obj.component, ...
+                'ActivePositionProperty', 'outerposition');
             xlabel(obj.vAxes,obj.BOTTOM_LABEL);
             ylabel(obj.vAxes,obj.LEFT_LABEL);
             axes()
             
-            %%%% Buttons / Controls %%%%
+            if strcmp(varargin{1}, 'isStandalone')
+                % This is the value for obj.isStandalone
+                obj.isStandalone = varargin{2};
+            end
+            if ~obj.isStandalone
+                obj.btnPopout = uicontrol(obj.PROP_BUTTON{:}, ...
+                    'Parent', obj.component, ...
+                    'String', 'Pop-out', ...
+                    'Callback', @(h,e) obj.popupNew);
+            end
+            
+            %%% Buttons / Controls %%%
             hboxButtons = uix.HBox('Parent', obj.component, ...
                 'Spacing', 3);
             
@@ -88,24 +104,30 @@ classdef ViewSpcm < ViewVBox & EventListener
                     'Parent', vboxWrapNumber, ...
                     'String', obj.DEFAULT_WRAP_VALUE, ...
                     'Callback', @obj.edtWrapCallback);
-                vboxWrapNumber.Heights = [-1 -1];
-            hboxWrapMain.Widths = [15 -1];
+                vboxWrapNumber.Heights = [-1, -1];
+            hboxWrapMain.Widths = [15, -1];
             
-            hboxButtons.Widths = [-3 -1];
+            hboxButtons.Widths = [-3, -1];
 
             obj.refresh;
             
-            %%%% Define size %%%%
-            if ~exist('heightOpt', 'var') ||  ~exist('widthOpt', 'var')
+            %%% Define size %%%
+            if (length(varargin) == 2 && ~strcmp(varargin{1}, 'isStandalone')) ...
+                    || (length(varargin) == 4 && strcmp(varargin{1}, 'isStandalone'))
+                obj.height = varargin{1};
+                obj.width = varargin{2};
+            else 
                 obj.height = 500;
                 obj.width = 850;
-            else
-                obj.height = heightOpt;
-                obj.width = widthOpt;
             end
 
             controlsHeight = 80;
-            obj.setHeights([-1, controlsHeight]);
+            if obj.isStandalone
+                h = [-1, controlsHeight];
+            else
+                h = [-1, 20, controlsHeight];
+            end
+            obj.setHeights(h);
         end
 
         
@@ -129,6 +151,13 @@ classdef ViewSpcm < ViewVBox & EventListener
         end
         
         %%%% Callbacks %%%%
+        function popupNew(obj, creator)
+            if ~obj.isStandalone
+                GuiControllerSpcmCounter().start;
+                creator.HitTest = 'on';
+            end
+        end
+        
         function cbxUsingWrapCallback(obj, ~, ~)
             obj.recolor(obj.edtWrap, ~obj.isUsingWrap)
             % obj.update;           todo: replot with relevant data
@@ -155,13 +184,8 @@ classdef ViewSpcm < ViewVBox & EventListener
         end
         function edtIntegrationTimeCallback(obj, ~, ~) 
             spcmCount = obj.getCounter;
-            integrationTime = str2double(obj.edtIntegrationTime.String);
-            if ValidationHelper.isValuePositiveInteger(integrationTime)
-                spcmCount.integrationTimeMillisec = integrationTime;
-            else
-                EventStation.anonymousWarning('Integration time needs to be a positive integer. Reverting.')
-                obj.edtIntegrationTime.String = spcmCount.integrationTimeMillisec;
-            end
+            spcmCount.integrationTimeMillisec = str2double(obj.edtIntegrationTime.String);
+            % The counter will take care of the rest
         end
         
     end

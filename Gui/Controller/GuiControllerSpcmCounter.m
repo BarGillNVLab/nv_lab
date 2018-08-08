@@ -12,9 +12,9 @@ classdef GuiControllerSpcmCounter < GuiController
         
         function view = getMainView(obj, figureWindowParent)
             % This function should get the main View of this GUI.
-            % can call any view constructor with the params:
-            % parent=figureWindowParent, controller=obj
-            view = ViewSpcm(figureWindowParent, obj);
+            parent = figureWindowParent;
+            controller = obj;
+            view = ViewSpcm(parent, controller, 'isStandalone', true);
         end
         
         function onAboutToStart(obj)

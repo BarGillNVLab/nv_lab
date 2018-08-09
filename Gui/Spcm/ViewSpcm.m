@@ -109,7 +109,7 @@ classdef ViewSpcm < ViewVBox & EventListener
             
             hboxButtons.Widths = [-3, -1];
 
-            obj.refresh;
+            obj.update;     % There might already be records in the counter
             
             %%% Define size %%%
             if (length(varargin) == 2 && ~strcmp(varargin{1}, 'isStandalone')) ...
@@ -137,6 +137,7 @@ classdef ViewSpcm < ViewVBox & EventListener
         end
         
         function refresh(obj)
+            % Just uicontrols, not axes
             if Experiment.current(SpcmCounter.EXP_NAME)
                 spcmCount = getObjByName(Experiment.NAME);
                 obj.edtIntegrationTime.String = spcmCount.integrationTimeMillisec;
@@ -147,7 +148,29 @@ classdef ViewSpcm < ViewVBox & EventListener
                 % The counter is unavailable
                 obj.btnStartStop.isRunning = false;
             end
+        end
+        
+        function update(obj)
+            % Axes AND uicontrols
+            if ~Experiment.current(SpcmCounter.EXP_NAME)
+                return
+            end
             
+            counter = getObjByName(SpcmCounter.NAME);
+            if obj.isUsingWrap
+                [time,kcps,std] = counter.getRecords(obj.wrap);
+            else
+                [time,kcps,std] = counter.getRecords;
+            end
+            dimNum = 1;
+            AxesHelper.fill(obj.vAxes, kcps, dimNum, time, nan, obj.BOTTOM_LABEL, obj.LEFT_LABEL,std);
+            
+            obj.vAxes.Children.HitTest = 'off'; % So as not to be interacted by "marker" cursor
+            
+            set(obj.vAxes, 'XLim', [-inf, inf]);	% Creates smooth "sweep" of data
+            drawnow;                                % consider using animatedline
+            
+            obj.refresh;
         end
         
         %%%% Callbacks %%%%
@@ -160,7 +183,7 @@ classdef ViewSpcm < ViewVBox & EventListener
         
         function cbxUsingWrapCallback(obj, ~, ~)
             obj.recolor(obj.edtWrap, ~obj.isUsingWrap)
-            % obj.update;           todo: replot with relevant data
+            obj.update;
         end
         function edtWrapCallback(obj, ~, ~)
             if ~ValidationHelper.isValuePositiveInteger(obj.edtWrap.String)
@@ -168,7 +191,7 @@ classdef ViewSpcm < ViewVBox & EventListener
                 obj.edtWrap.String = obj.wrap;
             end
             obj.wrap = str2double(obj.edtWrap.String);
-            % obj.update;           todo: replot with relevant data
+            obj.update;
         end
         function btnStartCallback(obj, ~, ~)
             spcmCount = obj.getCounter;
@@ -215,18 +238,7 @@ classdef ViewSpcm < ViewVBox & EventListener
             if isfield(event.extraInfo, spcmCounter.EVENT_DATA_UPDATED)   % event = update
                 % todo: this should be a method, say obj.update(spcm),
                 % which can be called also when changing wrap mode
-                if obj.isUsingWrap
-                    [time,kcps,std] = spcmCounter.getRecords(obj.wrap);
-                else
-                    [time,kcps,std] = spcmCounter.getRecords;
-                end
-                dimNum = 1;
-                AxesHelper.fill(obj.vAxes, kcps, dimNum, time, nan, obj.BOTTOM_LABEL, obj.LEFT_LABEL,std);
-                
-                obj.vAxes.Children.HitTest = 'off'; % So as not to be interacted by "marker" cursor
-                
-                set(obj.vAxes, 'XLim', [-inf, inf]);	% Creates smooth "sweep" of data
-                drawnow;                                % consider using animatedline
+                obj.update;
             else
                 obj.refresh;
             end

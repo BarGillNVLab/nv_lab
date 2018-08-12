@@ -43,13 +43,17 @@ classdef Sequence < handle
             names = {obj.pulses.nickname};
             names = unique(names);
         end
+        
+        function channelNames = activeChannelNames(obj)
+            channelNames = StructHelper.getUniqueFieldNames(obj.pulses.onChannels);
+        end
     end
 
     %% Manage Pulses
     methods
         function addPulse(obj, pulse)
             assert(isa(pulse, 'Pulse'))
-            obj.pulses = [obj.pulses pulse];
+            obj.pulses = [obj.pulses, pulse];
         end
         
         function obj = addPulseAtGivenTime(obj, time, pulse)
@@ -94,10 +98,12 @@ classdef Sequence < handle
             % Creates a pulse, and adds it to the sequence on its end
             if exist('optName', 'var')
                 p = Pulse(duration, channelNames, optName);
-            else
+            elseif exist('channelNames', 'var')
                 p = Pulse(duration, channelNames);
+            else
+                p = Pulse(duration);
             end
-            obj.addPulse(obj, p);
+            addPulse(obj, p);
         end
         
         function addEventAtGivenTime(obj, time, duration, channelNames)
@@ -131,8 +137,22 @@ classdef Sequence < handle
         function [S1, S2] = splitByTime(obj, time)
             assert(isscalar(time), 'Currently, we Can''t split by vector of times. Sorry!')
             
-            if time >= obj.duration || time <= 0
-                error('Sequence could not be split in requested time')
+            if time >= obj.duration
+                % Return two sequences: one with extra time at the end, and
+                % one zero-length pulse
+                newDuration = time - obj.duration;
+                S.addPulse(newDuration);
+                S1 = S;
+                S2 = Sequence(Pulse(0));
+                return
+            elseif time <= 0
+                % Return two sequences: one zero-length pulse and one with
+                % extra time at the start
+                S1 = Sequence(Pulse(0));
+                newDuration = abs(time);
+                S2 = Sequence(Pulse(newDuration));
+                S2 = S2 + S;
+                return
             end
             pulseEdges = obj.edgeTimes;
             
@@ -153,6 +173,17 @@ classdef Sequence < handle
                 S1 = Sequence([obj.pulses(1:ind), P1]);
                 S2 = Sequence([P2, obj.pulses(ind+2:end)]);
             end
+        end
+        
+        function pulses = getPulsesByTimes(obj, startTime, endTime)
+            [preS, S] = obj.splitByTime(startTime);
+            [S, postS] = S.splitByTime(endTime);
+            pulses = [S.pulses];
+            
+            % We want the object pulses to be the same ones as the ones in
+            % 'pulses'
+            newSequence = preS + S + postS;
+            obj.pulses = newSequence.pulses;
         end
         
         function change(obj, nickname, what, newValue)
@@ -204,7 +235,15 @@ classdef Sequence < handle
     methods
         function S = plus(S1, S2)
             S = Sequence;
-            S.pulses = [S1.pulses S2.pulses];
+            % We want to avoid adding empty pulses for nothing, which might
+            % occur, due to the way we split Sequences.
+            if duration(S1) == 0
+                S = S2;
+            elseif duration(S2) == 0
+                S = S1;
+            else
+                S.pulses = [S1.pulses S2.pulses];
+            end
         end
         
         function S = mtimes(in1, in2)

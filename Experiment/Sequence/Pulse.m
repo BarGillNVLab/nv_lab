@@ -8,7 +8,7 @@ classdef Pulse < matlab.mixin.Copyable
         nickname = [];	% char array. Optional name for the pulse.
     end
     
-    properties (Access = private)
+    properties (SetAccess = private)
         onChannels = struct;    % struct of char arrays. We assume, for now, 
                                 % only digital cahnnels, so we only need to
                                 % know which ones are on.
@@ -28,6 +28,8 @@ classdef Pulse < matlab.mixin.Copyable
             end
             
             switch nargin
+                case 1
+                    obj.nickname = '';
                 case 2
                     obj.changeChannels(channelNames);
                     obj.nickname = '';
@@ -81,6 +83,10 @@ classdef Pulse < matlab.mixin.Copyable
             % levels - array of logicals. Whether the channel is on or off.
             % channel and level must be of the same length!
             
+            if ~iscell(channels)
+                % Convert to cell, for ease of use
+                channels = {channels};
+            end
             if ~exist('levels', 'var')
                 % Allows for syntax obj.changeChannels(channels), which
                 % only adds channels.
@@ -102,7 +108,7 @@ classdef Pulse < matlab.mixin.Copyable
                     oc = rmfield(oc, channel);
                 end
             end
-            obj.onChannels = oc;     % after changes are done, we assign them back to object property
+            obj.onChannels = oc;     % After changes are done, we assign them back to object property
         end
         
         function clear(obj)

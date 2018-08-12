@@ -46,6 +46,8 @@ classdef (Abstract) PulseGenerator < EventSender
             
             % We might need to add some blank time @ end of sequence, for
             % synchroniztion purposes
+%             obj.setSequenceDelays;    % Still not working properly
+            
             seq = obj.sequence;
             t = obj.sequencePeriodMultiple;
             remainder = rem(seq.duration, t);       % returns NaN if t==0; returns 0 if duration is multiple of t
@@ -57,6 +59,38 @@ classdef (Abstract) PulseGenerator < EventSender
             obj.sendToHardware;
             obj.sequenceInMemory = true;
         end
+        
+%         function setSequenceDelays(obj)
+%             % Delay channels in Sequence, according to their preset delays.
+%             % Algoritm: split sequence, according to delay
+%             % Too complicated, for now. Not working.
+%             S = obj.sequence;
+%             channelNames = S.activeChannelNames;
+%             % Get only active channels in sequence
+%             [mChannels, channelIndex] = find(channelNames, obj.channels);
+%             channelDelays = [mChannels.delay];
+%             % Get actual delay
+%             minDelay = min(channelDelays);
+%             channelDelays = channelDelays - minDelay;
+%             % Remove index of minimum/minima, as it does not need delay,
+%             % and delay all other channels.
+%             channelIndex(channelDelays < eps) = [];   
+%             for j = 1:length(channelIndex)
+%                 name = channelNames{channelIndex(j)};
+%                 times = S.edgeTimes;
+%                 newTimes = times + channelDelays(channelIndex(j));
+%                 for k = 1:length(newTimes)
+%                     [S1, S2] = S.splitByTime(newTimes(k));
+%                     
+%                     firstPulse = S1.pulses(end);
+%                     level = ismember(name, firstPulse.onChannels);
+%                     firstPulse.changChannels(name, ~level);
+% 
+%                     
+%                 end
+%             end
+%             obj.delayChannel(channelNames(channelIndex), channelDelays);
+%         end
     end
     
     methods % Setters & getters
@@ -107,7 +141,7 @@ classdef (Abstract) PulseGenerator < EventSender
             occupiedName = obj.channelNames;        % list of channel names already taken
             nameValid = ~ismember(name, occupiedName);
             if any(~nameValid)
-                warnMsg = [warnMsg, 'Some of the channels could not be registered, since their name was already registered.'];
+                warnMsg = [warnMsg, 'Some of the channels could not be registered, since their name already exists in the registrar.'];
             end
             % Let user know what's going on
             tf = addressValid && nameValid;

@@ -27,8 +27,8 @@ classdef StructHelper
             end
         end
         
-        function structCombined = merge(structOld,structNew,collisionBehavior)
-            % Merges two two structs by the following algorithm: Take 1st
+        function structCombined = merge(structOld, structNew, collisionBehavior)
+            % Merges two structs by the following algorithm: Take 1st
             % struct, and add any field from 2nd struct which is not a
             % dupllicate
             if ~exist('collisionBehavior','var') || strcmp(collisionBehavior,StructHelper.MERGE_SKIP)
@@ -78,6 +78,18 @@ classdef StructHelper
             
             warning('%s in the new array already existed in the old one, and %s %s.', ...
                 numString, verbString, actionString)
+        end
+        
+        function fieldNames = getUniqueFieldNames(varargin)
+            % Gets some structs, and returns the unique names of all fields
+            % in the structs.
+            isInputStruct = cellfun(@(x) isstruct(x), varargin);
+            assert(all(isInputStruct), 'Cannot get field names of non-structs!');
+            
+            structs = varargin;
+            fieldNamesCells = cellfun(@(x) fields(x), structs, 'UniformOutput', false);
+            fieldNamesWithRepitions = vertcat(fieldNamesCells{:});
+            fieldNames = unique(fieldNamesWithRepitions);
         end
     end
     

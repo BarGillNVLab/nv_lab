@@ -23,17 +23,19 @@ classdef Channel < handle
         address         % index in hub
         minimumValue    % double.
         maximumValue    % double.
+        delay           % double. in microseconds
     end
     
     %%
     methods (Access = private)
-        function obj = Channel(type, name, address, minValue, maxValue)
+        function obj = Channel(type, name, address, minValue, maxValue, delay)
             obj@handle;
             obj.type = type;
             obj.name = name;
             obj.address = address;
             obj.minimumValue = minValue;
             obj.maximumValue = maxValue;
+            obj.delay = delay;
         end
     end
     
@@ -71,12 +73,18 @@ classdef Channel < handle
     
     %% Public constructor methods
     methods (Static)
-        function obj = Digital(name, address)
-            obj = Channel(Channel.TYPE_DIGITAL, name, address, 0, 1);
+        function obj = Digital(name, address, delay)
+            if ~exist('delay', 'var')
+                delay = 0;
+            end
+            obj = Channel(Channel.TYPE_DIGITAL, name, address, 0, 1, delay);
         end
         
-        function obj = Analog(name, address, minValue, maxValue)
-            obj = Channel(Channel.TYPE_ANALOG, name, address, minValue, maxValue);
+        function obj = Analog(name, address, minValue, maxValue, delay)
+            if ~exist('delay', 'var')
+                delay = 0;
+            end
+            obj = Channel(Channel.TYPE_ANALOG, name, address, minValue, maxValue, delay);
         end
     end
     

@@ -430,6 +430,10 @@ classdef (Abstract) ClassStage < EventSender & Savable & EventListener
         % Changes between closed and open loop.
         % Mode should be either 'Open' or 'Closed'.
         
+%         GetLoopMode(obj)
+%         % Get current loop mode (either 'Open' or 'Closed') from the
+%         % hardware.
+        
         success = SetTiltAngle(obj, thetaXZ, thetaYZ)
         % Sets the tilt angles between Z axis and XY axes.
         % Angles should be in degrees, valid angles are between -5 and 5

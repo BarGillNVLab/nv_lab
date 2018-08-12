@@ -56,8 +56,11 @@ classdef (Sealed) ClassDummyStage  < ClassStage
             if tiltAvailable
                 obj.availableProperties.(obj.TILTABLE) = true;
             end
+            
             obj.availableProperties.(obj.HAS_OPEN_LOOP) = true;
             obj.availableProperties.(obj.HAS_CLOSED_LOOP) = true;
+            obj.loopMode = 'Closed';    % By default
+            
             obj.getJoystick;
         end 
     end
@@ -484,6 +487,10 @@ classdef (Sealed) ClassDummyStage  < ClassStage
             % Mode should be either 'Open' or 'Closed'.
             obj.loopMode = mode;
             obj.sendEventLoopModeChanged;
+        end
+        
+        function mode = GetLoopMode(obj)
+            mode = obj.loopMode;
         end
         
         function Halt(obj)

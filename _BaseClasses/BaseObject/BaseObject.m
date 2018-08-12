@@ -1,21 +1,21 @@
 classdef BaseObject < HiddenMethodsHandle & PropertiesDisplaySorted
     %BASEOBJECT an object which has a name
-    %   objects of type BaseObject can be identified by their name, so they
-    %   would be able to perform well when book-keeping is needed. Because
-    %   of that, all the "interesting" classes (like e.g. EventSender or
-    %   Savable) derive from BaseObject.
+    %   Objects of type BaseObject are singletons that can be identified by
+    %   their name, so they would be able to perform well when book-keeping
+    %   is needed. Because of that, all the "interesting" classes (like
+    %   e.g. EventSender or Savable) derive from BaseObject.
     %   
-    %   this class has a static map of BaseObjects that someone thought
+    %   This class has a static map of BaseObjects that someone thought
     %   they would be nice to have around. Adding an object to this map
     %   would be via calling addBaseObject() --> an Exception will be
     %   thrown if an object is in with the same name.
     %   Removing a BaseObject from the map is done via removeObjIfExists().
     %   Querying (getting) objects from the map is done via 
     %   getObjByName(string), which will return the BaseObject or throw an
-    %   exception if no BaseObject was found
+    %   exception if no BaseObject was found.
     %
     %   This class extends CustomDisplay so that properties could look
-    %   better and readable
+    %   better and readable.
     
     properties
         name  % An object is recognized in the event system by its name only! vector of chars

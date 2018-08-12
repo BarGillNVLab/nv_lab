@@ -214,6 +214,7 @@ classdef ViewStagePanelMovementControl < GuiComponent & EventListener
         function btnSendToFixedNonScanableCallback(obj)
             stage = getObjByName(obj.stageName);
             stage.sendPosToScanParams();
+            obj.refresh;
         end
         
         function btnMoveToBlueCallback(obj)

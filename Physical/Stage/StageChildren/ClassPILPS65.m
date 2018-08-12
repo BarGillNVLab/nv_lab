@@ -845,28 +845,31 @@ classdef (Sealed) ClassPILPS65 < ClassPIMicos
             % Changes between closed and open loop.
             % 'phAxis' can be either a specific axis (x,y,z or 1 for x, 2 for y
             % and 3 for z) or any vectorial combination of them.
-            % if 'phAxis' is not given, all axes are changed.
+            % If 'phAxis' is not given, all axes are changed.
             % 'mode' should be either 'Open' or 'Closed'.
             % Stage will auto-lock when in open mode, which should increase
             % stability.
-            if nargin == 3
-                phAxis = varargin{1};
-                mode = varargin{2};
-                axisID = obj.axesID(GetAxis(obj, phAxis));
-                switch mode
-                    case 'Open'
-                        SendPICommand(obj, 'PI_SVO', axisID, obj.szAxes, 0);
-                    case 'Closed'
-                        SendPICommand(obj, 'PI_SVO', axisID, obj.szAxes, 1);
-                    otherwise
-                        errorMsg = sprintf('Unknown mode: %s', mode);
-                        obj.sendError(errorMsg);
-                end
-            else
-                mode = varargin{1};
-                for i = 1:length(obj.validAxes)
-                    ChangeLoopMode(obj, obj.validAxes(i), mode)
-                end
+            narginchk(2,3)
+            
+            switch nargin
+                case 3
+                    phAxis = varargin{1};
+                    mode = varargin{2};
+                    axisID = obj.axesID(GetAxis(obj, phAxis));
+                    switch mode
+                        case 'Open'
+                            SendPICommand(obj, 'PI_SVO', axisID, obj.szAxes, 0);
+                        case 'Closed'
+                            SendPICommand(obj, 'PI_SVO', axisID, obj.szAxes, 1);
+                        otherwise
+                            errorMsg = sprintf('Unknown mode: %s', mode);
+                            obj.sendError(errorMsg);
+                    end
+                case 2
+                    mode = varargin{1};
+                    for i = 1:length(obj.validAxes)
+                        ChangeLoopMode(obj, obj.validAxes(i), mode)
+                    end
             end
             obj.loopMode = mode;
             obj.sendEventLoopModeChanged;

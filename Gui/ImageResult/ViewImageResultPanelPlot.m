@@ -21,7 +21,7 @@ classdef ViewImageResultPanelPlot < GuiComponent
                 'String', 'Plot Style:');
             obj.popupStyle = uicontrol(obj.PROP_POPUP{:}, ...
                 'Parent', hboxSecondLine, ...
-                'String', ImageScanResult.PLOT_STYLE_OPTIONS, ...
+                'String', ImageScanResult.PLOT_STYLE_OPTIONS_2D, ...
                 'Callback', @obj.popupStyleCallback);
             uicontrol(obj.PROP_BUTTON{:}, ...
                 'Parent', vboxMain, ...
@@ -38,6 +38,12 @@ classdef ViewImageResultPanelPlot < GuiComponent
         function update(obj)
             % Get data from ImageScanResult, and apply on views
             imageScanResult = getObjByName(ImageScanResult.NAME);
+            switch imageScanResult.mDimNumber
+                case 1
+                    obj.popupStyle.String = ImageScanResult.PLOT_STYLE_OPTIONS_1D;
+                case 2
+                    obj.popupStyle.String = ImageScanResult.PLOT_STYLE_OPTIONS_2D;
+            end
             obj.popupStyle.Value = imageScanResult.plotStyle;
         end
     end

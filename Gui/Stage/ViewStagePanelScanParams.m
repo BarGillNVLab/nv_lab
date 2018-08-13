@@ -198,6 +198,11 @@ classdef ViewStagePanelScanParams < GuiComponent & EventListener & EventSender
                     upperBound);
                 from = scanParams.from(phAxis);
                 obj.sendWarning(warningMsg);
+            elseif from == scanParams.to(phAxis)
+                warningMsg = sprintf( ...
+                    'Scan over the %s axis starts and ends at the same point!', ...
+                    obj.stageAxes(index));
+                obj.sendWarning(warningMsg)
             end
 
             [viewFrom.String, scanParams.from(phAxis)] = StringHelper.formatNumber(from);
@@ -223,6 +228,11 @@ classdef ViewStagePanelScanParams < GuiComponent & EventListener & EventSender
                     upperBound);
                 to = scanParams.to(phAxis);                
                 obj.sendWarning(warningMsg);
+            elseif to == scanParams.from(phAxis)
+                warningMsg = sprintf( ...
+                    'Scan over the %s axis starts and ends at the same point!', ...
+                    obj.stageAxes(index));
+                obj.sendWarning(warningMsg)
             end
             
             [viewTo.String, scanParams.to(phAxis)] = StringHelper.formatNumber(to);

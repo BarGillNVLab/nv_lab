@@ -11,7 +11,7 @@ classdef EventStation < handle
         shouldShowEvents        % boolean. If true, events will be shown in the command-line
         
         % Queue
-        queue = cell(0);       % cell of Events. Holds queued events until completion of stack.
+        queue = cell(0);	% cell of Events. Holds queued events until completion of stack.
         stackDepth = 0;     % int. Counts the number of times the event station was called/invoked without completion
     end
     

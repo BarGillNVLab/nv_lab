@@ -7,14 +7,14 @@ classdef ImageScanResult < Savable & EventSender & EventListener
     % implement it for scan result.
     
     properties (GetAccess = public, SetAccess = private)
-        mData = []; % double. Scan results
-        mDimNumber  % dimensions number
-        mFirstAxis  % vector
-        mSecondAxis % vector or point
-        mStageName  % string
-        mAxesString  % string
-        mLabelBot   % string
-        mLabelLeft  % string
+        mData = [];     % double. Scan results
+        mDimNumber = 2; % intgeger. Number of dimensions of scan. Has default value;
+        mFirstAxis      % vector
+        mSecondAxis     % vector or point
+        mStageName      % string
+        mAxesString     % string
+        mLabelBot       % string
+        mLabelLeft      % string
     end
     
     properties (Access = private) % For plotting over Image
@@ -25,7 +25,7 @@ classdef ImageScanResult < Savable & EventSender & EventListener
     end
     
     properties
-        plotStyle               % integer. Index for value in PLOT_STYLE_OPTIONS
+        plotStyle               % integer. Index for value in obj.PLOT_STYLE_OPTIONS (either _1D or _2D)
         colormapType            % integer. Index for value in COLORMAP_OPTIONS
         colormapLimits = [0 1]; % 2x1 double
         colormapAuto = true;    % logical
@@ -39,8 +39,9 @@ classdef ImageScanResult < Savable & EventSender & EventListener
         % Events
         EVENT_IMAGE_UPDATED = 'imageUpdated';
 
-        % Figuer Options
-        PLOT_STYLE_OPTIONS = {'Normal', 'Equal', 'Square'};
+        % Figure Options
+        PLOT_STYLE_OPTIONS_1D = {'Normal', 'Square'};
+        PLOT_STYLE_OPTIONS_2D = {'Normal', 'Equal', 'Square'};
         COLORMAP_OPTIONS = {'Pink', 'Parula', 'HSV', 'Hot', 'Cool', ...
             'Spring', 'Summer', 'Autumn', 'Winter', ...
             'Gray', 'Bone', 'Copper', 'Lines'};
@@ -109,7 +110,20 @@ classdef ImageScanResult < Savable & EventSender & EventListener
             %%%% After plotting is done, we can make some slight changes
             
             % Plot style
-            styleName = lower(obj.PLOT_STYLE_OPTIONS{obj.plotStyle});
+            switch obj.mDimNumber
+                case 1
+                    styleOptions = obj.PLOT_STYLE_OPTIONS_1D;
+                    if obj.plotStyle == 3
+                        % Not available anymore
+                        obj.plotStyle = 2;
+                    end
+                case 2
+                    styleOptions = obj.PLOT_STYLE_OPTIONS_2D;
+                    % Switching from 1D to 2D will get us in Equal axes.
+                    % Not great, but to worth fixing, for now.
+            end
+            
+            styleName = lower(styleOptions{obj.plotStyle});
             axis(obj.gAxes, styleName)
             
             % Colormap
@@ -731,11 +745,13 @@ classdef ImageScanResult < Savable & EventSender & EventListener
                 obj.savePlottingImage(folder, filename);
             end
             
-            % Check if event is "scanner started a new scan", and we might
-            % need to change our reference stage
+            % Check if event is "scanner started a new scan"
             if strcmp(event.creator.name, StageScanner.NAME) ...
                     && isfield(event.extraInfo, StageScanner.EVENT_SCAN_STARTED)
+                % We might need to change our reference stage
                 obj.mStageName = event.creator.mStageName;
+                % Make sure the cursor is in marker mode
+                obj.updateDataCursor;
             end
                     
             

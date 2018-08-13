@@ -4,7 +4,7 @@ classdef LaserSwitchPhysicalFactory
     
     properties (Constant)
         NEEDED_FIELDS = {'switchChannelName'}
-        OPTIONAL_FIELDS = {'isEnabled'}
+        OPTIONAL_FIELDS = {'delay', 'isEnabled'}
     end
     
     methods (Static)
@@ -25,9 +25,15 @@ classdef LaserSwitchPhysicalFactory
             
             switch lower(struct.classname)
                 case {'pulsegenerator', 'pulsestreamer', 'pulseblaster'}
-%                     switchPhysicalPart = SwitchPgControlled(partName, struct.switchChannelName);
-%                     After PG is properly implemented, we want:
-                    switchChannel = Channel.Digital(struct.switchChannelName, struct.switchChannel);
+                    % Maybe we need a global delay of the signal, due to
+                    % finite speed of signal
+                    if isnan(FactoryHelper.usualChecks(struct, {LaserSwitchPhysicalFactory.OPTIONAL_FIELDS{1}}))
+                        % usualChecks() returning nan means everything ok
+                        switchChannel = Channel.Digital(struct.switchChannelName, struct.switchChannel, struct.delay);
+                    else
+                        % No delay requested
+                        switchChannel = Channel.Digital(struct.switchChannelName, struct.switchChannel);
+                    end
                     switchPhysicalPart = SwitchPgControlled(partName, switchChannel);
                 otherwise
                     EventStation.anonymousError(...
@@ -35,7 +41,7 @@ classdef LaserSwitchPhysicalFactory
                         struct.classname, name);
             end
             % check for optional field "isEnabled" and set it correctly
-            if isnan(FactoryHelper.usualChecks(struct, SwitchPgControlled.OPTIONAL_FIELDS))
+            if isnan(FactoryHelper.usualChecks(struct, {LaserSwitchPhysicalFactory.OPTIONAL_FIELDS{2}}))
                 % usualChecks() returning nan means everything ok
                 switchPhysicalPart.isEnabled = struct.isEnabled;
             end

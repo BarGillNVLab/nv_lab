@@ -1,0 +1,96 @@
+{
+    "debugMode": true,
+    "showEvents": false,
+    "setupNumber": "999",
+    "niDaq": {
+        "dummy": true,
+        "deviceName": "dev1/"
+    },
+    "pulseGenerator": {
+        "type": "dummy",
+        "dummy": true,
+        "__futureLibPathName": "[NV Lab]\\Control code\\Pb_DLL\\",
+        "libPathName": "C:\\SpinCore\\SpinAPI\\dll\\",
+        "__comment_libPathName": "the term [NV Lab] will be replaced with C:\\Users\\[USERNAME]\\Google Drive\\work\\NV Lab",
+        "channelNames":  ["blueLaser", "redLaser", "greenLaser"],
+        "channelValues": [1,           3,          5]
+    },
+    "spcm" : {
+        "classname": "dummy",
+        "__to_return_to_classname": "niDaq",
+        "nidaq_channel_gate": "port1/line4",
+        "nidaq_channel_counts": "PFI1"
+    },
+    "stages": [
+        {
+            "name": "stage fine",
+            "type": "Dummy",
+            "axes": "xyz",
+            "is_scanable": true,
+            "tilt_available": true
+        },
+        {
+            "name": "stage coarse",
+            "type": "Dummy",
+            "axes": "xyz",
+            "is_scanable": false,
+            "tilt_available": true
+        }
+    ],
+    "lasers": [
+        {
+            "nickname": "Red Laser", 
+            "directControl": null, 
+            "aomControl": null,
+            "switch": {
+                "classname": "pulseBlaster",
+                "switchChannel": 3,
+                "switchChannelName": "redLaser"
+            }
+        },
+        {
+            "nickname": "Blue Laser", 
+            "directControl": null, 
+            "aomControl": {
+                "classname": "niDaq",
+                "channel": "LSR_W"
+            },
+            "switch": {
+                "classname": "pulseBlaster",
+                "switchChannel": 1,
+                "switchChannelName": "blueLaser"
+            }
+        },
+        {
+            "nickname": "Green Laser", 
+            "directControl": {
+                "classname": "dummy",
+                "lookupTable": "C:\\lab\\dummyLookup.xlsx",
+                "protocol": "ip", 
+                "ipAddress": "192.168.16.21"
+            },
+            "aomControl": {
+                "classname": "niDaq",
+                "channel": "LSL_W"
+            },
+            "switch": {
+                "classname": "pulseBlaster",
+                "switchChannel": 5,
+                "switchChannelName": "greenLaser"
+            }
+        }
+	],
+    "frequencyGenerator": [
+        {
+            "type": "dummy",
+            "name": "dummyFG",
+            "__type": "SynthHD",
+            "SerialNum": "639",
+            "__protocol": "RS232",
+            "__address": "COM2"
+        }
+    ],
+    "saveLoad": {
+        "location": "C:/SourceCode/Dev"
+    }
+}

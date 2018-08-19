@@ -30,15 +30,6 @@ classdef SerialControlled < matlab.mixin.SetGet
         function obj = SerialControlled(port)
             obj@matlab.mixin.SetGet;
             obj.s = serial(port);
-            
-            % We want to "inherit" the serial object, but only selected methods & properties
-            obj.port = obj.s.Port;
-            obj.baudRate = obj.s.BaudRate;
-            obj.dataBits = obj.s.DataBits;
-            obj.stopBits = obj.s.StopBits;
-            obj.parity = obj.s.Parity;
-            obj.flowControl = obj.s.FlowControl;
-            obj.terminator = obj.s.Terminator;
         end
         
         function open(obj)
@@ -130,8 +121,47 @@ classdef SerialControlled < matlab.mixin.SetGet
             set(obj.s, varargin{:});
         end
         
+        function obj = subsasgn(obj, S, value)
+            switch S.type
+                case '.'
+                    len = length(S.subs);
+                    assert(len == length(value));
+                    A = [S.subs; value];
+                    A = reshape(A, [1, 2*len]);
+                    obj = set(obj.s, A{:});
+                case '()'
+                    obj.s(S.subs) = value;
+                case '{}'
+                    obj.s{S.subs} = value;
+            end
+        end
+        
         function value = get(obj, varargin)
             value = get(obj.s, varargin{:});
+        end
+        
+        function value = subsref(obj, S)
+            args = {S.subs};
+            if length(args) > 1 % this is a call to a function
+                feval(args{1}, obj, args{2:end});
+                return
+            elseif ismethod(obj, args{:})
+                fun = args{:};
+                feval(fun, obj)
+                return
+            end
+            
+            switch S.type
+                case '.'
+                    if ~isprop(obj, S.subs)
+                        error('No such property')
+                    end
+                    value = obj.get(S.subs);
+                case '()'
+                    value = obj.s(S.subs);
+                case '{}'
+                    value = obj.s{S.subs};
+            end
         end
         
         function set.keepConnected(obj, value)

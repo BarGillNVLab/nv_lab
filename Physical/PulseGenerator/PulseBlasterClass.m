@@ -5,7 +5,7 @@ classdef (Sealed) PulseBlasterClass < PulseGenerator
         MAX_PULSES = Inf; %% ??;          % int. Maximum number of pulses in acceptable sequences
         MAX_DURATION = 1e5;         % double. Maximum duration of pulse.
         
-        AVAILABLE_ADDRESSES = 1:8;	% List of all available physical addresses.
+        AVAILABLE_ADDRESSES = 0:7;	% List of all available physical addresses.
                                     % Should be either vector of doubles or cell of char arrays
         NEEDED_FIELDS = {'libPathName'}
     end
@@ -30,10 +30,10 @@ classdef (Sealed) PulseBlasterClass < PulseGenerator
                 % spinapi.h C:\Program Files\SpinCore\SpinAPI\dll
                 % spinapi.dll C:\Program Files\SpinCore\SpinAPI\dll
                 dllPath = [PathHelper.appendBackslashIfNeeded(path), 'spinapi64.dll'];
-                hPath = [PathHelper.appendBackslashIfNeeded(path), 'spinapi64.h'];
+                hPath = [PathHelper.appendBackslashIfNeeded(path), 'spinapi.h'];
                 funclist = loadlibrary(dllPath, hPath, 'alias','mypbesr');
             end
-            obj.newSequence;
+            obj.initSequence;
         end
     end
 
@@ -70,10 +70,10 @@ classdef (Sealed) PulseBlasterClass < PulseGenerator
                 obj.PBesrSetClock();
             end
             
-            channels = obj.channelName2Address(channelNames); % converts from a cell of names to channel numbers, if needed
-            if isempty(channels)
+            if isempty(channelNames)
                 channels = 0;
             else
+                channels = obj.channelName2Address(channelNames); % converts from a cell of names to channel numbers, if needed
                 minChan = min(obj.AVAILABLE_ADDRESSES); % Probably 0, but just in case
                 maxChan = max(obj.AVAILABLE_ADDRESSES);
                 if sum(rem(channels,1)) || min(channels) < minChan || max(channels)> maxChan

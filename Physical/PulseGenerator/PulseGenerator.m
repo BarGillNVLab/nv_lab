@@ -41,6 +41,10 @@ classdef (Abstract) PulseGenerator < EventSender
             obj@EventSender(name);
         end
         
+        function initSequence(obj)
+            obj.sequence = Sequence;
+        end
+        
         function uploadSequence(obj)
             validateSequence(obj)
             

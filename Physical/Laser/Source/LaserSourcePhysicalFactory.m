@@ -28,6 +28,8 @@ classdef LaserSourcePhysicalFactory
                     return
                 case 'onefive katana 05'
                     laserPhysicalPart = LaserSourceOnefiveKatana05.create(partName, struct);
+                case 'smd 12'
+                    laserPhysicalPart = LaserSourceLaserquantumSmd12.create(partName, struct);
                 otherwise
                     EventStation.anonymousError(...
                         'Can''t create a %s-class laser part for laser "%s" - unknown classname! Aborting.', ...

@@ -16,6 +16,19 @@ classdef TrackablePosition < Trackable % & StageScanner
         minimumStepSize
     end
     
+     properties (SetAccess = private)
+        %properties to use in the Newton-Raphson method. 
+        %written by Lynn. temp.
+        
+        initialValue %holds the value with which the scanner starts
+        sizeOfDifference
+        currentValue
+        currentFirstDerivative
+        currentSecondDerivative
+        
+    end
+    
+    
     properties % have setters
         mStageName
         mLaserName
@@ -44,6 +57,8 @@ classdef TrackablePosition < Trackable % & StageScanner
         HISTORY_FIELDS = {'position', 'step', 'time', 'value'}
         
         DEFAULT_CONTINUOUS_TRACKING = false;
+        
+        SIZE_OF_DIFFERENCE = 0.01; % dx to use in the newthon-raphson method. temp. written by lynn.
     end
     
     methods
@@ -75,6 +90,9 @@ classdef TrackablePosition < Trackable % & StageScanner
             obj.minimumStepSize = obj.MINIMUM_STEP_VECTOR(phAxes);
             obj.pixelTime = obj.PIXEL_TIME;
             obj.nMaxIterations = obj.NUM_MAX_ITERATIONS;
+            
+            %written by lynn
+            obj.sizeOfDifference = obj.SIZE_OF_DIFFERENCE;
         end
     end
     
@@ -355,6 +373,93 @@ classdef TrackablePosition < Trackable % & StageScanner
             % If we arrive at the maximum number of iterations, we assume
             % the tracking sequence will not converge, and we stop it
             tf = (obj.stepNum >= obj.NUM_MAX_ITERATIONS);
+        end
+        
+        %written by lynn
+        %a beta function that runs the search algorithem of newton raphson
+        function newtonRaphsonAlgorithm(obj)
+            
+            stage = getObjByName(obj.mStageName);
+            spcm = getObjByName(Spcm.NAME);
+            phAxes = stage.getAxis(stage.availableAxes); %not sure why we need this
+            scanner = StageScanner.init;
+            
+%             % Initialize scan parameters for search
+%             sp = obj.mScanParams;
+%             sp.fixedPos = stage.Pos(phAxes);
+%             sp.pixelTime = obj.pixelTime;
+%             
+%             tracker = getObjByName(Tracker.NAME);
+%             thresh = tracker.kcpsThreshholdFraction;
+%             
+%             while ~obj.stopFlag && any(obj.stepSize > obj.MINIMUM_STEP_VECTOR(phAxes)) && ~obj.isDivergent
+%                 if obj.stepSize(obj.currAxis) > obj.MINIMUM_STEP_VECTOR(obj.currAxis)
+%                     obj.stepNum = obj.stepNum + 1;
+%                     pos = sp.fixedPos(obj.currAxis);
+%                     step = obj.stepSize(obj.currAxis);
+%                     
+%                     % scan to find forward and backward 'derivative'
+%                     % backward
+%                     sp.fixedPos(obj.currAxis) = pos - step;
+%                     signals(1) = scanner.scanPoint(stage, spcm, sp);
+%                     % current
+%                     sp.fixedPos(obj.currAxis) = pos;
+%                     signals(2) = scanner.scanPoint(stage, spcm, sp);
+%                     % forward
+%                     sp.fixedPos(obj.currAxis) = pos + step;
+%                     signals(3) = scanner.scanPoint(stage, spcm, sp);
+%                     
+%                     shouldMoveBack = Tracker.isDifferenceAboveThreshhold(signals(1), signals(2), thresh);
+%                     shouldMoveFwd = Tracker.isDifferenceAboveThreshhold(signals(3), signals(2), thresh);
+%                     
+%                     shouldContinue = false;
+%                     if shouldMoveBack
+%                         if shouldMoveFwd
+%                             % local minimum; don't move
+%                             disp('Conflict.... make longer scans?')
+%                         else
+%                             % should go back and look for maximum:
+%                             % prepare for next step
+%                             newStep = -step;
+%                             pos = pos + newStep;
+%                             newSignal = signals(1);   % value @ best position yet
+%                             shouldContinue = true;
+%                         end
+%                         
+%                     else
+%                         if shouldMoveFwd
+%                             % should go forward and look for maximum:
+%                             % prepare for next step
+%                             newStep = step;
+%                             pos = pos + newStep;
+%                             newSignal = signals(3);   % value @ best position yet
+%                             shouldContinue = true;
+%                         else
+%                             % local maximum or plateau; don't move
+%                         end
+%                     end
+%                     
+%                     while shouldContinue
+%                         if obj.isDivergent || obj.stopFlag; return; end
+%                         % we are still iterating; save current position before moving on
+%                         obj.mSignal = newSignal;    % Save value @ best position yet
+%                         obj.recordCurrentState;
+%                         
+%                         obj.stepNum = obj.stepNum + 1;
+%                         % New pos = (pos + step), if you should move forward;
+%                         %           (pos - step), if you should move backwards
+%                         pos = pos + newStep;
+%                         sp.fixedPos(obj.currAxis) = pos;
+%                         sp.isFixed(obj.currAxis) = true;
+%                         newSignal = scanner.scanPoint(stage, spcm, sp);
+%                         
+%                         shouldContinue = Tracker.isDifferenceAboveThreshhold(newSignal, obj.mSignal, thresh);
+%                     end
+%                     obj.stepSize(obj.currAxis) = step/2;
+%                 end
+%                 sp.isFixed(obj.currAxis) = true;        % We are done with this axis, for now
+%                 obj.currAxis = mod(obj.currAxis, len) + 1; % Cycle through 1:len
+%             end
         end
         
     end

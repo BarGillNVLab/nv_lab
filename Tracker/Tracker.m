@@ -1,14 +1,23 @@
 classdef Tracker < EventSender & EventListener & Savable
     %TRACKER In charge of all trackables (tracking experiments)
     
-    properties (Access = private)
-        mLocalStruct = struct;
-    end
-    
     properties (Constant)
         NAME = 'Tracker'
-        
         EVENT_TRACKER_FINISHED = 'trackerFinished'
+
+        REFERENCE_TYPE_KCPS = 'kcpsReference'
+        
+        THRESHHOLD_FRACTION = 0.01;  % Change is significant if dx/x > threshhold fraction (Default)
+    end
+     
+    properties (Access = private)
+        mLocalStruct = struct;
+        
+        kcpsReference = 0;  % Initialize as 0
+    end
+    
+    properties
+        kcpsThreshholdFraction = Tracker.THRESHHOLD_FRACTION;   % Default value
     end
     
     methods
@@ -23,25 +32,34 @@ classdef Tracker < EventSender & EventListener & Savable
             
             obj.startListeningTo(obj.getTrackableExperiments);
         end
-        
-        function startTrackable(obj, name, varargin) %#ok<INUSL>
-            % todo: GuiControllerTracker(name)
-            % Tracker should be a multi-tab window. We want it to open and
-            % switch to the relevant tab
-            try
-                exp = getExpByName(name);
-            catch
-                switch name
-                    case TrackablePosition.EXP_NAME
-                        % If this is the case, calling the function should
-                        % have included stage- and laser-name
-                        stageName = varargin{1};
-                        exp = TrackablePosition(stageName);
-                    otherwise
-                        disp('This should not have happenned')
-                end
+    end
+    
+    methods
+        function compareReference(obj, newValue, referenceType, trackableName)
+            % Compares newValue to reference of type referenceType, using
+            % trackable.
+            
+            switch referenceType
+                case obj.REFERENCE_TYPE_KCPS
+                    reference = obj.kcpsReference;
+                    threshhold = obj.kcpsThreshholdFraction;
+                otherwise
+                    EventStation.anonymousError('This Shouldn''t have happenned!')
             end
-            exp.start;
+            
+            if obj.isDifferenceAboveThreshhold(reference, newValue, threshhold)
+                trackable = obj.getTrackable(trackableName);
+                trackable.startTrack;
+            end
+        end
+    end
+    
+    methods % Setters
+        function set.kcpsThreshholdFraction(obj, newFraction)
+            if ~ValidationHelper.isValueFraction(newFraction)
+                obj.sendError('Fraction must be a numeric value between 0 and 1');
+            end
+            obj.kcpsThreshholdFraction = newFraction;
         end
     end
     
@@ -78,15 +96,14 @@ classdef Tracker < EventSender & EventListener & Savable
         end
    
         function loadStateFromStruct(obj, savedStruct, category, subCategory) %#ok<INUSD>
-            % loads the state from a struct.
-            % to support older versoins, always check for a value in the
-            % struct before using it. view example in the first line.
-            % category - a string, some savable objects will load stuff
+            % Loads the state from a struct.
+            % To support older versoins, always check for a value in the
+            % struct before using it; see example in the first line.
+            %
+            % category - string. Some savable objects will load stuff
             %            only for the 'image_lasers' category and not for
             %            'image_stages' category, for example
-            % subCategory - string. could be empty string
-    
-    
+            % subCategory - string. Might be an empty string
    
             if isfield(savedStruct, 'some_value')
                 obj.my_value = savedStruct.some_value;
@@ -114,13 +131,13 @@ classdef Tracker < EventSender & EventListener & Savable
         % event is the event sent from the EventSender
         function onEvent(obj, event)
             if isfield(event.extraInfo, Tracker.EVENT_TRACKABLE_EXP_ENDED)
-                % does 2 things: 1. saves trackable history into the
-                % tracker history. 2. Sends event that this trackable
-                % finished, and now things should happen (Main
-                % experiment can be resumed, SavLoad will autosave,
-                % etc.)
-                trackable = getObjByName(Trackable.NAME);   % Trackable.NAME == 'Experiment', but that's ok
-                trackableName = trackable.name;             % trackable.name (lowercase) == 'TrackableX', where X is the tracked property
+                % Two actions:
+                %   1. Saves trackable history into the tracker history.
+                %   2. Sends an event that this trackable finished, and now
+                %      things should happen (Main experiment can be
+                %      resumed, SavLoad will autosave, etc.)
+                trackable = event.creator;
+                trackableName = trackable.name;     % trackable.name (lowercase) == 'trackableX', where X is the tracked property
                 obj.mLocalStruct.(trackableName) = trackable.convertHistoryToStructToSave;
                 obj.sendEventTrackerFinished;
             end
@@ -137,6 +154,33 @@ classdef Tracker < EventSender & EventListener & Savable
             % They will be programatically found (using something similar
             % to Experiment.getExperimentNames()
             namesCell = TrackablePosition.EXP_NAME;
+        end
+        
+        function trackable = getTrackable(trackableName, varargin)
+            % Maybe this is already the current trackable
+            if strcmp(Experiment.current, trackableName)
+                trackable = getObjByName(Experiment.NAME);
+                return
+            end
+            
+            switch trackableName
+                case TrackablePosition.EXP_NAME
+                    % If this is the case, calling the function might
+                    % have included stage name
+                    if ~isempty(varargin)
+                        stageName = varargin{1};
+                        trackable = TrackablePosition(stageName);
+                    else
+                        % Default stage is invoked
+                        trackable = TrackablePosition;
+                    end
+                otherwise
+                    disp('This should not have happenned')
+            end
+        end
+        
+        function tf = isDifferenceAboveThreshhold(maybeHigh, maybeLow, threshhold)
+            tf = (maybeHigh - maybeLow) > threshhold;
         end
     end
     

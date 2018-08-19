@@ -144,6 +144,7 @@ classdef Tracker < EventSender & EventListener & Savable
         end
     end
     
+    %% Statics
     methods (Static)
         function namesCell = getTrackableExperiments %% for now, it is that simple
             % To be implemented

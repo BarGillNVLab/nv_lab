@@ -195,7 +195,7 @@ classdef SpcmNiDaqControlled < Spcm & NiDaqControlled
             daq.writeDigital(obj.niDaqGateChannelName, true); % Turn on gate
             task = daq.CreateDAQPulseWidthMeas(nReads, ...
                 obj.niDaqCountChannelName, obj.niDaqGateChannelName); % Set pulse-width measurement
-
+            
             obj.counterGatedTask = task;
         end
         

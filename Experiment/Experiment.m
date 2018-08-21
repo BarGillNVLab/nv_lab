@@ -43,8 +43,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
     properties (Constant)
         NAME = 'Experiment'
         
-        PATH_ALL_EXPERIMENTS = sprintf('%sControl code\\%s\\Experiment\\Experiments\\', ...
-            PathHelper.getPathToNvLab(), PathHelper.SetupMode);
+        PATH_ALL_EXPERIMENTS = sprintf('C:\\Control code\\Experiment\\Experiments\\');
         
         EVENT_DATA_UPDATED = 'dataUpdated'      % when something changed regarding the plot (new data, change in x\y axis, change in x\y labels)
         EVENT_EXP_RESUMED = 'experimentResumed' % when the experiment is starting to run

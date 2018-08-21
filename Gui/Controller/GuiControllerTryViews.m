@@ -25,10 +25,7 @@ classdef GuiControllerTryViews < GuiController
             % can call any view constructor with the params:
             % parent=figureWindowParent, controller=obj
 
-            % For trackables we need to first create a working experiment
-            stageName = 'stage coarse';
-            stage = getObjByName(stageName);
-            view = ViewStage(figureWindowParent, obj, stage);
+            view = ViewToy(figureWindowParent, obj, 3, 0);
         end
         
         function onAboutToStart(obj)

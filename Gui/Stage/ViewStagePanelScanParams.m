@@ -57,7 +57,7 @@ classdef ViewStagePanelScanParams < GuiComponent & EventListener & EventSender
                 obj.edtTo(i) = uicontrol(obj.PROP_EDIT{:}, 'Parent', gridScanParams);
             end
             
-            % 4th Column - amount of points
+            % 4th Column - number of points
             uicontrol(obj.PROP_LABEL{:}, 'Parent', gridScanParams, 'String', '# Pts');  % label
             obj.edtNumPoints = gobjects(1,axesLength);
             for i = 1: axesLength

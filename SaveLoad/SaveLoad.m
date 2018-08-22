@@ -57,15 +57,16 @@ classdef SaveLoad < Savable & EventSender
         function obj = getInstance(category)
             % This method gets the relevant SaveLoad object based on the
             % needed mCategory, so that calling
-            % SaveLoad.getInstance('image') will return a SaveLoad
-            % different than calling SaveLoad.getInstance('experiments')
+            %     SaveLoad.getInstance('image')
+            % will return a SaveLoad different than calling
+            % SaveLoad.getInstance('experiments')
             %
             % category - string
 
             saveLoadName = SaveLoad.getInstanceName(category);
             try
                 obj = getObjByName(saveLoadName);
-            catch                   % if hasn't been created yet
+            catch                   % if it hasn't been created yet
                 obj = SaveLoad(category);
             end
         end
@@ -322,9 +323,9 @@ classdef SaveLoad < Savable & EventSender
         function saveLocalStructToFile(obj, fileFullPath, differentStatusOptional)
             % Saves the local struct into an outer file
             % fileFullPath - string
-            % differentStatusOptional - string.
-            %                           if exists, the status will be this
-            %                           argument (default is 'saved')
+            % differentStatusOptional - string. If exists, the status will
+            %                           be this argument
+            %                           (default is 'saved')
 
             myStruct = obj.mLocalSaveStruct;
             if ~isstruct(myStruct)
@@ -476,6 +477,9 @@ classdef SaveLoad < Savable & EventSender
         function clearLocal(obj)
             % Used after deleting last file in current folder
             
+            % Save temporarily the full Path
+            fullPath = obj.mLoadedFileFullPath;
+            
             % Empty local struct
             obj.mLoadedFileFullPath = NaN;
             obj.mLoadedFileName = NaN;
@@ -491,14 +495,43 @@ classdef SaveLoad < Savable & EventSender
             obj.sendEvent(structEvent);
         end
         
-        %% Should add:
-        % We want a function, maybe called availableFiles, which is called
-        % every time there is load or save. It will output some data
-        % structure of logicals (vector? struct?), which expresses the
-        % availability of each of [previous, next, last]
-        % They will all be false if what we have now is unsaved
         
-        %%
+        function [allFiles, fileIndex] = availableFiles(obj)
+            % Finds all relevant available files, and returns the Index of
+            % the current file
+            %
+            % allFiles - the files in the current folder. Will return -1
+            %            if there is no loaded file.
+            % isPrev - whether there is a previous file.
+            % isNext - whether there is a following file.
+            
+            % Initialize all results as false (unless otherwise proven)
+            allFiles = NaN;
+            fileIndex = NaN;
+            
+            irrelevant = {obj.STRUCT_STATUS_NOT_SAVED, obj.STRUCT_STATUS_NOTHING};
+            
+            if any(strcmp(obj.mLocalStructStatus, irrelevant))
+                % The local struct is EITHER empty OR not saved
+                return
+            end
+            currentFileFullPath = obj.mLoadedFileFullPath;
+            
+            folder = obj.mLoadingFolder;
+            allFiles = PathHelper.getAllFilesInFolder(folder, obj.SAVE_FILE_SUFFIX);
+            if isempty(allFiles)
+                return
+            end
+            
+            ispresent = cellfun(@(string) strcmp(currentFileFullPath, string), allFiles);
+            % if file was not found in folder, make it load the last file
+            % (fileIndex will be 1 beyond last file, as it will load the file BEFORE fileIndex)
+            if ~any(ispresent)
+                return
+            else
+                fileIndex = find(ispresent == 1);
+            end
+        end
         
         function loadPreviousFile(obj)
             % Load the previous file to the one currently in use.
@@ -506,33 +539,18 @@ classdef SaveLoad < Savable & EventSender
             % that matches the terms:
             %        @ finishes with '.mat'
             %        @ has same mCategory as obj.mCategory
-            irrelevant = {obj.STRUCT_STATUS_NOT_SAVED, obj.STRUCT_STATUS_NOTHING};
             
-            if any(strcmp(obj.mLocalStructStatus, irrelevant))
+            [allFiles, fileIndex] = obj.availableFiles;
+            
+            if ~iscell(allFiles) && ~ischar(allFiles) || isempty(allFiles)
+                % => We couldn't load list of files
                 obj.sendError('Can''t load previous - no file has been loaded, so there''s no previous file!');
-            end
-            currentFileFullPath = obj.mLoadedFileFullPath;
-            
-            
-            folder = obj.mLoadingFolder;
-            allFiles = PathHelper.getAllFilesInFolder(folder, obj.SAVE_FILE_SUFFIX);
-            if isempty(allFiles)
+            elseif isempty(allFiles)
                 obj.sendError('Empty folder - can''t load file!');
-            end
-            
-            ispresent = cellfun(@(string) strcmp(currentFileFullPath, string), allFiles);
-            % if file was not found in folder, make it load the last file
-            % (fileIndex will be 1 beyond last file, as it will load the file BEFORE fileIndex)
-            if ~any(ispresent)
-                fileIndex = length(allFiles) + 1;
-            else
-                fileIndex = find(ispresent == 1);
-            end
-            
-            if fileIndex == 1
+            elseif isnan(fileIndex)
+                fileIndex = length(allFiles) + 1;   % The following loop will go from the last file backwards
+            elseif fileIndex == 1
                 obj.sendError('First file is loaded - no previous file exists!');
-                % todo dependent property 'can load next' and 'can load previous'
-                % ONE_DAY
             end
             
             start = fileIndex - 1;
@@ -554,34 +572,17 @@ classdef SaveLoad < Savable & EventSender
             % that matches the terms:
             %        @ finishes with '.mat'
             %        @ has same mCategory as obj.mCategory
-            irrelevant = {obj.STRUCT_STATUS_NOT_SAVED, obj.STRUCT_STATUS_NOTHING};
+           [allFiles, fileIndex] = obj.availableFiles;
             
-            if any(strcmp(obj.mLocalStructStatus, irrelevant))
+            if ~iscell(allFiles) && ~ischar(allFiles) || isempty(allFiles)
+                % => We couldn't load list of files
                 obj.sendError('Can''t load next - no file has been loaded, so there''s no next file!');
-                return
-            end
-            currentFileFullPath = obj.mLoadedFileFullPath;
-            
-            
-            folder = obj.mLoadingFolder;
-            allFiles = PathHelper.getAllFilesInFolder(folder, obj.SAVE_FILE_SUFFIX);
-            if isempty(allFiles)
+            elseif isempty(allFiles)
                 obj.sendError('Empty folder - can''t load file!');
-            end
-            
-            ispresent = cellfun(@(string) strcmp(currentFileFullPath, string), allFiles);
-            % if file not found in folder, make it load the first file
-            % (fileIndex will be then 0, as it will load the file AFTER fileIndex)
-            if ~any(ispresent)
-                fileIndex = 0;
-            else
-                fileIndex = find(ispresent == 1);
-            end
-            
-            if fileIndex == length(allFiles)
+            elseif isnan(fileIndex)
+                fileIndex = 0;   % The following loop will go from the first file onwards
+            elseif fileIndex == length(allFiles)
                 obj.sendError('Last file is loaded - next file has not been created (yet)!');
-                % todo dependent property 'can load next' and 'can load previous'
-                % ONE_DAY
             end
             
             for index = fileIndex + 1 : length(allFiles)
@@ -656,7 +657,7 @@ classdef SaveLoad < Savable & EventSender
             % else fails, clear struct.
             try
                 obj.loadPreviousFile;
-            catch   % Could not find any previous file
+            catch % Could not find any previous file
                 try
                     obj.loadNextFile;
                 catch % Could not find any next file, either

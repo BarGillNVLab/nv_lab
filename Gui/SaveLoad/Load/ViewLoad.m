@@ -110,7 +110,24 @@ classdef ViewLoad < ViewVBox & EventListener
             end
         end
         
+        
+        function setAvailableLoads(obj)
+            saveLoad = SaveLoad.getInstance(obj.category);
+            [allFiles, fileIndex] = saveLoad.availableFiles;
+            
+            isAnyAvailable = iscell(allFiles) || ischar(allFiles);
+            isPrevAvailable = isAnyAvailable && ~isnan(fileIndex) && fileIndex ~= 1;
+            isNextAvailable = isAnyAvailable && ~isnan(fileIndex) && fileIndex ~= length(allFiles);
+            
+            obj.btnLast.Enable = BooleanHelper.boolToOnOff(isAnyAvailable);
+            obj.btnPrev.Enable = BooleanHelper.boolToOnOff(isPrevAvailable);
+            obj.btnNext.Enable = BooleanHelper.boolToOnOff(isNextAvailable);
+            
+        end
+        
         function handleButtonLoad(obj)
+            % Sets the 'Enable' property of the quick loading buttons
+            % ('prev', 'next') according to files existing in the folder
             saveLoad = SaveLoad.getInstance(obj.category);
             loadingFolder = saveLoad.mLoadingFolder;
             [fileName,folderName,~] = uigetfile('*.mat', 'Choose file to load...', loadingFolder);
@@ -121,6 +138,8 @@ classdef ViewLoad < ViewVBox & EventListener
                 fullPath = [folderName fileName];
                 saveLoad.loadFileToLocal(fullPath);
             end
+            
+            obj.setAvailableLoads;
         end
         
         function handleButtonDelete(obj)
@@ -131,6 +150,8 @@ classdef ViewLoad < ViewVBox & EventListener
             if QuestionUserOkCancel(title, msg)
                 saveLoad.deleteCurrentFile();
             end
+            
+            obj.setAvailableLoads;
         end
         
         function handleButtonLoadToSystem(obj, subCategory)
@@ -145,6 +166,8 @@ classdef ViewLoad < ViewVBox & EventListener
             catch e
                 err2warning(e)
             end
+            
+            obj.setAvailableLoads;
         end
         
         function handleButtonNext(obj, ~, ~)
@@ -154,6 +177,8 @@ classdef ViewLoad < ViewVBox & EventListener
             catch e
                 err2warning(e)
             end
+            
+            obj.setAvailableLoads;
         end
         
         function handleButtonLast(obj)
@@ -163,6 +188,8 @@ classdef ViewLoad < ViewVBox & EventListener
             catch e
                 err2warning(e)
             end
+            
+            obj.setAvailableLoads;
         end
         
         function handleRadioAuto(obj)
@@ -199,6 +226,8 @@ classdef ViewLoad < ViewVBox & EventListener
             if isstruct(loadedStruct)
                 obj.tvLoadedInfo.String = saveLoad.onlyReadableStrings(loadedStruct);
             end
+            
+            obj.setAvailableLoads;
         end
         
     end

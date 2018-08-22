@@ -160,9 +160,14 @@ classdef PathHelper
                 allFilesInFolder = dir(searchString);
             end
             
-            fileNames = extractfield(allFilesInFolder, 'name');
-            isIni = endsWith(fileNames, '.ini');    % This file comes from Google Drive, but we don't want it
-            fileNames = fileNames(~isIni);
+            if isempty(allFilesInFolder)
+                fileNames = {};
+                inputFolder = '';   % It's irrelevant
+            else
+                fileNames = extractfield(allFilesInFolder, 'name');
+                isIni = endsWith(fileNames, '.ini');    % This file comes from Google Drive, but we don't want it
+                fileNames = fileNames(~isIni);
+            end
             
             switch nargout
                 case 1

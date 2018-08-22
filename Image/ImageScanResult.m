@@ -19,7 +19,7 @@ classdef ImageScanResult < Savable & EventSender & EventListener
     
     properties (Access = private) % For plotting over Image
         gAxes
-        gLimits = [];           % graphic handle; stores limits drawn onto image (for zoom)
+        gRoi = [];              % graphic handle; stores limits of RoI drawn onto image (for zoom)
         crosshairs = struct;    % struct of graphic handles, for the elements of the crosshairs\arrow for current position
         cursor                  % datacursor handle. Stores the information about recent mouse actions
     end
@@ -154,8 +154,8 @@ classdef ImageScanResult < Savable & EventSender & EventListener
                     obj.cursor = datacursormode(fig);
                     set(obj.cursor, 'UpdateFcn', @obj.cursorMarkerDisplay);
                 end
-                gLimitsVector = axis(obj.gAxes);   % vector of [x_min x_max y_min y_max]
-                obj.drawCrosshairs(gLimitsVector, pos)
+                gRoiVector = axis(obj.gAxes);   % vector of [x_min x_max y_min y_max]
+                obj.drawCrosshairs(gRoiVector, pos)
             catch err
                 obj.sendWarning('Unable to set crosshairs');
                 err2warning(err)
@@ -166,16 +166,14 @@ classdef ImageScanResult < Savable & EventSender & EventListener
             
         end
         
-        %%%% Data Cursor methods %%%%
+        %% Data Cursor methods %%
         function clearCursorData(obj)
             % Clear the cursor data between passing from one cursor type to
             % another. To avoid collision.
             
-            % Stop zoom if active
-            % (uses undocumented feature)
-            global GETRECT_H1
-            if ~isempty(GETRECT_H1) && ishghandle(GETRECT_H1)
-                set(GETRECT_H1, 'UserData', 'Completed');
+            if ~isempty(obj.gRoi) && ishandle(obj.gRoi)
+                resume(obj.gRoi); % Stop zoom if active
+                delete(obj.gRoi);
             end
             
             if isempty(obj.cursor)
@@ -187,45 +185,8 @@ classdef ImageScanResult < Savable & EventSender & EventListener
             obj.cursor.removeAllDataCursors;
             set(obj.cursor, 'Enable', 'off');
             
-            % Remove drawn limits, if exists
-            if ~isempty(obj.gLimits)
-                delete(obj.gLimits);
-            end
-            
             % Disable button press
             set([obj.gAxes; obj.gAxes.Children], 'ButtonDownFcn', '');
-        end
-        
-        function drawRectangle(obj, pos)
-            % Draw rectangle
-            if HandleHelper.isType(obj.gLimits, 'rectangle')
-                obj.gLimits.Position = pos;
-            else
-                obj.gLimits = rectangle(obj.gAxes, ...
-                    'Position', pos, ...
-                    'EdgeColor', 'g', ...
-                    'LineWidth', 1, ...
-                    'LineStyle', '-.', ...
-                    'HitTest', 'Off');
-            end
-        end
-        
-        function drawLimitBar(obj,pos)
-            % Draw limit bar
-            if ~isempty(obj.gLimits)
-                delete(obj.gLimits);
-            end
-            dx = pos(3)/2;
-            xPos = pos(1) + dx;         % the center of the bar
-            yPos = pos(2) + pos(4)/2;	% position of bar in the middle of selected rectangle
-            
-            hold(obj.gAxes,'on');
-            obj.gLimits = errorbar(obj.gAxes, ...
-                xPos,yPos, ...
-                dx, 'horizontal', ...
-                'Color', 'r', ...
-                'LineWidth', 1);
-            hold(obj.gAxes,'off');
         end
         
         function updateDataCursor(obj, action)
@@ -256,6 +217,9 @@ classdef ImageScanResult < Savable & EventSender & EventListener
                     set([obj.gAxes; obj.gAxes.Children], 'ButtonDownFcn', @obj.setLocationFromCursor);
             end
         end
+        
+        % Marker
+        
         
         function txt = cursorMarkerDisplay(obj, ~, event_obj)
             % Displays the location of the cursor on the plot and the kcps
@@ -292,6 +256,7 @@ classdef ImageScanResult < Savable & EventSender & EventListener
             end
         end
         
+        % Zoom
         function updataDataByZoom(obj)
             % Draw the rectangle on the selected area on the plot,
             % and update the GUI with the max and min values
@@ -301,26 +266,6 @@ classdef ImageScanResult < Savable & EventSender & EventListener
                 return
             end
             
-            % "try" getting user input
-            warning('off','all');
-            rect = getrect(obj.gAxes);
-            warning('on','all');
-            if rect(3) == 0; return; end  % Selection has no width. No use in continuing
-            
-            % Draw, according to the dimensions of the image
-            dim = obj.mDimNumber;
-            switch dim
-                case 1
-                    obj.drawLimitBar(rect);
-                case 2
-                    if rect(4) == 0     % Selection has no height
-                        return
-                    end
-                    obj.drawRectangle(rect);
-                otherwise
-                    EventStation.anonymousError('Can''t fetch limits in higher dimensions');
-            end
-            
             try
                 stage = getObjByName(obj.mStageName);
                 assert(stage.isScannable)
@@ -328,27 +273,96 @@ classdef ImageScanResult < Savable & EventSender & EventListener
                 EventStation.anonymousError('Can''t set new scan parameters, since there is no relevant stage');
             end
             
-            for i = 1:dim
-                axisIndex = stage.getAxis(obj.mAxesString(i));
+            % Try getting user input
+            dim = obj.mDimNumber;
+            switch dim
+                case 1
+                    hgRoi = ImBar(obj.gAxes);
+                    addNewPositionCallback(hgRoi, @obj.barChangeCallback)
+                case 2
+                    hgRoi = imrect(obj.gAxes);
+                    setcolor(hgRoi, 'green')
+                    addNewPositionCallback(hgRoi, @obj.rectChangeCallback)
+                otherwise
+                    EventStation.anonymousError('Can''t fetch limits in higher dimensions');
+            end
+            obj.gRoi = hgRoi;
+        end
+
+        function barChangeCallback(obj, position)
+            if position(1) == position(2)
+                return      % The RoI is a point. No point in continuing
+            end
+            
+            stage = getObjByName(obj.mStageName);
+            axisIndex = stage.getAxis(obj.mAxesString);
+            
+            stage.scanParams.from(axisIndex) = position(1);
+            stage.scanParams.to(axisIndex) = position(2); 
+
+            stage.sendEventScanParamsChanged;
+            
+        end
+        
+        function rectChangeCallback(obj, position)
+            
+            if any(position(3:4) == 0), return; end     % Selection has either no width or no height. No use in continuing
+            
+            stage = getObjByName(obj.mStageName);
+            for i = 1:2     % 2 == dim(image)
+                axisIndex = ClassStage.getAxis(obj.mAxesString(i));
                 
-                stage.scanParams.from(axisIndex) = rect(i);            % rect(1)==horizontal position, rect(2)==vertical position
-                stage.scanParams.to(axisIndex) = rect(i)+rect(i+2);    % rect(3)==width;	rect(4)==height
+                stage.scanParams.from(axisIndex) = position(i);             % rect(1)==horizontal position, rect(2)==vertical position
+                stage.scanParams.to(axisIndex) = position(i)+position(i+2); % rect(3)==width;               rect(4)==height
             end
             stage.sendEventScanParamsChanged;
         end
         
-        function drawCrosshairs(obj, limits, pos)
+        function drawRectangle(obj, pos)
+            % Draw rectangle
+            if HandleHelper.isType(obj.gRoi, 'imRect')
+                obj.gRoi.Position = pos;
+            else
+                obj.gRoi = rectangle(obj.gAxes, ...
+                    'Position', pos, ...
+                    'EdgeColor', 'g', ...
+                    'LineWidth', 1, ...
+                    'LineStyle', '-.', ...
+                    'HitTest', 'Off');
+            end
+        end
+        
+        function drawLimitBar(obj,pos)
+            % Draw limit bar
+            if ~isempty(obj.gRoi)
+                delete(obj.gRoi);
+            end
+            dx = pos(3)/2;
+            xPos = pos(1) + dx;         % the center of the bar
+            yPos = pos(2) + pos(4)/2;	% position of bar in the middle of selected rectangle
+            
+            hold(obj.gAxes,'on');
+            obj.gRoi = errorbar(obj.gAxes, ...
+                xPos,yPos, ...
+                dx, 'horizontal', ...
+                'Color', 'r', ...
+                'LineWidth', 1);
+            hold(obj.gAxes,'off');
+        end
+        
+        % Set&Get location
+        function drawCrosshairs(obj, roiLimits, pos)
             % Draws an arrow or a cross on the plot on a selected position
-            %       limits: limits of the view in the axes,
-            %               [x_min x_max y_min y_max]
-            %       pos:    current stage position, [x] or [x y]
+            %       roiLimits:  limits of the view in the axes,
+            %                   [x_min x_max y_min y_max]
+            %       pos:        current stage position, [x] or [x y]
             %
             %       Note: this function assumes the input arguments have
             %       been validated.
             
             % Get properties of axes
-            xLimits = limits(1:2);
-            yLimits = limits(3:4);
+            xLimits = roiLimits(1:2);
+            yLimits = roiLimits(3:4);
             dim = length(pos);
             
             % If 1D, arbitrarily set the position in the middle
@@ -784,8 +798,8 @@ classdef ImageScanResult < Savable & EventSender & EventListener
                     stage = getObjByName(obj.mStageName);
                     physAxes = obj.mAxesString;
                     pos = stage.Pos(physAxes);
-                    limits = axis(obj.gAxes);   % vector of [x_min x_max y_min y_max]
-                    obj.drawCrosshairs(limits, pos)
+                    roiLimits = axis(obj.gAxes);   % vector of [x_min x_max y_min y_max]
+                    obj.drawCrosshairs(roiLimits, pos)
                 catch err
                     % Probably, there is nothing to draw on. Moving on!
                     % For debugging purposes, we do show this warning.

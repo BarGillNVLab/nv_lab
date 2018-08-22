@@ -512,6 +512,36 @@ classdef StageScanner < EventSender & EventListener & Savable
         function number = getScanDimensions(obj)
             number = sum(~obj.mStageScanParams.isFixed);
         end
+        
+        function [globalFirstAxisPos, globalSecondAxisPos] = getGlobalScanVector(obj)
+            % Returns the location of the scan-vector(s), relative to a
+            % global zero
+            stagesCell = ClassStage.getStages;
+            pos = [0, 0, 0];
+            % First get data from scanning stage
+            
+            params = obj.mStageScanParams;
+            fixedInd = find(params.isFixed);
+            pos(fixedInd) = pos(fixedInd) + params.fixedPos(fixedInd);
+            for i = 1:length(stagesCell)
+                stage = stagesCell{i};
+                if ~strcmp(stage.name, obj.mStageName)
+                    phAxes = stage.availableAxes;
+                    ind = stage.getAxis(phAxes);
+                    pos(ind) = pos(ind) + stage.Pos(ind);
+                end
+            end
+            
+            firstAxisInd = params.getFirstScanAxisIndex;
+            globalFirstAxisPos = pos(firstAxisInd);
+            
+            secondAxisInd = params.getSecondScanAxisIndex;
+            if secondAxisInd == -1
+                globalSecondAxisPos = 0;
+            else
+                globalSecondAxisPos = pos(secondAxisInd);
+            end
+        end
     end
     
     methods

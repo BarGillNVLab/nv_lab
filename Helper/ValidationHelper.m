@@ -21,7 +21,9 @@
             else
                 value = inputValue;
             end
-            if (any(isnan(value)) || any(mod(value,1)) ~= 0 || any(value <= 0))
+            if (any(isnan(value)) ...               % Conversion to double failed,
+                    || any(mod(value,1)) ~= 0 ...   % or: it is not an integer,
+                    || any(value <= 0))             % or: it is not positive
                 bool = false;
             else
                 bool = true;

@@ -71,16 +71,20 @@ classdef AxesHelper
             % Clears the (graphic) axes by "filling" with nothing
             AxesHelper.fill(gAxes, obj.DEFAULT_Y, 1, obj.DEFAULT_X, [], '', '')
         end
+    end
         
+    methods (Static)
+        %%% Add axes across %%%
         function gNewAxes = addAxisAcross(gAxes, axisLetter, ticks, label)
             % Adds an axis over given axis, with different ticks (or tick
             % labels, to the very least) and maybe a label
             %
             % gAxes - axes handle. The new ticks will be at the top of these axes.
-            % axisLetter - either 'x' (for horizontal axis) or 'y' (for
-            %              vertical axis).
+            % axisLetter - either 'x' (for horizontal axis), 'y' (for
+            %              vertical axis) or 'xy' (for both).
             % ticks - two options
             %         1. vector of doubles - requested ticks;
+            %            Assumes ticks are given as column vector(s).
             %         2. function handle - transformation of the
             %            original axis.
             % label - label for the new axis.
@@ -104,21 +108,46 @@ classdef AxesHelper
                 'YAxisLocation','right');
             
             % Select NumericRuler (either X or Y)
-            switch lower(axisLetter)
-                case 'x'
-                    oldRuler = gAxes.XAxis;
-                    newRuler = gNewAxes.XAxis;
-                    % + Remove Y ticks
-                    set(gNewAxes, 'yTickLabel', []);
-                case 'y'
-                    oldRuler = gAxes.YAxis;
-                    newRuler = gNewAxes.YAxis;
-                    % + Remove X ticks
-                    set(gNewAxes, 'xTickLabel', []);
+            if length(axisLetter) == 1
+                % that is, any string which is longer than 1 char will be
+                % interpreted as 'xy'
+                switch lower(axisLetter)
+                    case 'x'
+                        oldRuler = gAxes.XAxis;
+                        newRuler = gNewAxes.XAxis;
+                        % + Remove Y ticks
+                        set(gNewAxes, 'yTickLabel', []);
+                    case 'y'
+                        oldRuler = gAxes.YAxis;
+                        newRuler = gNewAxes.YAxis;
+                        % + Remove X ticks
+                        set(gNewAxes, 'xTickLabel', []);
+                end
+                AxesHelper.setTicks(oldRuler, newRuler, ticks);
+
+                % Add label (if needed)
+                if exist('label', 'var')
+                    newRuler.Label = label;
+                end
+            else
+                % "case 'xy'"
+                AxesHelper.setTicks(gAxes.XAxis, gNewAxes.XAxis, ticks(:, 1));
+                AxesHelper.setTicks(gAxes.YAxis, gNewAxes.YAxis, ticks(:, 2));
+                
+                % Add label (if needed)
+                if exist('label', 'var')
+                    gNewAxes.XAxis.Label = label{1};
+                    gNewAxes.YAxis.Label = label{2};
+                end
             end
             
+            % We return gNewAxes, which were changed when we changed their
+            % child NumericRuler
+        end
+        
+        function setTicks(oldRuler, newRuler, ticks)
             % Create appropriate tick labels
-            switch class(newTicks)
+            switch class(ticks)
                 case {'double', 'cell'}
                     tickLen = length(ticks);
                     lim = oldRuler.Limits;
@@ -130,14 +159,6 @@ classdef AxesHelper
                     newAxisTicks = tick_fun(oldRuler.TickValues);
                     newRuler.TickLabels = num2str(newAxisTicks);
             end
-            
-            % Add label (if needed)
-            if exist('label', 'var')
-                newRuler.Label = label;
-            end
-            
-            % We return gNewAxes, which were changed when we changed their
-            % child NumericRuler
         end
     end
 end

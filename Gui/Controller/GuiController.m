@@ -171,7 +171,7 @@ classdef GuiController < handle
             end
         end
         
-		% Callback that runs when the user is changing the window size
+		% Callback that runs when the user changes the window size
 		% Due to a MATLAB bug, this callback doesn't jump when the user drags the window, only on resizing
         function callbackSizeChanged(obj)
             % Make sure the view isn't too small!

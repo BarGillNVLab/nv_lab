@@ -36,7 +36,7 @@ classdef (Sealed) PulseGeneratorDummyClass < PulseGenerator
         
         function init(obj)
             obj.values = false(size(obj.AVAILABLE_ADDRESSES));
-            obj.sequence = Sequence;
+            obj.initSequence;
         end
     end
 

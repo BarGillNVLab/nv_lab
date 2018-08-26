@@ -154,6 +154,7 @@ classdef (Abstract) Savable < BaseObject
             fields = fieldnames(loadedStruct);
             longString = '';
             if isfield(loadedStruct, Savable.PROPERTY_TIMESTAMP_END)
+                % Add timestamp
                 timeString = loadedStruct.(Savable.PROPERTY_TIMESTAMP_END);
                 time = datenum(timeString, Savable.TIMESTAMP_FORMAT);
                 longString = sprintf('Scan time: %s\n', datestr(time));

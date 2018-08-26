@@ -11,11 +11,6 @@ classdef SwitchPgControlled < EventSender & EventListener
         channel     % string
     end
     
-    properties (Constant, Hidden)
-        NEEDED_FIELDS = {'switchChannelName'}
-        OPTIONAL_FIELDS = {'isEnabled'}
-    end
-    
     methods
         function obj = SwitchPgControlled(name, pgChannel)
             % name - the nickname of the object

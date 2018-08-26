@@ -27,7 +27,7 @@ classdef (Sealed) PulseStreamerClass < PulseGenerator
         function Initialize(obj, ip, debugPath)
             obj.ps = PulseStreamer(ip);
             obj.ps.enableDebugRecorder(1000, debugPath);
-            obj.sequence = Sequence;
+            obj.initSequence;
         end
     end
     

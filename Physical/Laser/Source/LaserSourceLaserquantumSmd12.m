@@ -1,11 +1,11 @@
 classdef LaserSourceLaserquantumSmd12 < LaserPartAbstract & SerialControlled
     %LASERSOURCELASERQUANTUMSMD12 Laser Quantum SMD12 laser controller, via RS232
     
-    incomplete!!!
+%     incomplete!!!
     
     properties
         canSetEnabled = true;
-        canSetValue = true;  
+        canSetValue = true;
     end
     
     properties (Constant)
@@ -34,6 +34,7 @@ classdef LaserSourceLaserquantumSmd12 < LaserPartAbstract & SerialControlled
                 'BaudRate', 9600, ... 
                 'StopBits', 1, ...
                 'Terminator', 'CR');
+            obj.commDelay = 0.05;
             try
                 obj.open;
             catch err
@@ -110,7 +111,7 @@ classdef LaserSourceLaserquantumSmd12 < LaserPartAbstract & SerialControlled
             end
             
             port = jsonStruct.port;
-            obj = LaserSourceOnefiveKatana05(name, port);
+            obj = LaserSourceLaserquantumSmd12(name, port);
         end
     end
     %%

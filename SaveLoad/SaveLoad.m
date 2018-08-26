@@ -657,7 +657,7 @@ classdef SaveLoad < Savable & EventSender
             % else fails, clear struct.
             try
                 obj.loadPreviousFile;
-            catch % Could not find any previous file
+            catch   % Could not find any previous file
                 try
                     obj.loadNextFile;
                 catch % Could not find any next file, either

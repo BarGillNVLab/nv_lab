@@ -13,7 +13,7 @@ classdef Tracker < EventSender & EventListener & Savable
     properties (Access = private)
         mLocalStruct = struct;
         
-        kcpsReference = 0;  % Initialize @ 0
+        kcpsReference = 0;  % Initialize as 0
     end
     
     properties
@@ -180,8 +180,8 @@ classdef Tracker < EventSender & EventListener & Savable
             end
         end
         
-        function tf = isDifferenceAboveThreshhold(x0, x1, threshhold)
-            tf = (x0-x1) > threshhold;
+        function tf = isDifferenceAboveThreshhold(maybeHigh, maybeLow, threshhold)
+            tf = (maybeHigh - maybeLow) > threshhold;
         end
     end
     

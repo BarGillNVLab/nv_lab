@@ -86,7 +86,7 @@ classdef BaseObject < HiddenMethodsHandle & PropertiesDisplaySorted
             allBaseObjects = BaseObject.allObjects.wrapped;
             objName = baseObject.name;
             if allBaseObjects.isKey(objName)
-                % so apparently an object with this name exist.
+                % => Apparently an object with this name already exists.
                 % It's probably an error, but maybe it's the same object
                 % being constructed twice (it can happen with diamond
                 % inheritance. For example if something inherits both

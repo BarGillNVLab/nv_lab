@@ -224,9 +224,9 @@ classdef StageScanner < EventSender & EventListener & Savable
             nPixels = length(scanParams.getFirstScanAxisVector());
             kcpsScanVector = zeros(1, nPixels);
             axisToScan = scanParams.getScanAxes; % string of size 1
-            x = scanParams.getScanAxisVector(1); %#ok<NASGU> % vector between [min, max] or the fixed position if exist
-            y = scanParams.getScanAxisVector(2); %#ok<NASGU> % vector between [min, max] or the fixed position if exist
-            z = scanParams.getScanAxisVector(3); %#ok<NASGU> % vector between [min, max] or the fixed position if exist
+            x = scanParams.getScanAxisVector(1); % vector between [min, max] or the fixed position if exist
+            y = scanParams.getScanAxisVector(2); % vector between [min, max] or the fixed position if exist
+            z = scanParams.getScanAxisVector(3); % vector between [min, max] or the fixed position if exist
             
             if ~obj.mCurrentlyScanning
                 return
@@ -250,7 +250,8 @@ classdef StageScanner < EventSender & EventListener & Savable
                 scanOk = false;
                 
                 % Prepare Scan
-                eval(sprintf('stage.PrepareScan%s(x, y, z, nFlat, nOverRun, tPixel);', upper(axisToScan)));
+                prepareScanfuncName = sprintf('stage.PrepareScan%s', upper(axisToScan));
+                feval(prepareScanfuncName, x, y, z, nFlat, nOverRun, tPixel);
                 
                 % try to scan
                 for trial = 1:StageScanner.TRIALS_AMOUNT_ON_ERROR

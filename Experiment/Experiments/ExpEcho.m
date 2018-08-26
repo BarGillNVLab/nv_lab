@@ -210,7 +210,7 @@ classdef ExpEcho < Experiment
                         if obj.constantTime
                             seq.change('lastDelay', 'duration', maxLastDelay - 2*obj.tau(t));
                         end
-                        obj.setGreenLaserPower; % todo: This is never set anywhere!!!!
+                        obj.setGreenLaserPower; % todo: We need to find the proper value!!!!
                         sig(1:2) = obj.readAndShape;
                         
                         if obj.doubleMeasurement
@@ -228,8 +228,10 @@ classdef ExpEcho < Experiment
                         warning(err.message);
                         fprintf('Experiment failed at trial %d, attempting again.\n', trial);
                         try
-                            spcm.stopTask(obj.DAQtask);
+                            % Maybe we need to manually clear the resources
+                            spcm.stopGatedCount;
                         catch
+                            % But maybe we don't, and that's perfectly ok.
                         end
                     end
                 end
@@ -272,7 +274,7 @@ classdef ExpEcho < Experiment
         
     end
     
-    %% Helper functions
+    %% (Static) helper functions
     methods (Static)
         function name = getFgName(FG)
             % Get name of relevant frequency generator (if there is only

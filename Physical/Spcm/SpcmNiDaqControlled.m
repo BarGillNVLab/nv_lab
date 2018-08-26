@@ -205,6 +205,12 @@ classdef SpcmNiDaqControlled < Spcm & NiDaqControlled
             daq.startTask(obj.counterGatedTask);
         end
         
+        function stopGatedCount(obj)
+            % Release resources
+            daq = getObjByName(NiDaq.NAME);
+            daq.stopTask(obj.counterGatedTask);
+        end
+        
         function counts = readGated(obj)
             % Read vector of signals from the spcm
             if obj.nGatedCounts <= 0

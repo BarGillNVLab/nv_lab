@@ -62,6 +62,11 @@ classdef SpcmDummy < Spcm
             obj.calledScanStart = true;
         end
         
+        function stopScanCount(obj)
+            % Release resources
+            obj.calledScanStart = false;
+        end
+        
         function vectorOfKcps = readFromScan(obj)
             % Read vector of signals from the spcm
             if ~obj.isEnabled
@@ -100,6 +105,11 @@ classdef SpcmDummy < Spcm
         function startGatedCount(obj)
             % Actually start the process
             obj.calledGatedStart = true;
+        end
+        
+        function stopGatedCount(obj)
+            % Release resources
+            obj.calledGatedStart = false;
         end
         
         function vectorOfKcps = readGated(obj)

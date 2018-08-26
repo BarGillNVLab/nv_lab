@@ -51,6 +51,9 @@ classdef (Abstract) Spcm < EventSender
         startGatedCount(obj)
         % Actually start the process
         
+        stopGatedCount(obj)
+        % Release resources (such as NiDaq)
+        
         vectorOfKcps = readGated(obj)
         % Read vector of signals from the spcm
         

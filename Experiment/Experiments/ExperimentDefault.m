@@ -17,7 +17,7 @@ classdef ExperimentDefault < Experiment
         function perform(obj)
         end
         
-        function analyze(obj)
+        function wrapUp(obj)
         end
     end
     

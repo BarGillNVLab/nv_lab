@@ -7,7 +7,6 @@ classdef (Abstract) Trackable < Experiment
         mHistory = {};
         
         timer       % Stores tic from beginning of tracking
-        stopFlag = false;
         isCurrentlyTracking = false;
     end
     
@@ -62,7 +61,7 @@ classdef (Abstract) Trackable < Experiment
             perform(obj);
             
             stopTrack(obj)  % Signaling internally and externally that we are done
-            analyze(obj)
+            wrapUp(obj)
             sendEventPlotAnalyzeFit(obj)
         end
         

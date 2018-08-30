@@ -45,8 +45,8 @@ classdef ExpEcho < Experiment
             obj.freqGenName = obj.getFgName(FG);
             
             % Set properties inherited from Experiment
-            obj.repeats = 1000;
-            obj.averages = 2000;
+            obj.repeats = 10;         % Should be 1e3
+            obj.averages = 20;        % Should be 2e3
             obj.track = true;   % Initialize tracking
             obj.trackThreshhold = 0.7;
             
@@ -54,7 +54,8 @@ classdef ExpEcho < Experiment
             obj.laserInitializationDuration = 20;   % laser initialization in pulsed experiments in \mus (??)
             
             obj.mCurrentXAxisParam = ExpParamDoubleVector('Time', [], StringHelper.MICROSEC, obj.EXP_NAME);
-            obj.mCurrentYAxisParam = ExpParamDoubleVector('FL', [], 'normalised', obj.EXP_NAME);
+            obj.mCurrentYAxisParam(1) = ExpParamDoubleVector('FL', [], 'normalized', obj.EXP_NAME);
+            obj.mCurrentYAxisParam(2) = ExpParamDoubleVector('Reference', [], 'normalized', obj.EXP_NAME);
         end
     end
     
@@ -116,16 +117,13 @@ classdef ExpEcho < Experiment
     
     %% Helper functions
     methods
-        function sig = readAndShape(obj)
-            spcm = getObjByName(Spcm.NAME);
-            pg = getObjByName(PulseGenerator.NAME);
-            
+        function sig = readAndShape(obj, spcm, pg)
             kc = 1e3;     % kilocounts
             musec = 1e-6;   % microseconds
             
             spcm.startGatedCount;
-            pg.Run;
-            s = spcm.readGated(obj.DAQtask, numScans, obj.timeout);
+            pg.run;
+            s = spcm.readGated;
             s = reshape(s, 2, length(s)/2);
             sig = mean(s,2).';
             sig = sig./(obj.detectionDuration*musec)/kc; %kcounts per second
@@ -162,14 +160,15 @@ classdef ExpEcho < Experiment
             S.addEvent(obj.tau(end),        '',                         'tau');             % Delay
             S.addEvent(obj.piTime)                                                          % MW
             S.addEvent(obj.tau(end),        '',                         'tau');             % Delay
-            S.addPulse(obj.halfPiTime,      'MW',                       'projectionPulse'); % MW
-            S.addPulse(lastDelay,           '',                         'lastDelay');       % Last delay, making sure the MW is off
+            S.addEvent(obj.halfPiTime,      'MW',                       'projectionPulse'); % MW
+            S.addEvent(lastDelay,           '',                         'lastDelay');       % Last delay, making sure the MW is off
             
             %%% Send to PulseGenerator
             pg = getObjByName(PulseGenerator.NAME);
             pg.sequence = S;
             pg.repeats = obj.repeats;
             obj.changeFlag = false;
+            seqTime = pg.sequence.duration * 1e-6; % Multiplication in 1e-6 is for converting secs to usecs.
             
             %%% Set Frequency Generator
             fg = getObjByName(obj.freqGenName);
@@ -179,22 +178,24 @@ classdef ExpEcho < Experiment
             numScans = 2*obj.repeats;
             measurementlength = 1 + double(obj.doubleMeasurement);   % 1 is single, 2 is double
             obj.signal = zeros(2 * measurementlength, length(obj.tau), obj.averages);
-            obj.timeout = 15 * numScans * max(obj.PB.time) * 1e-6;
+            obj.timeout = 15 * numScans * seqTime;       % some multiple of the actual duration
             
             spcm = getObjByName(Spcm.NAME);
-            spcm.prepareGatedCount(numScans);
+            spcm.setSPCMEnable(true);
+            spcm.prepareGatedCount(numScans, obj.timeout);
             
             fprintf('Starting %d averages with each average taking %.1f seconds, on average.\n', ...
-                obj.averages, 1e-6*obj.repeats*seqTime*length(obj.tau)*(1+obj.doubleMeasurement));
+                obj.averages, obj.repeats * seqTime * length(obj.tau) * (1+obj.doubleMeasurement));
         end
         
         function perform(obj, nIter)
             %%% Initialization
             
-            % Devices
+            % Devices (+ Tracker)
             pg = getObjByName(PulseGenerator.NAME);
             seq = pg.sequence;
             spcm = getObjByName(Spcm.NAME);
+            tracker = getObjByName(Tracker.NAME);
             
             % Some magic numbers
             maxLastDelay = obj.mwOffDelay + max(obj.tau);
@@ -211,16 +212,16 @@ classdef ExpEcho < Experiment
                             seq.change('lastDelay', 'duration', maxLastDelay - 2*obj.tau(t));
                         end
                         obj.setGreenLaserPower; % todo: We need to find the proper value!!!!
-                        sig(1:2) = obj.readAndShape;
+                        sig(1:2) = obj.readAndShape(spcm, pg);
                         
                         if obj.doubleMeasurement
                             seq.change('projectionPulse', 'duration', obj.threeHalvesPiTime);
-                            sig(3:4) = obj.readAndShape;
-                            seq.change('projectionPulse', 'duration', obj.halfPi);
+                            sig(3:4) = obj.readAndShape(spcm, pg);
+                            seq.change('projectionPulse', 'duration', obj.halfPiTime);
                         end
                         obj.signal(:, t, nIter) = sig;
                         
-                        tracker = getObjByName(Tracker.NAME);
+                        
                         tracker.compareReference(sig(2), Tracker.REFERENCE_TYPE_KCPS, TrackablePosition.EXP_NAME);
                         success = true;     % Since we got till here
                         break;
@@ -240,35 +241,40 @@ classdef ExpEcho < Experiment
                 end
             end
             
+            % Saving results in the Experiment parameters
+            obj.mCurrentXAxisParam.value = 2*obj.tau;
             
+            S1 = squeeze(obj.signal(1, :, 1:nIter));
+            S2 = squeeze(obj.signal(2, :, 1:nIter));
             
-            %%% Plotting: should instead be sendEventDataUpdated
-            S1 = squeeze(obj.signal(1,:,:));
-            S2 = squeeze(obj.signal(2,:,:));
-            
-            S = mean(S1./S2,2);
-            
-            if obj.doubleMeasurement
-                S3 = squeeze(obj.signal(3,:,:));
-                S4 = squeeze(obj.signal(4,:,:));
-                
-                SDoubleMeasurement = mean(S3./S4,2);
-                S = [S; SDoubleMeasurement];
+            if nIter == 1
+                % Nothing to calculate the mean over
+                obj.mCurrentYAxisParam(1).value = S1./S2;
+            else
+                obj.mCurrentYAxisParam(1).value = mean(S1./S2, 2);
             end
             
-            obj.mCurrentXAxisParam.value = 2*obj.tau;
-            obj.mCurrentYAxisParam.value = S;
-            
-            %%% end (plotting)
-
-            
-            % todo: needs to happen after all averages:
-            % obj.CloseExperiment(obj.DAQtask)
+            if obj.doubleMeasurement
+                S3 = squeeze(obj.signal(3, :, 1:nIter));
+                S4 = squeeze(obj.signal(4, :, 1:nIter));
+                
+                if nIter == 1
+                    % There is nothing to calculate the mean over
+                    obj.mCurrentYAxisParam(2).value = S3./S4;
+                else
+                    obj.mCurrentYAxisParam(2).value = mean(S3./S4,2);
+                end
+            end
         end
         
-        function analyze(obj)
-            % In the future, this will analyze results and fit from it the
-            % coherence time.
+        function wrapUp(obj)
+            % Things that need to happen when the experiment is done; a
+            % counterpart for obj.prepare.
+            % In the future, it will also analyze results and fit from it
+            % the coherence time.
+            
+            spcm = getObjByName(Spcm.NAME);
+            spcm.setSPCMEnable(false);
         end
         
         

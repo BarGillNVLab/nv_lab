@@ -58,7 +58,7 @@ classdef (Abstract) ExpParameter < HiddenMethodsHandle & PropertiesDisplaySorted
                 
                 % Formatting strings for error
                 newType = class(newValue);
-                if newType == 'double' && length(newValue)>1; newType = obj.TYPE_VECTOR_OF_DOUBLES; end
+                if strcmp(newType, 'double') && length(newValue)>1; newType = obj.TYPE_VECTOR_OF_DOUBLES; end %#ok<STISA>
                 
                 parameterName = obj.name; %#ok<*MCSUP>
                 % If we know the name of the associated experiment, we want to include it in the error message:
@@ -76,7 +76,7 @@ classdef (Abstract) ExpParameter < HiddenMethodsHandle & PropertiesDisplaySorted
         end
         
         function tf = get.isAssociatedToExp(obj)
-            tf = ~isnan(obj.expName) && ~isempty(obj.expName);
+            tf = ~isempty(obj.expName) && ischar(obj.expName);
         end
         
         function lbl = get.label(obj)

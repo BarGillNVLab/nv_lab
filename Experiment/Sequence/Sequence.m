@@ -210,7 +210,7 @@ classdef Sequence < handle
     end
        
     methods (Access = private)
-        function ind = indexfromNickname(obj, name)
+        function ind = indexFromNickname(obj, name)
             % Returns index (or indices) of pulses that have the name
             % 'name'
             if isnumeric(name)

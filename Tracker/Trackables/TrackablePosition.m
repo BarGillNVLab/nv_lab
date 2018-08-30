@@ -131,7 +131,7 @@ classdef TrackablePosition < Trackable % & StageScanner
 
         end
         
-        function analyze(obj) %#ok<MANU>
+        function wrapUp(obj) %#ok<MANU>
             % No analysis required (yet?)
         end
     end

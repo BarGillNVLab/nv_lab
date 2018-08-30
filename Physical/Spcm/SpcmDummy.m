@@ -99,7 +99,7 @@ classdef SpcmDummy < Spcm
                 obj.sendError(sprintf('Can''t prepare for reading %d times, only positive integers allowed! Igonring.', nReads));
             end
             obj.timesToRead = nReads;
-            obj.integrationTime = timeout / (2 * nReads);
+            obj.integrationTime = timeout / (15 * nReads);  % 15 is a fudge factor. Can be reduced, if we need longer scans
         end
         
         function startGatedCount(obj)
@@ -122,7 +122,7 @@ classdef SpcmDummy < Spcm
                 obj.sendError('Can''t readFromScan() without calling ''prepareCountByStage()''!  ');
             end
             
-            if ~obj.calledScanStart
+            if ~obj.calledGatedStart
                 obj.sendError('Can''t readFromScan() without calling startScanCount()!');
             end
             

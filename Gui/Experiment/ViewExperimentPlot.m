@@ -10,24 +10,26 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
         btnStartStop
     end
     
-    properties
-        DEFAULT_EMPTY_DATA = [0; NaN];
-    end
-    
     methods
         
         function obj = ViewExperimentPlot(expName, parent, controller)
-            obj@ViewVBox(parent, controller);
+            padding = 15;
+            spacing = 15;
+            obj@ViewVBox(parent, controller, padding, spacing);
             obj@EventListener(Experiment.NAME);
             obj.expName = expName;
             
             fig = obj.component;    % for brevity
-            obj.vAxes1 = axes('Parent', fig, ...
-                'NextPlot', 'replacechildren');
+            obj.vAxes = axes('Parent', fig, ...
+                'NextPlot', 'replacechildren', ...
+                'OuterPosition', [0.1, 0.1, 0.8, 0.8]);
             obj.btnStartStop = ButtonStartStop(fig);
                 obj.btnStartStop.startCallback = @obj.btnStartCallback;
                 obj.btnStartStop.stopCallback  = @obj.btnStopCallback;
             fig.Heights = [-1, 30];
+            
+            obj.height = 400;
+            obj.width = 600;
         end
         
         
@@ -46,20 +48,20 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
         function plot(obj)
             % Check whether we have anything to plot
             exp = obj.getExperiment;
-            data = exp.results;
+            data = exp.mCurrentYAxisParam(1).value;
             
             if isempty(obj.vAxes.Children)
                 % Nothing is plotted yet
-                if isnan(data) || isempty(data)
+                if isempty(data) || all(isnan(data))
                     % Default plot
-                    firstAxisVector = obj.DEFAULT_EMPTY_DATA(1);
-                    data = obj.DEFAULT_EMPTY_DATA(2);
+                    firstAxisVector = AxesHelper.DEFAULT_X;
+                    data = AxesHelper.DEFAULT_Y;
                 else
                     % First plot
                     firstAxisVector = exp.mCurrentXAxisParam.value;
                 end
                 bottomLabel = exp.mCurrentXAxisParam.label;
-                leftLabel = exp.mCurrentYAxisParam.label;
+                leftLabel = exp.mCurrentYAxisParam(1).label;
                 AxesHelper.fill(obj.vAxes, data, obj.nDim, ...
                     firstAxisVector, [], bottomLabel, leftLabel);
                 
@@ -78,6 +80,13 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
                 firstAxisVector = exp.mCurrentXAxisParam.value;
                 AxesHelper.update(obj.vAxes, data, obj.nDim, firstAxisVector)
             end
+            
+            for i = 1:length(exp.mCurrentYAxisParam)
+                % If there is more than one Y axis parameter, we want to
+                % plot it above the first one
+                data = exp.mCurrentYAxisParam(i).value;
+                AxesHelper.add(obj.vAxes, data, firstAxisVector)
+            end
 
         end
         
@@ -85,7 +94,6 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
         function refresh(obj)
             exp = obj.getExperiment;
             obj.btnStartStop.isRunning = ~exp.stopFlag;
-            obj.plot;
         end
         
     end
@@ -114,6 +122,9 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
             % experiment is "ours".
             if strcmp(event.creator.EXP_NAME, obj.expName)
                 obj.refresh;
+                if isfield(event.extraInfo, Experiment.EVENT_DATA_UPDATED)
+                    obj.plot
+                end
             end
         end
     end

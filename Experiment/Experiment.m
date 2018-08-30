@@ -11,6 +11,9 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
         
         mCurrentXAxisParam      % ExpParameter in charge of axis x (which has name and value)
         mCurrentYAxisParam		% ExpParameter in charge of axis y (which has name and value)
+        
+        topParam                % Optional ExpParameter, parallel to the x axis parameter
+        rightParam              % Optional ExpParameter, parallel to the y axis parameter
     end
     
     properties
@@ -21,16 +24,18 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
         track               % logical. initialize tracking
         trackThreshhold     % double (between 0 and 1). Change in signal that will start the tracker
         laserInitializationDuration  % laser initialization in pulsed experiments
-        laserOnDelay        %in \mus
-        laserOffDelay       %in \mus
-        mwOnDelay           %in \mus
-        mwOffDelay          %in \mus
+        laserOnDelay = 0.1;  %in \mus
+        laserOffDelay = 0.1; %in \mus
+        mwOnDelay = 0.1;     %in \mus
+        mwOffDelay = 0.1;    %in \mus
         detectionDuration   % detection windows, in \mus
         
-        greenLaserPower     % in V
+        greenLaserPower = 50     % in percentage
+        
+        signal              % Measured signal in the experiment (basically, unprocessed)
     end
     
-    properties (Access = private)
+    properties (SetAccess = {?Trackable})
         stopFlag = 0;
         pauseFlag = 0;	% 0 -> new signal will be acquired. 1 --> signal will be required.
         pausedAverage = 0; 
@@ -158,7 +163,8 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
                     if obj.stopFlag
                         break
                     end
-                catch
+                catch err
+                    err2warning(err)
                     break
                 end
             end
@@ -179,10 +185,10 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
         
         perform(obj, nIter)
         % Perform the main part of the experiment.
-        % This part is iterated obj.averages times, and nIter is the number
+        % This part is iterated (obj.averages) times, and nIter is the number
         % of current iteration
         
-        analyze(obj)
+        wrapUp(obj)
     end
     
     
@@ -255,8 +261,9 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             
             greenLaser = getObjByName(LaserGate.GREEN_LASER_NAME);
             controallableParts = greenLaser.getContollableParts;
-            powerPart = controallableParts{1};
-            normalisedPower = (laserPower - powerPart.min)/(powerPart.maxValue - powerPart.min);
+            powerPart = getObjByName(controallableParts{1});
+            min = powerPart.minValue;
+            normalisedPower = min + (laserPower - min)/(powerPart.maxValue - min);
             powerPart.value = normalisedPower;
         end
         
@@ -265,6 +272,18 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             spcm.prepareReadByTime;
             obj.setGreenLaserPower;
             spcm.setGatedCounting('', numScans);
+            
+            if isempty(obj.laserOnDelay) || isempty(obj.laserOffDelay)
+                laser = getObjByName(LaserGate.GREEN_LASER_NAME);
+                obj.laserOnDelay = laser.onDelay;
+                obj.laserOffDelay = laser.offDelay;
+            end
+            
+            if isempty(obj.mwOnDelay) || isempty(obj.mwOffDelay)
+                mw = JsonInfoReader.getDefaultObject('frequencyGenerator');
+                obj.mwOnDelay = mw.onDelay;
+                obj.mwOffDelay = mw.offDelay;
+            end
         end
     end
     
@@ -304,7 +323,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             % 'SpcmCounter', whatever be in the folder
             
             persistent expNames expClassNames
-            if isempty(expNames) || ~isvalid(expNames)
+            if isempty(expNames)
                 % Get 'regular' Experiments
                 path = Experiment.PATH_ALL_EXPERIMENTS;
                 [~, expFileNames] = PathHelper.getAllFilesInFolder(path);

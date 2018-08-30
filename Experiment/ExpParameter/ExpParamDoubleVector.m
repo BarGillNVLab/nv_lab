@@ -14,7 +14,7 @@ classdef (Sealed) ExpParamDoubleVector < ExpParameter
     methods (Static)
         function isOK = validateValue(value)
             % Check if a new value is valid, according to obj.type
-            isOK = isnumeric(value) && ~iscalar(value);
+            isOK = isnumeric(value) && ~isscalar(value);
         end
     end
     

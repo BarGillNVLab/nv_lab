@@ -72,20 +72,20 @@ classdef (Abstract) FrequencyGenerator < BaseObject
             end
         end
         
-        function set.amplitude(obj, newAamplitude)  % in dB
+        function set.amplitude(obj, newAmplitude)  % in dB
             % Change amplitude level of the frequency generator
-            if ~ValidationHelper.isInBorders(newAamplitude, obj.LIMITS_AMPLITUDE(1), obj.LIMITS_AMPLITUDE(2))
+            if ~ValidationHelper.isInBorders(newAmplitude, obj.LIMITS_AMPLITUDE(1), obj.LIMITS_AMPLITUDE(2))
                 error('MW amplitude must be between %d and %d.\nRequested: %d', ...
-                    obj.LIMITS_AMPLITUDE(1), obj.LIMITS_AMPLITUDE(2), newAamplitude)
+                    obj.LIMITS_AMPLITUDE(1), obj.LIMITS_AMPLITUDE(2), newAmplitude)
             end
             
             switch length(newAmplitude)
                 case 1
-                    obj.setValue('amplitude', newAamplitude);
-                    obj.amplitudePrivate(1) = newAamplitude;
+                    obj.setValue('amplitude', newAmplitude);
+                    obj.amplitudePrivate(1) = newAmplitude;
                 case length(obj.amplitudePrivate)
-                    obj.setValue('amplitude', newAamplitude);
-                    obj.amplitudePrivate = newAamplitude;
+                    obj.setValue('amplitude', newAmplitude);
+                    obj.amplitudePrivate = newAmplitude;
                 otherwise
                     EventStation.anonymousError('Frequency Generator: amplitude vector size mismatch!');
             end

@@ -27,7 +27,7 @@ classdef ExpESR < Experiment
             
         end
         
-        function analyze(obj)
+        function wrapUp(obj)
             
         end
     end

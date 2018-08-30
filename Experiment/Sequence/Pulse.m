@@ -83,7 +83,9 @@ classdef Pulse < matlab.mixin.Copyable
             % levels - array of logicals. Whether the channel is on or off.
             % channel and level must be of the same length!
             
-            if ~iscell(channels)
+            if isempty(channels)
+                channels = {};
+            elseif ~iscell(channels)
                 % Convert to cell, for ease of use
                 channels = {channels};
             end

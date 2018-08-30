@@ -141,7 +141,7 @@ classdef SpcmCounter < Experiment
         end
         function perform(obj) %#ok<MANU> 
         end
-        function analyze(obj) %#ok<MANU>
+        function wrapUp(obj) %#ok<MANU>
         end
     end
     

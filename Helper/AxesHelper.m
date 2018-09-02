@@ -9,7 +9,8 @@ classdef AxesHelper
     
     methods (Static)
         function fill(gAxes, data, dimNumber, firstAxisVector, secondAxisOptionalVector, bottomLabel, leftLabel, stdev)
-            % fills axes with data - usefull for displaying the scan results on GUI views
+            % Fills axes with data and labels
+            % - usefull for displaying the scan results on GUI views
             %
             %
             % axesFig - a handle to a GUI axes() object
@@ -49,6 +50,11 @@ classdef AxesHelper
         end
         
         function update(gAxes, data, dimNumber, firstAxisVector, secondAxisOptionalVector, stdev)
+            % Change only the data in the axes, without changing labels and
+            % other settings.
+            %
+            % Accepts data either as a vector (single plot) or as a cell of
+            % vectors (multiple plots with the same x-vector)
             switch dimNumber
                 case 1
                     if exist('stdev','var') && length(data)==length(stdev)
@@ -67,9 +73,37 @@ classdef AxesHelper
             end
         end
         
+        function add(gAxes, data, firstAxisVector, stdev)
+            % Plot one more curve on top of another/others. Only in 1D.
+            gAxes.NextPlot = 'add';
+            if exist('stdev','var') && length(data)==length(stdev)
+                errorbar(gAxes, firstAxisVector, data, stdev)
+            else
+                plot(gAxes, firstAxisVector, data);
+            end
+            gAxes.NextPlot = 'replacechildren';
+        end
+        
         function clear(gAxes)
             % Clears the (graphic) axes by "filling" with nothing
             AxesHelper.fill(gAxes, obj.DEFAULT_Y, 1, obj.DEFAULT_X, [], '', '')
+        end
+        
+        
+        function leg = legend(gAxes, labels)
+            % This function is introduced for the legend workaround
+            % It creates legend in given axes with given labels, before any
+            % data is given, so that displaying it later will nor reshuffle
+            % the axes in view
+            
+            if ~exist('labels','var')
+                labels = 'a';
+            end
+            
+            warning off MATLAB:legend:IgnoringExtraEntries
+            leg = legend(gAxes, labels, 'Location', 'northeast');
+            leg.Visible = 'off';
+            warning on MATLAB:legend:IgnoringExtraEntries
         end
     end
         

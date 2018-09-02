@@ -90,8 +90,8 @@ classdef (Abstract) ViewTrackable <  ViewVBox & EventListener
                 'NextPlot', 'replacechildren', ...
                 'ActivePositionProperty', 'outerposition');
             % Workaround, part 2: create legend now, and hide it
-            % (encompassed in "newLegend" function)
-            obj.legend1 = obj.newLegend(obj.vAxes1);
+            % (encompassed in "AxesHelper.legend" function)
+            obj.legend1 = AxesHelper.legend(obj.vAxes1);
             obj.vAxes2 = axes('Parent', vboxAxes, ...
                 'NextPlot', 'replacechildren', ...
                 'ActivePositionProperty', 'outerposition');
@@ -198,24 +198,6 @@ classdef (Abstract) ViewTrackable <  ViewVBox & EventListener
 %             
 %         end
 %     end
-
-    methods (Access = protected)
-        function leg = newLegend(obj, gAxes, labels)
-            % This function is introduced for the legend workaround
-            % It creates legend in given axes with given labels, before any
-            % data is given, so that displaying it later will nor reshuffle
-            % the axes in view
-            
-            if ~exist('labels','var')
-                labels = 'a';
-            end
-            
-            warning off MATLAB:legend:IgnoringExtraEntries
-            leg = legend(gAxes, labels, 'Location', 'northeast');
-            obj.legend1.Visible = 'off';
-            warning on MATLAB:legend:IgnoringExtraEntries
-        end
-    end
     
 end
 

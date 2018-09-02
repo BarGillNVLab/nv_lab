@@ -35,19 +35,22 @@ classdef ViewSpcm < ViewVBox & EventListener
             obj@EventListener(Experiment.NAME);
             
             obj.wrap = obj.DEFAULT_WRAP_VALUE;
-            
-            %%% Plot Area %%%
-            % Clicking the axes will open a new window
-            obj.vAxes = axes('Parent', obj.component, ...
-                'ActivePositionProperty', 'outerposition');
-            xlabel(obj.vAxes,obj.BOTTOM_LABEL);
-            ylabel(obj.vAxes,obj.LEFT_LABEL);
-            axes()
-            
+
             if strcmp(varargin{1}, 'isStandalone')
                 % This is the value for obj.isStandalone
                 obj.isStandalone = varargin{2};
             end
+            
+            %%% Plot Area %%%
+            % Set initial values for properties of axes 
+            obj.vAxes = axes('Parent', obj.component, ...
+                'ActivePositionProperty', 'outerposition');
+            AxesHelper.fill(obj.vAxes, AxesHelper.DEFAULT_Y, 1, AxesHelper.DEFAULT_X, [], obj.BOTTOM_LABEL, obj.LEFT_LABEL);
+            if obj.isStandalone
+                obj.vAxes.FontSize = 20;
+            end
+            axes()
+            
             if ~obj.isStandalone
                 obj.btnPopout = uicontrol(obj.PROP_BUTTON{:}, ...
                     'Parent', obj.component, ...
@@ -163,7 +166,7 @@ classdef ViewSpcm < ViewVBox & EventListener
                 [time,kcps,std] = counter.getRecords;
             end
             dimNum = 1;
-            AxesHelper.fill(obj.vAxes, kcps, dimNum, time, nan, obj.BOTTOM_LABEL, obj.LEFT_LABEL,std);
+            AxesHelper.update(obj.vAxes, kcps, dimNum, time, nan, std);
             
             obj.vAxes.Children.HitTest = 'off'; % So as not to be interacted by "marker" cursor
             

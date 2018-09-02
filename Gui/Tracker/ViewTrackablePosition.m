@@ -32,7 +32,7 @@ classdef ViewTrackablePosition < ViewTrackable
             obj.vAxes1.YLabel.String = obj.LEFT_LABEL1;
             obj.vAxes2.XLabel.String = obj.LABEL_TIME;
             obj.vAxes2.YLabel.String = obj.LEFT_LABEL2;
-            obj.legend1 = obj.newLegend(obj.vAxes1,{'x','y','z'});
+            obj.legend1 = AxesHelper.legend(obj.vAxes1,{'x','y','z'});
             
             %%%% Get objects we will work with: %%%%
             % first and foremost: the trackable experiment

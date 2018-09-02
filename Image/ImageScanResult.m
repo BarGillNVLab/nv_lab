@@ -35,6 +35,7 @@ classdef ImageScanResult < Savable & EventSender & EventListener
     properties (Constant)
         NAME = 'imageScanResult'
         IMAGE_FILE_SUFFIX = 'png'
+        FIGURE_FILE_SUFFIX = 'fig'
         
         % Events
         EVENT_IMAGE_UPDATED = 'imageUpdated';
@@ -568,13 +569,19 @@ classdef ImageScanResult < Savable & EventSender & EventListener
             figureInvis = obj.copyToFigure(isVisible);
             
             filename = PathHelper.removeDotSuffix(filename);
-            filename = [filename '.' ImageScanResult.IMAGE_FILE_SUFFIX];
             fullpath = PathHelper.joinToFullPath(folder, filename);
             
-            % Save png image
-            saveas(figureInvis, fullpath);
+            %%% Save image (.png)
+            fullPathImage = [fullpath '.' ImageScanResult.IMAGE_FILE_SUFFIX];
+            saveas(figureInvis, fullPathImage);
             
-            % close the figure
+            %%% Save figure (.fig)
+            % The figure is saved as invisible, but we set its creation
+            % function to set it as visible
+            set(figureInvis, 'CreateFcn', 'set(gcbo, ''Visible'', ''on'')'); % No other methods of specifying the function seemed to work...
+            savefig(figureInvis, fullpath)
+            
+            %%% close the figure
             close(figureInvis);
         end
     end

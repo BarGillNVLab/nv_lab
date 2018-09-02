@@ -643,13 +643,16 @@ classdef SaveLoad < Savable & EventSender
                 obj.sendError(sprintf('Can''t delete file - file does not exist! Ignoring\n(file name: %s)', obj.mLoadedFileFullPath));
             end
             
-            % Delete both m-file & png image
-            % (Ideally, ImageScanResult should have deleted the PNG file,
+            % Delete m-file. When applicable, delete also png image and fig file.
+            % (Ideally, ImageScanResult should have deleted the last two,
             % but it has a lot of overhead (sending event, etc.), so probably not.
             fullPath = obj.mLoadedFileFullPath;
             delete(fullPath);
-            fullPathPng = [PathHelper.removeDotSuffix(fullPath), '.', ImageScanResult.IMAGE_FILE_SUFFIX];
+            strippedFullPath = PathHelper.removeDotSuffix(fullPath);
+            fullPathPng = [strippedFullPath, '.', ImageScanResult.IMAGE_FILE_SUFFIX];
             delete(fullPathPng);
+            fullPathFig = [strippedFullPath, '.', ImageScanResult.FIGURE_FILE_SUFFIX];
+            delete(fullPathFig);
 
             % When a file is deleted, we need to decide what should be the
             % next local struct. Try loading an available file from the

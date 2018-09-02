@@ -255,7 +255,7 @@ classdef SaveLoad < Savable & EventSender
             end
         end
         
-        function loadAllObjects(~, structToLoadFrom, category, subCategory)
+        function loadAllObjects(obj, structToLoadFrom, category, subCategory)
             % Loads all the savable objects from a struct.
             %
             % category - string
@@ -283,7 +283,7 @@ classdef SaveLoad < Savable & EventSender
                         savableObject.loadStateFromStruct(structToLoadFrom.(nameToLoad), category, subCategory);
                     end
                 catch MException
-                    obj.sendWarning('Could not load data for %s, because an error has occurred', savableObject.name)
+                    obj.sendWarning(sprintf('Could not load data for %s, because an error has occurred', savableObject.name))
                     err2warning(MException)
                 end
             end

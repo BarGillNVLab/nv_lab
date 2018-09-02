@@ -95,7 +95,7 @@ classdef SpcmNiDaqControlled < Spcm & NiDaqControlled
             end
             
             % Data processing
-            countsSPCM = niDaq.countsDiff(countsSPCM);
+            countsSPCM = niDaq.countDiff(countsSPCM);
             kiloCounts = countsSPCM/1000;
             meanTime = obj.counterIntegrationTime/obj.nTimeCounts; % mean time for each reading
             kcps = mean(kiloCounts/meanTime);

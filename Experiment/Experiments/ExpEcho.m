@@ -46,7 +46,7 @@ classdef ExpEcho < Experiment
             
             % Set properties inherited from Experiment
             obj.repeats = 10;         % Should be 1e3
-            obj.averages = 20;        % Should be 2e3
+            obj.averages = 2000;        % Should be 2e3
             obj.track = true;   % Initialize tracking
             obj.trackThreshhold = 0.7;
             
@@ -211,7 +211,6 @@ classdef ExpEcho < Experiment
                         if obj.constantTime
                             seq.change('lastDelay', 'duration', maxLastDelay - 2*obj.tau(t));
                         end
-                        obj.setGreenLaserPower; % todo: We need to find the proper value!!!!
                         sig(1:2) = obj.readAndShape(spcm, pg);
                         
                         if obj.doubleMeasurement

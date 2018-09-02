@@ -30,8 +30,6 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
         mwOffDelay = 0.1;    %in \mus
         detectionDuration   % detection windows, in \mus
         
-        greenLaserPower = 50     % in percentage
-        
         signal              % Measured signal in the experiment (basically, unprocessed)
     end
     
@@ -94,7 +92,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
                 end % No need to tell the user otherwise.
                 delete(prevExp);
                 replaceBaseObject(obj);
-            catch
+            catch err %#ok<NASGU>
                 % We got here if there was no Experiment here yet
                 addBaseObject(obj);
             end
@@ -158,7 +156,8 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
                     perform(obj, i);
                     sendEventDataUpdated(obj)   % Plots and saves
                     percentage = i/obj.averages*100;
-                    fprintf('%f.2%%\n', percentage)
+                    percision = log10(obj.averages);    % Enough percision, according to division result
+                    fprintf('%.*f%%\n', percision, percentage)
                     
                     if obj.stopFlag
                         break
@@ -251,26 +250,9 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
     
     %% Helper functions
     methods
-        function setGreenLaserPower(obj, laserPower)
-            % Sets the laser power to the given value, or to the value
-            % given by obj.greenLaserPower
-            
-            if nargin < 2   % i.e. no variable named 'laserPower'
-                laserPower = obj.greenLaserPower;
-            end
-            
-            greenLaser = getObjByName(LaserGate.GREEN_LASER_NAME);
-            controallableParts = greenLaser.getContollableParts;
-            powerPart = getObjByName(controallableParts{1});
-            min = powerPart.minValue;
-            normalisedPower = min + (laserPower - min)/(powerPart.maxValue - min);
-            powerPart.value = normalisedPower;
-        end
-        
         function initialize(obj, numScans)
             spcm = getObjByName(Spcm.NAME);
             spcm.prepareReadByTime;
-            obj.setGreenLaserPower;
             spcm.setGatedCounting('', numScans);
             
             if isempty(obj.laserOnDelay) || isempty(obj.laserOffDelay)

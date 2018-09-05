@@ -92,7 +92,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
                 end % No need to tell the user otherwise.
                 delete(prevExp);
                 replaceBaseObject(obj);
-            catch err %#ok<NASGU>
+            catch
                 % We got here if there was no Experiment here yet
                 addBaseObject(obj);
             end

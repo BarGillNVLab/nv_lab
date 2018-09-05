@@ -56,11 +56,10 @@ classdef (Sealed) ClassDummyStage  < ClassStage
             if tiltAvailable
                 obj.availableProperties.(obj.TILTABLE) = true;
             end
-            
             obj.availableProperties.(obj.HAS_OPEN_LOOP) = true;
             obj.availableProperties.(obj.HAS_CLOSED_LOOP) = true;
-            obj.loopMode = 'Closed';    % By default
             
+            obj.ReadLoopMode;
             obj.getJoystick;
         end 
     end
@@ -482,11 +481,18 @@ classdef (Sealed) ClassDummyStage  < ClassStage
             % 'enable' - 1 for fast scan, 0 for slow scan.
         end
         
+        function ReadLoopMode(obj)
+            % If we called this function, it means that this stage has both
+            % loop modes, and we need to learn which one the stage is in
+            % right now.
+            obj.loopMode = 'Closed';    % By default
+        end
+        
         function ChangeLoopMode(obj, mode)
             % Changes between closed and open loop.
             % Mode should be either 'Open' or 'Closed'.
             obj.loopMode = mode;
-            obj.sendEventLoopModeChanged;
+            obj.sendEventStageAvailabilityChanged;
         end
         
         function mode = GetLoopMode(obj)

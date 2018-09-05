@@ -104,6 +104,7 @@ classdef StageScanner < EventSender & EventListener & Savable
             if isempty(kcpsScanMatrix)  % Maybe scan did not happen at all
                 spcm.setSPCMEnable(false);
                 obj.mCurrentlyScanning = false;
+                stage.sendEventStageAvailabilityChanged;
                 return
             end
             
@@ -250,8 +251,8 @@ classdef StageScanner < EventSender & EventListener & Savable
                 scanOk = false;
                 
                 % Prepare Scan
-                prepareScanfuncName = sprintf('stage.PrepareScan%s', upper(axisToScan));
-                feval(prepareScanfuncName, x, y, z, nFlat, nOverRun, tPixel);
+                prepareScanfuncName = sprintf('PrepareScan%s', upper(axisToScan));
+                feval(prepareScanfuncName, stage, x, y, z, nFlat, nOverRun, tPixel);
                 
                 % try to scan
                 for trial = 1:StageScanner.TRIALS_AMOUNT_ON_ERROR
@@ -267,7 +268,8 @@ classdef StageScanner < EventSender & EventListener & Savable
                         spcm.startScanCount();
                         
                         % scan stage
-                        eval(sprintf('stage.Scan%s(x,y,z, nFlat, nOverRun, tPixel);', upper(axisToScan)));
+                        scanfuncName = sprintf('Scan%s', upper(axisToScan));
+                        feval(scanfuncName, stage, x,y,z, nFlat, nOverRun, tPixel);
                         
                         % read counter
                         kcps = spcm.readFromScan();
@@ -418,7 +420,8 @@ classdef StageScanner < EventSender & EventListener & Savable
             nFlat = 0;      % A flat section at the start of ramp. parameter not needed genrally, a stage can overwrite if needed. BACKWARD_COPITABILITY
             nOverRun = 0;   % Let the waveform over run the start and end. Not needed genrally, a stage can overwrite if needed. BACKWARD_COPITABILITY
             axesLettersUpper = upper(ClassStage.SCAN_AXES([axisADirectionIndex, axisBDirectionIndex]));
-            eval(sprintf('stage.PrepareScan%s(x, y, z, nFlat, nOverRun, tPixel);', axesLettersUpper));
+            prapareScanFuncHndl = sprintf('PrepareScan%s', axesLettersUpper);
+            feval(prapareScanFuncHndl, stage, x, y, z, nFlat, nOverRun, tPixel);
             spcm.prepareCountByStage(stage.name, nPixels, timeout, isFastScan);
             
             % do the scan

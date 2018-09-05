@@ -30,11 +30,11 @@ classdef LaserSourceOnefiveKatana05 < LaserPartAbstract & SerialControlled
             obj.maxValue = 10;
             obj.units = 'mA';
             
-            obj.set(...
-                'BaudRate', 38400, ...
-                'DataBits', 8, ...
-                'StopBits', 1, ...
-                'Terminator', 'LF');
+            obj.baudRate = 38400;
+            obj.dataBits = 8;
+            obj.stopBits = 1;
+            obj.terminator = 'LF';
+            
             obj.commDelay = 0.05;
             obj.keepConnected = true;
             try

@@ -135,7 +135,7 @@ classdef (Sealed) ClassPILPS65 < ClassPIMicos
                 
                 if numberOfConnectedDevices ~= 3
                     calllib(obj.libAlias, 'PI_CloseDaisyChain', obj.ID);
-                    obj.sendError('There hould be 3 devices, one for each axis!')
+                    obj.sendError('There should be 3 devices, one for each axis!')
                 end
             end
             
@@ -872,7 +872,7 @@ classdef (Sealed) ClassPILPS65 < ClassPIMicos
                     end
             end
             obj.loopMode = mode;
-            obj.sendEventLoopModeChanged;
+            obj.sendEventStageAvailabilityChanged;
         end
     end
 end

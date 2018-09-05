@@ -9,7 +9,7 @@ classdef ViewStagePanelMovementControl < GuiComponent & EventListener
         
         btnSendToFixed      % button
         btnMoveToBlue       % button
-        % only one of those two ^ will be displayed
+        isBlueMovingAvailable   % logical
         
         edtSteps            % edit-text 
         btnHaltStage        % button
@@ -147,6 +147,7 @@ classdef ViewStagePanelMovementControl < GuiComponent & EventListener
             obj.cbxJoystick.Callback = @(h,e) obj.cbxJoystickCallback;
             
             obj.btnMoveToBlue.Callback = @(h,e) obj.btnMoveToBlueCallback();
+            obj.isBlueMovingAvailable = false; % By default
             if canScan
                 obj.btnSendToFixed.Callback = @(h,e) obj.btnSendToFixedNonScanableCallback();
             end
@@ -241,6 +242,9 @@ classdef ViewStagePanelMovementControl < GuiComponent & EventListener
                 obj.recolor(obj.tvCurPos(i),isBeingGrayed)
                 obj.btnMoveRight(i).Enable = 'on';
             end
+            
+            % We are now finished moving. Waiting for new Input.
+            obj.isBlueMovingAvailable = false;
             obj.btnMoveToBlue.Enable = 'off';
         end
         
@@ -252,7 +256,8 @@ classdef ViewStagePanelMovementControl < GuiComponent & EventListener
                 obj.edtCurPos(index).String = obj.tvCurPos(index).String;
                 obj.showEdtCurPos(index, true);
                 obj.checkEdtCurPosValue(index);
-                obj.btnMoveToBlue.Enable = 'on';
+                obj.isBlueMovingAvailable = true;
+                obj.refresh
             else
                 EventStation.anonymousWarning('Position must be a number, and within limits! Current limits: [%d, %d]', limNeg, limPos)
             end
@@ -318,6 +323,7 @@ classdef ViewStagePanelMovementControl < GuiComponent & EventListener
                 obj.clearEdtCurPos(index);
                 % Make sure to update the button as well:
                 if all(obj.edtCurPosValue == inf)
+                    obj.isBlueMovingAvailable = false;
                     obj.btnMoveToBlue.Enable = 'off';
                 end
                 return
@@ -359,13 +365,14 @@ classdef ViewStagePanelMovementControl < GuiComponent & EventListener
             end
             
             onOffString = BooleanHelper.boolToOnOff(isEnabled);
-            
             ax = ClassStage.getAxis(obj.stageAxes);
-            
             for i = 1:length(ax)
                 obj.btnMoveLeft(i).Enable = onOffString;
                 obj.btnMoveRight(i).Enable = onOffString;
             end
+            
+            isMoveAvailable = obj.isBlueMovingAvailable && isEnabled;
+            obj.btnMoveToBlue.Enable = BooleanHelper.boolToOnOff(isMoveAvailable);
         end
             
     end
@@ -379,7 +386,7 @@ classdef ViewStagePanelMovementControl < GuiComponent & EventListener
                     || isfield(event.extraInfo, ClassStage.EVENT_STEP_SIZE_CHANGED) ...
                     || isfield(event.extraInfo, ClassStage.EVENT_POSITION_CHANGED)
                 obj.refresh();
-            elseif isfield(event.extraInfo, ClassStage.EVENT_LOOP_MODE_CHANGED) ...
+            elseif isfield(event.extraInfo, ClassStage.EVENT_STAGE_AVAILABLITY_CHANGED) ...
                     || isfield(event.extraInfo, StageScanner.EVENT_SCAN_STARTED) ...
                     || isfield(event.extraInfo, StageScanner.EVENT_SCAN_FINISHED)
                 obj.checkMovementEnabled;

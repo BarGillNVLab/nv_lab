@@ -449,6 +449,7 @@ classdef ClassPIMicos < ClassStage
             % Initializes the piezo stages.
             obj.scanRunning = 0;
             
+			todo = 'allow opening without reference'
             % Change to closed loop
             ChangeLoopMode(obj, 'Closed')
             
@@ -544,7 +545,7 @@ classdef ClassPIMicos < ClassStage
                 [szAxes, zeroVector] = ConvertAxis(obj, phAxis);
             end
             timer = tic;
-            timeout = 30; % 30 second timeout
+            timeout = 60; % 60 second timeout
             wait = true;
             while wait
                 drawnow % Needed in order to get input from GUI
@@ -1111,6 +1112,16 @@ classdef ClassPIMicos < ClassStage
             obj.sendWarning(sprintf('Scan not implemented for the %s controller.\n', obj.controllerModel));
         end
         
+        function ReadLoopMode(obj)
+            % If we called this function, it means that this stage has both
+            % loop modes, and we need to learn which one the stage is in
+            % right now.
+            
+            [szAxes, zerosVector] = ConvertAxis(obj, obj.validAxes);
+            [~, lMode] = SendPICommand(obj, 'PI_qSVO', obj.ID, szAxes, zerosVector);
+            obj.loopMode = lMode;
+        end
+        
         function ChangeLoopMode(obj, mode)
             % Changes between closed and open loop.
             % 'mode' should be either 'Open' or 'Closed'.
@@ -1126,7 +1137,7 @@ classdef ClassPIMicos < ClassStage
                     obj.sendError(sprintf('Unknown mode %s', mode));
             end
             obj.loopMode = mode;
-            obj.sendEventLoopModeChanged;
+            obj.sendEventStageAvailabilityChanged;
         end
         
         function success = EnableTiltCorrection(obj, enable)

@@ -1,9 +1,9 @@
-classdef SerialControlled < matlab.mixin.SetGet
+classdef (Abstract) SerialControlled < handle
     %SERIALCONTROLLED Object controlled via serial (RS232) connection
     % This object behaves similarly to a serial object, but adjusted for
     % our purposes
     
-    properties (Hidden)
+    properties (Access = protected, Hidden)
         s                   % serial. MATLAB representation of the connection
         commDelay = 0.01    % double. (Default value) time (in seconds) between consecutive commands
     end
@@ -26,9 +26,12 @@ classdef SerialControlled < matlab.mixin.SetGet
         terminator
     end
     
+    properties (Abstract)
+        name        % Will be inherited from the specific Base Object it will implement
+    end
+    
     methods
         function obj = SerialControlled(port)
-            obj@matlab.mixin.SetGet;
             obj.s = serial(port);
             
             % We want to "inherit" the serial object, but only selected methods & properties
@@ -67,7 +70,7 @@ classdef SerialControlled < matlab.mixin.SetGet
                     obj.close;
                 catch
                     msg = sprintf('Could not disconnect %s upon deletion!', obj.name);
-                    obj.sendWarning(msg)
+                    EventStation.anonymousWarning(msg)
                 end
             end
             delete(obj.s);
@@ -133,14 +136,40 @@ classdef SerialControlled < matlab.mixin.SetGet
     
     methods % Setters & getters
         % Setters
+        function set.port(obj, newPort)
+            obj.s.Port = newPort; %#ok<*MCSUP>
+            obj.port = newPort;
+        end
+        function set.baudRate(obj, bRate)
+            obj.s.BaudRate = bRate;
+            obj.baudRate = bRate;
+        end
+        function set.dataBits(obj, dBits)
+            obj.s.DataBits = dBits;
+            obj.dataBits = dBits;
+        end
+        function set.stopBits(obj, sBits)
+            obj.s.StopBits = sBits;
+            obj.stopBits = sBits;
+        end
+        function set.parity(obj, prty)
+            obj.s.Parity = prty;
+            obj.parity = prty;
+        end
+        function set.flowControl(obj, fControl)
+            obj.s.FlowControl = fControl;
+            obj.flowControl = fControl;
+        end
+        function set.terminator(obj, term)
+            obj.s.Terminator = term;
+            obj.terminator = term;
+        end
+        
+        
         function set(obj, varargin)
             % Validity of values is not checked here, It should be
             % done by programmer, or obj.s will alert about it.
             set(obj.s, varargin{:});
-        end
-        
-        function value = get(obj, varargin)
-            value = get(obj.s, varargin{:});
         end
         
         function set.keepConnected(obj, value)

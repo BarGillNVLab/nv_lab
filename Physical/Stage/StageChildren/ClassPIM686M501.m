@@ -41,7 +41,7 @@ classdef (Sealed) ClassPIM686M501 < ClassStage
         end 
     end
     
-    methods (Access = public) % Implement ClassStage Abstracts
+    methods % Implement ClassStage Abstracts
         function CloseConnection(obj)
             % Closes the connection to the stages.
             obj.stageCoarseZ.CloseConnection();
@@ -225,6 +225,7 @@ classdef (Sealed) ClassPIM686M501 < ClassStage
             % Changes between closed and open loop.
             % Mode should be either 'Open' or 'Closed'.
             obj.stageCoarseXY.ChangeLoopMode(mode);
+            obj.stageCoarseZ.ChangeLoopMode(mode);
         end
         
         function success = SetTiltAngle(obj, thetaXZ, thetaYZ)

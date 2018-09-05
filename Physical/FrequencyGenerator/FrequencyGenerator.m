@@ -185,7 +185,7 @@ classdef (Abstract) FrequencyGenerator < BaseObject
                     switch t
                         case FrequencyGeneratorSRS.TYPE
                             try
-                                newFG = getObjByName(FrequencyGeneratorSRS.MY_NAME);
+                                newFG = getObjByName(FrequencyGeneratorSRS.NAME);
                             catch
                                 newFG = FrequencyGeneratorSRS.getInstance(curFgStruct);
                             end

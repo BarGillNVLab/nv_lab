@@ -30,10 +30,10 @@ classdef LaserSourceLaserquantumSmd12 < LaserPartAbstract & SerialControlled
             obj.maxValue = 120;
             obj.units = 'mW';
             
-            obj.set(...
-                'BaudRate', 9600, ... 
-                'StopBits', 1, ...
-                'Terminator', 'CR');
+            obj.baudRate = 9600;
+            obj.stopBits = 1;
+            obj.terminator = 'CR';
+            
             obj.commDelay = 0.05;
             try
                 obj.open;

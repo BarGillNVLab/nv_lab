@@ -229,8 +229,8 @@ classdef (Sealed) ClassPIP562 < ClassPIMicos
             
             % Get parameters
             scanAxis = GetAxis(obj, scanAxis);
-            if (nOverRun == 0); nOverRun = 1; end % In order to be centered around the pixel we need at least one extra point from each side.
-            if (nFlat == 0); nFlat = 2; end % Set nFlat to 2 in order to give the sample time to equalize before the scan
+            if (nOverRun < 2); nOverRun = 2; end % In order to be centered around the pixel we need at least one extra point from each side, and it's 2 because negative direction has a bug
+            if (nFlat < 2); nFlat = 2; end % Set nFlat to 2 in order to give the sample time to equalize before the scan
             
             numberOfPixels = length(scanAxisVector); % This is the number of pixels
             pixelLengthInPoints = tPixel/50e-6; % The wave generator works in 50us points.
@@ -243,19 +243,7 @@ classdef (Sealed) ClassPIP562 < ClassPIMicos
             maxPixelInum = max(endPointInum, startPointInum);    
             minPixelInum = min(endPointInum, startPointInum);
             if maxPixelInum > obj.posRangeLimit(scanAxis) || minPixelInum < obj.negRangeLimit(scanAxis)
-                %                 if numberOfPixels > 2
-                %                     warning('Scan will go outside the limits, removing first and last pixels...');
-                %                     scanAxisVector = scanAxisVector(2:end-1);
-                %                     maxPixelInum = max(scanAxisVector(end)+nOverRunInum, scanAxisVector(1)-nOverRunInum);
-                %                     minPixelInum = min(scanAxisVector(end)+nOverRunInum, scanAxisVector(1)-nOverRunInum);
-                %                     numberOfPixels = numberOfPixels-2;
-                %                 else
-                %                     obj.sendError('Scan will go outside the limits, and number of pixels is too small :o');
-                %                 end
-                delta = abs(nOverRunInum);
-                errMsg = sprintf(['Scan will go outside the limits!\n', ...
-                    'Because of technical reasons, you need to be at least %.2f um from the shown limits'], delta);
-                obj.sendError(errMsg);
+                obj.sendError(sprintf('Scan is outside the limits: scan overhead requires adding two pixels from each side which increase the scan from %.3f %s to %.3f %s\n', startPointInum, StringHelper.MICRON, endPointInum, StringHelper.MICRON));
             end
             
             nFlatInPoints = pixelLengthInPoints*nFlat;
@@ -278,8 +266,14 @@ classdef (Sealed) ClassPIP562 < ClassPIMicos
             % page 34 & E725 page 78
             piTriggerOutputIds = [1 1 1 1 1]; % Needed for every command
             piTriggerParameterArray = [2 3 1 8 9]; % 2 is axis, 3 is mode selection, 1 is step size, 8 is start pos and 9 is end pos
-            pdValueArray = [SwitchXYAxis(obj, scanAxis, 'integer'), 0, abs(pixelSizeInum),...
-                scanAxisVector(1) - pixelSizeInum/2, scanAxisVector(end) + 3*pixelSizeInum/4];
+            if scanAxisVector(end) >  scanAxisVector(1) % Increasing scan direction
+                firstPixelInum = scanAxisVector(1) - pixelSizeInum/2;
+                lastPixelInum = scanAxisVector(end) + 3*pixelSizeInum/4;
+            else % Decreasing scan direction, everything shifted by half a pixel because of a bug.
+                firstPixelInum = scanAxisVector(1) - pixelSizeInum;
+                lastPixelInum = scanAxisVector(end) + pixelSizeInum/4;
+            end
+            pdValueArray = [SwitchXYAxis(obj, scanAxis, 'integer'), 0, abs(pixelSizeInum), firstPixelInum, lastPixelInum];
             iArraySize = length(piTriggerOutputIds);
 
             % Only redefine waveforms if different from previous.

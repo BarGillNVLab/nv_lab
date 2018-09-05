@@ -45,8 +45,8 @@ classdef ExpEcho < Experiment
             obj.freqGenName = obj.getFgName(FG);
             
             % Set properties inherited from Experiment
-            obj.repeats = 10;         % Should be 1e3
-            obj.averages = 2000;        % Should be 2e3
+            obj.repeats = 1000;
+            obj.averages = 2000;
             obj.track = true;   % Initialize tracking
             obj.trackThreshhold = 0.7;
             
@@ -54,8 +54,7 @@ classdef ExpEcho < Experiment
             obj.laserInitializationDuration = 20;   % laser initialization in pulsed experiments in \mus (??)
             
             obj.mCurrentXAxisParam = ExpParamDoubleVector('Time', [], StringHelper.MICROSEC, obj.EXP_NAME);
-            obj.mCurrentYAxisParam(1) = ExpParamDoubleVector('FL', [], 'normalized', obj.EXP_NAME);
-            obj.mCurrentYAxisParam(2) = ExpParamDoubleVector('Reference', [], 'normalized', obj.EXP_NAME);
+            obj.mCurrentYAxisParam = ExpParamDoubleVector('FL', [], 'normalised', obj.EXP_NAME);
         end
     end
     

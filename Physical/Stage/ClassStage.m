@@ -32,7 +32,7 @@ classdef (Abstract) ClassStage < EventSender & Savable & EventListener
         EVENT_STEP_SIZE_CHANGED = 'stepSizeChanged';
         EVENT_POSITION_CHANGED = 'positionChanged';
         EVENT_TILT_CHANGED = 'tiltChanged';
-        EVENT_LOOP_MODE_CHANGED = 'loopModeChanged';
+        EVENT_STAGE_AVAILABLITY_CHANGED = 'stageAvailabilityChanged';
     end
     
     methods (Static, Access = public) % Get instance constructor
@@ -455,8 +455,9 @@ classdef (Abstract) ClassStage < EventSender & Savable & EventListener
         function sendEventPositionChanged(obj)
             obj.sendEvent(struct(obj.EVENT_POSITION_CHANGED, true));
         end
-        function sendEventLoopModeChanged(obj)
-             obj.sendEvent(struct(obj.EVENT_LOOP_MODE_CHANGED, true));
+        function sendEventStageAvailabilityChanged(obj)
+            % e.g., stage is in open loop, or scan started, or ended
+            obj.sendEvent(struct(obj.EVENT_STAGE_AVAILABLITY_CHANGED, true));
         end
         
         function sendPosToScanParams(obj)
@@ -516,12 +517,8 @@ classdef (Abstract) ClassStage < EventSender & Savable & EventListener
         function relativeMove(obj, phAxis, change)
             % Calls RelativeMove, sends an event. Listens to errors to send errorEvent.
             % Vectorial axis is possible
-            try
-                obj.RelativeMove(phAxis, change);
-                obj.sendEventPositionChanged;
-            catch matlabError
-                obj.sendError(matlabError.message);
-            end
+            obj.RelativeMove(phAxis, change);
+            obj.sendEventPositionChanged;
         end
         
         function setTiltAngle(obj, thetaXZ, thetaYZ)

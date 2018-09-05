@@ -5,7 +5,7 @@ classdef FrequencyGeneratorSRS < FrequencyGenerator & SerialControlled
         LIMITS_AMPLITUDE = [-100, 10];   % dB. These values may not be reached, depending on the output type.
         
         TYPE = 'srs';
-        MY_NAME = 'srsFrequencyGenerator'; % We can't call it just NAME, because we inherit from matlab.mixin.SetGet
+        NAME = 'srsFrequencyGenerator';
         
         NEEDED_FIELDS = {'address', 'serialNumber'}
     end
@@ -33,7 +33,7 @@ classdef FrequencyGeneratorSRS < FrequencyGenerator & SerialControlled
                     missingField);
             end
             
-            name = [FrequencyGeneratorSRS.MY_NAME, '-', struct.serialNum];
+            name = [FrequencyGeneratorSRS.NAME, '-', struct.serialNum];
             obj = FrequencyGeneratorSRS(name, struct.address);
             addBaseObject(obj);
         end

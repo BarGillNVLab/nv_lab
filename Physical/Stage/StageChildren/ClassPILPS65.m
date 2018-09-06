@@ -123,7 +123,7 @@ classdef (Sealed) ClassPILPS65 < ClassPIMicos
     
     methods (Access = protected) % Overwrite ClassPIMicos functions
         function Connect(obj)
-            % Connects to the 3 axes controllers.
+            % Connects to all axes controllers.
             if obj.ID < 0
                 % Look for USB controller
                 USBDescription = obj.FindController(obj.controllerModel);
@@ -133,9 +133,9 @@ classdef (Sealed) ClassPILPS65 < ClassPIMicos
                 obj.CheckIDForError(obj.ID, 'USB Controller found but connection attempt failed!');
                 % fprintf('Found %d devices connected to %s via USB',numberOfConnectedDevices,USBDescription);
                 
-                if numberOfConnectedDevices ~= 3
+                if numberOfConnectedDevices ~= length(obj.validAxes)
                     calllib(obj.libAlias, 'PI_CloseDaisyChain', obj.ID);
-                    obj.sendError('There should be 3 devices, one for each axis!')
+                    obj.sendError('There should be %d devices, one for each axis!', length(obj.validAxes))
                 end
             end
             
@@ -247,7 +247,7 @@ classdef (Sealed) ClassPILPS65 < ClassPIMicos
         end
         
         function QueryPos(obj)
-            % Queries the position for all 3 axes and updates the internal
+            % Queries the position for all axes and updates the internal
             % variables.
             for i=1:length(obj.validAxes)
                 [~,obj.curPos(i)] = SendPICommand(obj, 'PI_qPOS', obj.axesID(i), obj.szAxes, obj.curPos(i));
@@ -255,7 +255,7 @@ classdef (Sealed) ClassPILPS65 < ClassPIMicos
         end
         
         function QueryVel(obj)
-            % Queries the velocity for all 3 axes and updates the internal
+            % Queries the velocity for all axes and updates the internal
             % variables.
             for i=1:length(obj.validAxes)
                 [~,obj.curVel(i)] = SendPICommand(obj, 'PI_qVEL', obj.axesID(i), obj.szAxes, obj.curVel(i));

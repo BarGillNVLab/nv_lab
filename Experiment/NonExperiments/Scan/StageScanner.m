@@ -517,10 +517,9 @@ classdef StageScanner < EventSender & EventListener & Savable
             number = sum(~obj.mStageScanParams.isFixed);
         end
         
-        function [globalFirstAxisPos, globalSecondAxisPos] = getGlobalScanVector(obj)
+        function [globalFirstAxisPos, globalSecondAxisPos] = getGlobalScanPosition(obj, stagesCell)
             % Returns the location of the scan-vector(s), relative to a
             % global zero
-            stagesCell = ClassStage.getStages;
             pos = [0, 0, 0];
             % First get data from scanning stage
             

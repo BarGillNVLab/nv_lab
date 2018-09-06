@@ -58,7 +58,7 @@ classdef AxesHelper
             switch dimNumber
                 case 1
                     if exist('stdev','var') && length(data)==length(stdev)
-                        errorbar(gAxes, firstAxisVector, data, stdev)
+                        errorbar(gAxes, firstAxisVector, data, stdev);
                     else
                         plot(gAxes, firstAxisVector, data);
                     end
@@ -77,7 +77,7 @@ classdef AxesHelper
             % Plot one more curve on top of another/others. Only in 1D.
             gAxes.NextPlot = 'add';
             if exist('stdev','var') && length(data)==length(stdev)
-                errorbar(gAxes, firstAxisVector, data, stdev)
+                errorbar(gAxes, firstAxisVector, data, stdev);
             else
                 plot(gAxes, firstAxisVector, data);
             end

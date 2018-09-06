@@ -53,7 +53,7 @@ classdef JsonInfoReader
             % Otherwise
             jsonStruct = JsonInfoReader.getJson;
             list = jsonStruct.(listName);
-            isListACell = isCell(list);
+            isListACell = iscell(list);
             
             % Initialize search
             isDefault = false(size(list));    % initialize

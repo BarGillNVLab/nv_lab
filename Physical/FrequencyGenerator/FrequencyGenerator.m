@@ -222,6 +222,10 @@ classdef (Abstract) FrequencyGenerator < BaseObject
             freqGens = fgCellContainer.cells;
         end
         
+        function num = nAvailable
+            num = length(FrequencyGenerator.getFG);
+        end
+        
         function name = getDefaultFgName()
             fgCells = FrequencyGenerator.getFG;
             if isempty(fgCells)

@@ -8,7 +8,7 @@ classdef GuiControllerExperimentPlot < GuiController
     
     methods
         function obj = GuiControllerExperimentPlot(expName)
-            shouldConfirmOnExit = false;
+            shouldConfirmOnExit = true;
             openOnlyOne = true;
             windowName = sprintf('%s - Plot', expName);
             

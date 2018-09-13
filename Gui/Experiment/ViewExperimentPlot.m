@@ -7,6 +7,7 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
         nDim = 1;   % data is 1D 99% of the time. Can be overridden by subclasses
         
         vAxes
+        progressbarAverages
         btnStartStop
     end
     
@@ -23,13 +24,16 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
             obj.vAxes = axes('Parent', fig, ...
                 'NextPlot', 'replacechildren', ...
                 'OuterPosition', [0.1, 0.1, 0.8, 0.8]);
+            obj.progressbarAverages = progressbar(fig, 0, 'Starting experiment. Please wait.');
             obj.btnStartStop = ButtonStartStop(fig);
                 obj.btnStartStop.startCallback = @obj.btnStartCallback;
                 obj.btnStartStop.stopCallback  = @obj.btnStopCallback;
-            fig.Heights = [-1, 30];
+            fig.Heights = [-1, 40, 30];
             
-            obj.height = 400;
-            obj.width = 600;
+            obj.height = 600;
+            obj.width = 800;
+            
+            obj.refresh;
         end
         
         
@@ -48,7 +52,7 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
         function plot(obj)
             % Check whether we have anything to plot
             exp = obj.getExperiment;
-            data = exp.mCurrentYAxisParam(1).value;
+            data = exp.mCurrentYAxisParam.value;
             
             if isempty(obj.vAxes.Children)
                 % Nothing is plotted yet
@@ -61,7 +65,7 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
                     firstAxisVector = exp.mCurrentXAxisParam.value;
                 end
                 bottomLabel = exp.mCurrentXAxisParam.label;
-                leftLabel = exp.mCurrentYAxisParam(1).label;
+                leftLabel = exp.mCurrentYAxisParam.label;
                 AxesHelper.fill(obj.vAxes, data, obj.nDim, ...
                     firstAxisVector, [], bottomLabel, leftLabel);
                 
@@ -81,11 +85,15 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
                 AxesHelper.update(obj.vAxes, data, obj.nDim, firstAxisVector)
             end
             
-            for i = 1:length(exp.mCurrentYAxisParam)
+            if ~isempty(exp.mCurrentYAxisParam2.value)
                 % If there is more than one Y axis parameter, we want to
                 % plot it above the first one
-                data = exp.mCurrentYAxisParam(i).value;
+                data = exp.mCurrentYAxisParam2.value;
                 AxesHelper.add(obj.vAxes, data, firstAxisVector)
+                
+%                 % We now need a legend
+%                 label1 = 'signal';
+%                 label2 = exp.mCurrentYAxisParam2.label;
             end
 
         end
@@ -93,6 +101,12 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
         
         function refresh(obj)
             exp = obj.getExperiment;
+            % Progress bar
+            nDone = exp.nIter - 1;     % We are done with the previous n-1 iterations
+            frac = nDone / exp.averages;
+            string = sprintf('%d of %d averages (%.2f%%) done', nDone, exp.averages, frac*100);
+            progressbar(obj.progressbarAverages, frac, string);
+            % Button
             obj.btnStartStop.isRunning = ~exp.stopFlag;
         end
         

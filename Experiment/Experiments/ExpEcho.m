@@ -24,8 +24,6 @@ classdef ExpEcho < Experiment
         piTime = 0.05       %in us
         threeHalvesPiTime = 0.075 %in us
         
-        timeout             % in ??. If timeout passes, we consider this measurement as failed
-        
         
         constantTime = false      % logical
         doubleMeasurement = true  % logical
@@ -45,8 +43,8 @@ classdef ExpEcho < Experiment
             obj.freqGenName = obj.getFgName(FG);
             
             % Set properties inherited from Experiment
-            obj.repeats = 1000;
-            obj.averages = 2000;
+            obj.repeats = 10;
+            obj.averages = 20;
             obj.track = true;   % Initialize tracking
             obj.trackThreshhold = 0.7;
             
@@ -93,12 +91,11 @@ classdef ExpEcho < Experiment
         
         function set.tau(obj ,newVal)	% newVal in microsec
             if ~ValidationHelper.isValidVector(newVal, obj.MAX_TAU_LENGTH)
-                obj.sendError('In Echo Experiment, the length of Tau must be a valid vector! Ignoring.')
+                obj.sendError('In Echo Experiment, Tau must be a valid vector, and not too long! Ignoring.')
             end
             if ~ValidationHelper.isInBorders(newVal, obj.MIN_TAU, obj.MAX_TAU)
                 errMsg = sprintf(...
-                    'Tau must be between %d and %d! Amplitude reuqested: %d', ...
-                    obj.MIN_TAU, obj.MAX_TAU, newVal);
+                    'All values of Tau must be between %d and %d!', obj.MIN_TAU, obj.MAX_TAU);
                 obj.sendError(errMsg);
             end
             % If we got here, then newVal is OK.
@@ -132,8 +129,9 @@ classdef ExpEcho < Experiment
     %% Overridden from Experiment
     methods
         function prepare(obj)
-            % Create sequence for this experiment
+            % Initializtions before run
             
+            % Sequence
             %%% Useful parameters for what follows
             initDuration = obj.laserInitializationDuration-sum(obj.detectionDuration);
             
@@ -148,12 +146,12 @@ classdef ExpEcho < Experiment
             
             %%% Creating the sequence
             S = Sequence;
-            S.addEvent(obj.laserOnDelay,    'greenLaser')                                   % Calibration of the laser with SPCM (laser on)
+            S.addEvent(obj.laserOnDelay,    'greenLaser');                                  % Calibration of the laser with SPCM (laser on)
             S.addEvent(obj.detectionDuration(1),...
-                                            {'greenLaser', 'detector'})                     % Detection
-            S.addEvent(initDuration,        'greenLaser')                                   % Initialization
+                                            {'greenLaser', 'detector'});                    % Detection
+            S.addEvent(initDuration,        'greenLaser');                                  % Initialization
             S.addEvent(obj.detectionDuration(2),...
-                                            {'greenLaser', 'detector'})                     % Reference detection
+                                            {'greenLaser', 'detector'});                    % Reference detection
             S.addEvent(obj.laserOffDelay);                                                  % Calibration of the laser with SPCM (laser off)
             S.addEvent(obj.halfPiTime);                                                     % MW
             S.addEvent(obj.tau(end),        '',                         'tau');             % Delay
@@ -167,24 +165,28 @@ classdef ExpEcho < Experiment
             pg.sequence = S;
             pg.repeats = obj.repeats;
             obj.changeFlag = false;
-            seqTime = pg.sequence.duration * 1e-6; % Multiplication in 1e-6 is for converting secs to usecs.
+            seqTime = pg.sequence.duration * 1e-6; % Multiplication in 1e-6 is for converting usecs to secs.
             
-            %%% Set Frequency Generator
+            % Set Frequency Generator
             fg = getObjByName(obj.freqGenName);
             fg.amplitude = obj.amplitude;
             fg.frequency = obj.frequency;
             
+            % Initialize signal matrix
             numScans = 2*obj.repeats;
             measurementlength = 1 + double(obj.doubleMeasurement);   % 1 is single, 2 is double
             obj.signal = zeros(2 * measurementlength, length(obj.tau), obj.averages);
-            obj.timeout = 15 * numScans * seqTime;       % some multiple of the actual duration
             
+            % Initialize SPCM
+            obj.timeout = 15 * numScans * seqTime;       % some multiple of the actual duration
             spcm = getObjByName(Spcm.NAME);
             spcm.setSPCMEnable(true);
             spcm.prepareGatedCount(numScans, obj.timeout);
             
+            % Inform user
+            averageTime = obj.repeats * seqTime * length(obj.tau) * (1+obj.doubleMeasurement);
             fprintf('Starting %d averages with each average taking %.1f seconds, on average.\n', ...
-                obj.averages, obj.repeats * seqTime * length(obj.tau) * (1+obj.doubleMeasurement));
+                obj.averages, averageTime);
         end
         
         function perform(obj, nIter)
@@ -247,9 +249,9 @@ classdef ExpEcho < Experiment
             
             if nIter == 1
                 % Nothing to calculate the mean over
-                obj.mCurrentYAxisParam(1).value = S1./S2;
+                obj.mCurrentYAxisParam.value = S1./S2;
             else
-                obj.mCurrentYAxisParam(1).value = mean(S1./S2, 2);
+                obj.mCurrentYAxisParam.value = mean(S1./S2, 2);
             end
             
             if obj.doubleMeasurement
@@ -258,9 +260,9 @@ classdef ExpEcho < Experiment
                 
                 if nIter == 1
                     % There is nothing to calculate the mean over
-                    obj.mCurrentYAxisParam(2).value = S3./S4;
+                    obj.mCurrentYAxisParam2.value = S3./S4;
                 else
-                    obj.mCurrentYAxisParam(2).value = mean(S3./S4,2);
+                    obj.mCurrentYAxisParam2.value = mean(S3./S4,2);
                 end
             end
         end

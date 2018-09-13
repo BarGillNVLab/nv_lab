@@ -11,6 +11,9 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
         
         mCurrentXAxisParam      % ExpParameter in charge of axis x (which has name and value)
         mCurrentYAxisParam		% ExpParameter in charge of axis y (which has name and value)
+
+        mCurrentXAxisParam2     % Extra X parameter - maybe needed, but usually empty.
+        mCurrentYAxisParam2     % Extra Y parameter - maybe needed, but usually empty.
         
         topParam                % Optional ExpParameter, parallel to the x axis parameter
         rightParam              % Optional ExpParameter, parallel to the y axis parameter
@@ -24,13 +27,17 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
         track               % logical. initialize tracking
         trackThreshhold     % double (between 0 and 1). Change in signal that will start the tracker
         laserInitializationDuration  % laser initialization in pulsed experiments
-        laserOnDelay = 0.1;  %in \mus
-        laserOffDelay = 0.1; %in \mus
-        mwOnDelay = 0.1;     %in \mus
-        mwOffDelay = 0.1;    %in \mus
+        laserOnDelay = 0.1;  %in us
+        laserOffDelay = 0.1; %in us
+        mwOnDelay = 0.1;     %in us
+        mwOffDelay = 0.1;    %in us
         detectionDuration   % detection windows, in \mus
-        
-        signal              % Measured signal in the experiment (basically, unprocessed)
+    end
+    
+    properties (SetAccess = protected)
+        signal              % double. Measured signal in the experiment (basically, unprocessed)
+        timeout             % double. Time (in seconds) before experiment trial is marked as a fail
+        nIter = 1;          % int. number of current iteration (average)
     end
     
     properties (SetAccess = {?Trackable})
@@ -75,11 +82,14 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             emptyValue = [];
             emptyUnits = '';
             obj.mCurrentXAxisParam = ExpParamDoubleVector('X axis', emptyValue, emptyUnits, obj.EXP_NAME);
+            obj.mCurrentXAxisParam2 = ExpParamDoubleVector('', emptyValue, emptyUnits, obj.EXP_NAME);
             obj.mCurrentYAxisParam = ExpParamDoubleVector('Y axis', emptyValue, emptyUnits, obj.EXP_NAME);
+            obj.mCurrentYAxisParam2 = ExpParamDoubleVector('', emptyValue, emptyUnits, obj.EXP_NAME);
             
             obj.mCategory = Savable.CATEGORY_EXPERIMENTS; % will be overridden in Trackable
             
             obj.robAndKillPrevious;
+            
         end
         
         function robAndKillPrevious(obj)
@@ -128,7 +138,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             % Returns an error if property is invalid. To be overridden in
             % subclasses
             if ~isnumeric(newVal)
-                obj.sendError('DetectionDuration must be a number or a vector of numbers')
+                obj.sendError('detectionDuration must be a number or a vector of numbers')
             end
         end
         
@@ -151,7 +161,9 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             obj.stopFlag = false;
             sendEventExpResumed(obj);
             
+            GuiControllerExperimentPlot(obj.EXP_NAME).start;
             for i = 1:obj.averages
+                obj.nIter = i;
                 try
                     perform(obj, i);
                     sendEventDataUpdated(obj)   % Plots and saves

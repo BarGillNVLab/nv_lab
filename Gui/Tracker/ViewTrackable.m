@@ -90,14 +90,15 @@ classdef (Abstract) ViewTrackable <  ViewVBox & EventListener
                 'NextPlot', 'replacechildren', ...
                 'ActivePositionProperty', 'outerposition');
             % Workaround, part 2: create legend now, and hide it
-            % (encompassed in "AxesHelper.legend" function)
-            obj.legend1 = AxesHelper.legend(obj.vAxes1);
+            % (encompassed in "AxesHelper.createLegend" function)
+            obj.legend1 = AxesHelper.createLegend(obj.vAxes1);
             obj.vAxes2 = axes('Parent', vboxAxes, ...
                 'NextPlot', 'replacechildren', ...
                 'ActivePositionProperty', 'outerposition');
             obj.xAxisMode = ViewTrackable.STRING_TIME;      % By default. Might be changed by subclasses.
             axes()      % to avoid accidental plotting over the data in the axes
-            vboxAxes.Heights = [-1 0 -1];
+            % Workaround, part 3: minimize "fake" legend to size 0.
+            vboxAxes.Heights = [-1 0 -1]; 
             
             % Radio buttons
             rbHeight = 15; % "rb" stands for "radio button"

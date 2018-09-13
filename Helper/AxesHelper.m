@@ -90,7 +90,7 @@ classdef AxesHelper
         end
         
         
-        function leg = legend(gAxes, labels)
+        function leg = createLegend(gAxes, labels)
             % This function is introduced for the legend workaround
             % It creates legend in given axes with given labels, before any
             % data is given, so that displaying it later will nor reshuffle

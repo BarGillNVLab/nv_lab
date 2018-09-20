@@ -77,11 +77,12 @@ classdef SaveLoad < Savable & EventSender
         
         function init
             % Initialize the relevant SaveLoad objects.
-            % Currently only one is special enough to need init() -
-            % the SaveLoad of category image. It's in a derived class as it
-            % has different behaviour - it needs to listen to the
-            % StageScanner (on events of type EVENT_SCAN_FINISH) to save
-            % the scans
+            % Currently, two are special enough to need init() -
+            % 1. One for category Image; it is a derived class as it
+            %    has different behaviour - it needs to listen to the
+            %    StageScanner to save the scans.
+            % 2. One for category Experiments: Similarly, it needs to
+            %    listen to class Experiment.
             
             try
                 getObjByName(SaveLoadCatImage.NAME);
@@ -94,6 +95,12 @@ classdef SaveLoad < Savable & EventSender
                 else
                     SaveLoadCatImage;	% init this object
                 end
+            end
+            
+            try
+                getObjByName(SaveLoadCatExp.NAME);
+            catch               % i.e. no available object
+                SaveLoadCatExp;
             end
         end
     end
@@ -239,7 +246,7 @@ classdef SaveLoad < Savable & EventSender
                         end
                     end
                 catch MException
-                    obj.sendWarning('Could not save data from %s, because an error has occurred', savableObject.name)
+                    obj.sendWarning(sprintf('Could not save data from %s, because an error has occurred', savableObject.name))
                     err2warning(MException)
                 end
             end
@@ -310,9 +317,18 @@ classdef SaveLoad < Savable & EventSender
         end
         
         function saveResultsToLocalStruct(obj)
+            % Get struct
             structToSave = obj.saveAllObjects(Savable.TYPE_RESULTS);
             obj.mLocalSaveStruct = structToSave;
-            obj.mLoadedFileName = sprintf('%s_%s.mat', obj.mCategory, structToSave.(Savable.PROPERTY_TIMESTAMP_END));
+            % Parse filename:
+            if strcmp(obj.mCategory, Savable.CATEGORY_IMAGE)
+                namePrefix = Savable.CATEGORY_IMAGE;
+            else
+                exp = getObjByName(Experiment.NAME);
+                namePrefix = exp.EXP_NAME;
+            end
+            
+            obj.mLoadedFileName = sprintf('%s_%s.mat', namePrefix, structToSave.(Savable.PROPERTY_TIMESTAMP_END));
             eventStruct = struct(... 
                 obj.EVENT_STATUS_LOCAL_STRUCT, obj.mLocalStructStatus, ...
                 obj.EVENT_LOCAL_STRUCT, obj.mLocalSaveStruct, ...

@@ -21,6 +21,7 @@ function h = progressbar(handle, varargin)
             ttl = (varargin{2});
             title(ax, ttl);
         end
+        drawnow
         
     elseif ~isnumeric(handle) ...   % Apparently 0 and 1 are also handles...
             && ishandle(handle)

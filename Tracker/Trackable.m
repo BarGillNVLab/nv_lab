@@ -57,7 +57,9 @@ classdef (Abstract) Trackable < Experiment
             prepare(obj)
             
             obj.stopFlag = false;
+            obj.isCurrentlyTracking = true;
             sendEventExpResumed(obj);
+            
             perform(obj);
             
             stopTrack(obj)  % Signaling internally and externally that we are done

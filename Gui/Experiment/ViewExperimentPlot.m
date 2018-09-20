@@ -30,8 +30,8 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
                 obj.btnStartStop.stopCallback  = @obj.btnStopCallback;
             fig.Heights = [-1, 40, 30];
             
-            obj.height = 600;
-            obj.width = 800;
+            obj.height = 500;
+            obj.width = 700;
             
             obj.refresh;
         end
@@ -46,6 +46,9 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
         function btnStartCallback(obj, ~, ~)
             exp = obj.getExperiment;
             exp.run;
+            if exp.currIter == 1
+                obj.plot;   % refresh plot, since nothing should display now
+            end
         end
         
         %%% Plotting %%%
@@ -95,18 +98,19 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
 %                 label1 = 'signal';
 %                 label2 = exp.mCurrentYAxisParam2.label;
             end
+            
+            
+            % Refresh Progress bar
+            nDone = exp.currIter;  % The number of the current iteration is also the number of iterations done
+            frac = nDone / exp.averages;
+            string = sprintf('%d of %d averages (%.2f%%) done', nDone, exp.averages, frac*100);
+            progressbar(obj.progressbarAverages, frac, string);
 
         end
         
         
         function refresh(obj)
             exp = obj.getExperiment;
-            % Progress bar
-            nDone = exp.nIter - 1;     % We are done with the previous n-1 iterations
-            frac = nDone / exp.averages;
-            string = sprintf('%d of %d averages (%.2f%%) done', nDone, exp.averages, frac*100);
-            progressbar(obj.progressbarAverages, frac, string);
-            % Button
             obj.btnStartStop.isRunning = ~exp.stopFlag;
         end
         

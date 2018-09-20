@@ -78,7 +78,7 @@ classdef Tracker < EventSender & EventListener & Savable
             % want to save, make (outStruct = NaN;)
             %
             % category - string. Some objects saves themself only with
-            %                    specific category (image/experimetns/etc)
+            %                    specific category (image/experiments/etc.)
             % type - string.     Whether the objects saves at the beginning
             %                    of the run (parameter) or at its end (result)
             outStruct = NaN;

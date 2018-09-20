@@ -242,7 +242,7 @@ classdef ExpESR < Experiment
                 obj.averages, averageTime);
         end
         
-        function perform(obj, nIter)
+        function perform(obj)
             % Initialization
             len = length(obj.frequency);
             f1 = randperm(len);
@@ -284,7 +284,7 @@ classdef ExpESR < Experiment
                 else
                     obj.sendError('This should not have happenned')
                 end
-                obj.signal(:, i, nIter) = sig;
+                obj.signal(:, i, obj.currIter) = sig;
                 
                 % Add tracking
                     %%% Patch: for CW, we need to decrease MW power
@@ -298,10 +298,10 @@ classdef ExpESR < Experiment
             
             obj.mCurrentXAxisParam.value = obj.frequency;
             
-            S1 = squeeze(obj.signal(1, :, 1:nIter));
-            S2 = squeeze(obj.signal(2, :, 1:nIter));
+            S1 = squeeze(obj.signal(1, :, 1:obj.currIter));
+            S2 = squeeze(obj.signal(2, :, 1:obj.currIter));
             
-            if nIter == 1
+            if obj.currIter == 1
                 % Nothing to calculate the mean over
                 obj.mCurrentYAxisParam.value = S1./S2;
             else
@@ -309,10 +309,10 @@ classdef ExpESR < Experiment
             end
             
             if ~isSingleMeasurement
-                S3 = squeeze(obj.signal(3, :, 1:nIter));
-                S4 = squeeze(obj.signal(4, :, 1:nIter));
+                S3 = squeeze(obj.signal(3, :, 1:obj.currIter));
+                S4 = squeeze(obj.signal(4, :, 1:obj.currIter));
                 
-                if nIter == 1
+                if obj.currIter == 1
                     % There is nothing to calculate the mean over
                     YMirror = S3./S4;
                 else

@@ -1,4 +1,4 @@
-classdef (Abstract) PulseGenerator < EventSender
+classdef (Abstract) PulseGenerator < EventSender & Savable
     %PULSEGENERATOR Class for representing a pulse generator (PulseBlaster or PulseStreamer)
     % An abstract class, which knows to handle objects of class
     %   Sequence
@@ -39,6 +39,7 @@ classdef (Abstract) PulseGenerator < EventSender
             % Default constructor.
             name = PulseGenerator.NAME;
             obj@EventSender(name);
+            obj@Savable(name);
         end
         
         function initSequence(obj)
@@ -246,6 +247,59 @@ classdef (Abstract) PulseGenerator < EventSender
         sendToHardware(obj)
         % After all validation is done - upload the sequence to PG hardware
 
+    end
+    
+    %% overriding from Savable
+    methods (Access = protected)
+        function outStruct = saveStateAsStruct(obj, category, type)
+            % Saves the state as struct. if you want to save stuff, make
+            % (outStruct = struct;) and put stuff inside. If you dont
+            % want to save, make (outStruct = NaN;)
+            %
+            % category - string. Some objects saves themself only with
+            %                    specific category (image/experiments/etc.)
+            % type - string.     Whether the objects saves at the beginning
+            %                    of the run (parameter) or at its end (result)
+            
+            if strcmp(category, Savable.CATEGORY_EXPERIMENTS) ...
+                    && strcmp(type, Savable.TYPE_PARAMS) ...
+                    && ~Experiment.current(SpcmCounter.EXP_NAME)        % which doesn't use the PG
+                outStruct = struct('sequence', obj.sequence);
+            else
+                outStruct = NaN;
+            end
+        end
+        
+        function loadStateFromStruct(obj, savedStruct, category, subCategory) %#ok<INUSD>
+            % loads the state from a struct.
+            % to support older versoins, always check for a value in the
+            % struct before using it. view example in the first line.
+            % category - a string, some savable objects will load stuff
+            %            only for the 'image_lasers' category and not for
+            %            'image_stages' category, for example
+            % subCategory - string. could be empty string
+            
+            if isfield(savedStruct, 'sequence')
+                obj.sequence = savedStruct.sequence;
+            end
+        end
+        
+        function string = returnReadableString(obj, savedStruct)
+            % return a readable string to be shown. if this object
+            % doesn't need a readable string, make (string = NaN;) or
+            % (string = '';)
+            
+            seq = savedStruct.sequence;
+            
+            if ~isempty(seq)
+                len = length(seq.pulses);
+                string = sprintf(['PulseGenerator -- %s:\n', ...
+                    '%d pulses in sequence, %d%s in total.'], ...
+                    obj.name, len, seq.duration, StringHelper.MICROSEC);
+            else
+                string = NaN;
+            end
+        end
     end
     
     %%

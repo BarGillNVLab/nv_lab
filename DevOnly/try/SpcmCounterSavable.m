@@ -103,7 +103,7 @@ classdef SpcmCounterSavable < EventSender & Savable
                 % want to save, make (outStruct = NaN;)
                 %
                 % category - string. some objects saves themself only with
-                % specific category (image/experimetns/etc)
+                % specific category (image/experiments/etc.)
                 if category == Savable.CATEGORY_IMAGE
                     outStruct = struct(obj.SAVABLE_RECORDS, obj.records);
                 else

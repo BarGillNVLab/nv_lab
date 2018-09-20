@@ -27,6 +27,9 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
         track               % logical. initialize tracking
         trackThreshhold     % double (between 0 and 1). Change in signal that will start the tracker
         laserInitializationDuration  % laser initialization in pulsed experiments
+    end
+    
+    properties (Access = protected)
         laserOnDelay = 0.1;  %in us
         laserOffDelay = 0.1; %in us
         mwOnDelay = 0.1;     %in us
@@ -37,13 +40,13 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
     properties (SetAccess = protected)
         signal              % double. Measured signal in the experiment (basically, unprocessed)
         timeout             % double. Time (in seconds) before experiment trial is marked as a fail
-        nIter = 1;          % int. number of current iteration (average)
+        currIter = 1;          % int. number of current iteration (average)
     end
     
     properties (SetAccess = {?Trackable})
-        stopFlag = 0;
-        pauseFlag = 0;	% 0 -> new signal will be acquired. 1 --> signal will be required.
-        pausedAverage = 0; 
+        stopFlag = true;
+        pauseFlag = false;	% false -> new signal will be acquired. true --> signal will be required.
+        pausedAverage = false; 
     end
     
     properties (Abstract, Constant, Hidden)
@@ -163,9 +166,9 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             
             GuiControllerExperimentPlot(obj.EXP_NAME).start;
             for i = 1:obj.averages
-                obj.nIter = i;
+                obj.currIter = i;
                 try
-                    perform(obj, i);
+                    perform(obj);
                     sendEventDataUpdated(obj)   % Plots and saves
                     percentage = i/obj.averages*100;
                     percision = log10(obj.averages);    % Enough percision, according to division result
@@ -184,8 +187,11 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
         end
         
         function pause(obj)
-            obj.stopFlag = true;
-            sendEventExpPaused(obj);
+            if ~obj.stopFlag
+                % The condition is mainly for sending the event
+                obj.stopFlag = true;
+                sendEventExpPaused(obj);
+            end
         end
     end
     
@@ -194,10 +200,8 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
         % Specifics of each of the experiments
         prepare(obj) 
         
-        perform(obj, nIter)
+        perform(obj)
         % Perform the main part of the experiment.
-        % This part is iterated (obj.averages) times, and nIter is the number
-        % of current iteration
         
         wrapUp(obj)
     end
@@ -220,20 +224,28 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
     
     %% Overridden from Savable
     methods (Access = protected)
-        function outStruct = saveStateAsStruct(obj, category, type) %#ok<INUSD>
+        function outStruct = saveStateAsStruct(obj, category, type)
             % Saves the state as struct. if you want to save stuff, make
             % (outStruct = struct;) and put stuff inside. If you dont
             % want to save, make (outStruct = NaN;)
             %
             % category - string. Some objects saves themself only with
-            %                    specific category (image/experimetns/etc)
+            %                    specific category (image/experiments/etc.)
             % type - string.     Whether the objects saves at the beginning
             %                    of the run (parameter) or at its end (result)
             
-            outStruct = NaN;
             
-            % mCategory is overrided by Tracker, and we need to check it
-            if ~strcmp(category,obj.mCategory); return; end
+            if strcmp(category, obj.mCategory) ... % mCategory is overrided by Tracker, and we need to check it
+                    && strcmp(type, Savable.TYPE_RESULTS)
+                for paramNameCell = obj.getAllExpParameterProperties()
+                    paramName = paramNameCell{:};
+                    outStruct.(paramName) = obj.(paramName);
+                end
+                outStruct.expName = obj.EXP_NAME;
+                
+            else
+                outStruct = NaN;
+            end
             
         end
         
@@ -246,8 +258,20 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             %            'image_stages' category, for example
             % subCategory - string. could be empty string
             
-            if isfield(savedStruct, 'some_value')
-                obj.my_value = savedStruct.some_value;
+            % mCategory is overrided by Tracker, and we need to check it
+            if ~strcmp(category, obj.mCategory); return; end
+            
+            
+            % We use @str2func which is superior to @eval, when possible
+            className = str2func(savedStruct.expName); % function handle for the class
+            exp = className();
+                
+            for paramNameCell = exp.getAllExpParameterProperties()
+                paramName = paramNameCell{:};
+                if isfield(savedStruct, paramName)
+                    % If the current experiment has this property also
+                    exp.(paramName) = savedStruct.(paramName);
+                end
             end
         end
         
@@ -280,6 +304,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             end
         end
     end
+    
     
     methods (Static)
         function obj = init
@@ -320,10 +345,10 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             if isempty(expNames)
                 % Get 'regular' Experiments
                 path = Experiment.PATH_ALL_EXPERIMENTS;
-                [~, expFileNames] = PathHelper.getAllFilesInFolder(path);
+                [~, expFileNames] = PathHelper.getAllFilesInFolder(path, 'm');
                 % Get Trackables
                 path2 = Trackable.PATH_ALL_TRACKABLES;
-                [~, trckblFileNames] = PathHelper.getAllFilesInFolder(path2);
+                [~, trckblFileNames] = PathHelper.getAllFilesInFolder(path2, 'm');
                 % Join
                 expFileNames = [expFileNames, trckblFileNames];
                 
@@ -331,16 +356,38 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
                 expClassNames = PathHelper.removeDotSuffix(expFileNames);
                 expNames = cell(size(expFileNames));
                 for i = 1:length(expFileNames)
-                    % using a temporary variable, since the editor does not
-                    % automatically find variables names in strings
-                    eval(['temp = ',expClassNames{i}, '.EXP_NAME;'])
-                    expNames{i} = temp;
+                    % We extract the EXP_NAME property using an in-house
+                    % function (which avoids using eval)
+                    expNames{i} = getConstPropertyfromString(expClassNames{i}, 'EXP_NAME');
                 end
-                expNames{end+1} = SpcmCounter.EXP_NAME;
+                expNames{end+1} = SpcmCounter.EXP_NAME;     % todo: think about this
             end
             
             expNamesCell = expNames;
             expClassNamesCell = expClassNames;
+        end
+        
+        function save(path)
+            % Saves the experiment.
+            % Three use cases - 
+            % 1. no input argument: saves the file in the default folder,
+            %    under a default name (e.g. 'Echo_20180917_113506.mat')
+            % 2. one argument - full path: saves the file as the path
+            %    requested.
+            % 3. one argument - folder name: saves the file at the
+            %    specified folder, with the default name.
+            
+            sl = SaveLoad.getInstance(Savable.CATEGORY_EXPERIMENTS);
+            switch nargin
+                case 0
+                    sl.save;
+                case 1
+                    filename = PathHelper.getFileNameFromFullPathFile(path);
+                    if isempty(filename)
+                        path = PathHelper.joinToFullPath(path, sl.mLoadedFileName);
+                    end
+                    sl.saveAs(path)
+            end
         end
     end
     

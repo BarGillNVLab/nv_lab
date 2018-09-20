@@ -189,7 +189,7 @@ classdef ExpEcho < Experiment
                 obj.averages, averageTime);
         end
         
-        function perform(obj, nIter)
+        function perform(obj)
             %%% Initialization
             
             % Devices (+ Tracker)
@@ -219,7 +219,7 @@ classdef ExpEcho < Experiment
                             sig(3:4) = obj.readAndShape(spcm, pg);
                             seq.change('projectionPulse', 'duration', obj.halfPiTime);
                         end
-                        obj.signal(:, t, nIter) = sig;
+                        obj.signal(:, t, obj.currIter) = sig;
                         
                         
                         tracker.compareReference(sig(2), Tracker.REFERENCE_TYPE_KCPS, TrackablePosition.EXP_NAME);
@@ -244,10 +244,10 @@ classdef ExpEcho < Experiment
             % Saving results in the Experiment parameters
             obj.mCurrentXAxisParam.value = 2*obj.tau;
             
-            S1 = squeeze(obj.signal(1, :, 1:nIter));
-            S2 = squeeze(obj.signal(2, :, 1:nIter));
+            S1 = squeeze(obj.signal(1, :, 1:obj.currIter));
+            S2 = squeeze(obj.signal(2, :, 1:obj.currIter));
             
-            if nIter == 1
+            if obj.currIter == 1
                 % Nothing to calculate the mean over
                 obj.mCurrentYAxisParam.value = S1./S2;
             else
@@ -255,10 +255,10 @@ classdef ExpEcho < Experiment
             end
             
             if obj.doubleMeasurement
-                S3 = squeeze(obj.signal(3, :, 1:nIter));
-                S4 = squeeze(obj.signal(4, :, 1:nIter));
+                S3 = squeeze(obj.signal(3, :, 1:obj.currIter));
+                S4 = squeeze(obj.signal(4, :, 1:obj.currIter));
                 
-                if nIter == 1
+                if obj.currIter == 1
                     % There is nothing to calculate the mean over
                     obj.mCurrentYAxisParam2.value = S3./S4;
                 else

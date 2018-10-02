@@ -54,6 +54,10 @@ classdef (Abstract) LaserPartAbstract < EventSender
         maxValue
         units
     end
+       
+    properties (Access = private)
+        calibFunc;      % function handle. Converts from percentage to physical units.
+    end
     
     properties (Constant)
         DEFAULT_MIN_VALUE = 0;
@@ -63,13 +67,14 @@ classdef (Abstract) LaserPartAbstract < EventSender
     
     methods
         %% constructor
-        function obj = LaserPartAbstract(name, minVal, maxVal, units)
+        function obj = LaserPartAbstract(name, minVal, maxVal, func, units)
             % Creates an abstract laser part.
             % 
             % Requires at least one parameter, 'name', for the part.
             % 
-            % min - double. Minimum value the part can accept. Default value is 0.
-            % max - double. Maximum value the part can accept. Default value is 100.
+            % min - double. Minimum value the user can input. Default value is 0.
+            % max - double. Maximum value the user can input. Default value is 100.
+            % func - function handle. Calibration function.
             % units - string. Units of the value. Default units are '%'.
             obj@EventSender(name);
             addBaseObject(obj);     % so it can be reached by BaseObject.getByName()
@@ -79,6 +84,9 @@ classdef (Abstract) LaserPartAbstract < EventSender
             
             if exist('maxVal', 'var') && ~isempty(maxVal); obj.maxValue = maxVal;
             else; obj.maxValue = obj.DEFAULT_MAX_VALUE; end
+            
+            if exist('calibfunc', 'var') && ~isempty(func); obj.calibFunc = func; 
+            else; obj.calibFunc = []; end
             
             if exist('units', 'var') && ~isempty(units); obj.units = units;
             else; obj.units = obj.DEFAULT_UNITS; end
@@ -96,21 +104,26 @@ classdef (Abstract) LaserPartAbstract < EventSender
     methods
         %% Setters
         function set.value(obj, newValue)
-            % Set a new value to the laser
+            %%% Set a new value to the laser
+            
+            % Error handling
             if ~isnumeric(newValue)
                 newValue = str2double(newValue);
                 if isnan(newValue)     % Conversion failed
                     obj.sendError('Laser power must be a number');
                 end
-            end
-            
-            if ValidationHelper.isInBorders(newValue, obj.minValue, obj.maxValue)
-                obj.setValueRealWorld(newValue);
-                obj.sendEvent(struct('value', newValue));
-            else
+            elseif ~ValidationHelper.isInBorders(newValue, obj.minValue, obj.maxValue)
                 obj.sendError(sprintf('Laser power can''t be set to %d%s: out of limits!\nIgnoring. (limits: [%d, %d])', ...
                     newValue, obj.units, obj.minValue, obj.maxValue));
             end
+            
+            % Setting value
+            if ~isempty(obj.calibFunc)
+                % There is a calibration function, so we use it
+                newValue = obj.calibFunc(newValue);
+            end
+            obj.setValueRealWorld(newValue);
+            obj.sendEvent(struct('value', newValue));
         end
         
         function set.isEnabled(obj, newValueLogical)

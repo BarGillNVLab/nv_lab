@@ -37,7 +37,6 @@ classdef LaserSourcePhysicalFactory
             end
         end
                     
-                    
     end
     
 end

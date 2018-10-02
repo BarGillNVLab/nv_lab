@@ -1,17 +1,19 @@
 classdef JsonInfoReader
-    %MAINJSONINFOREADER reads the main JsonInfo setup-file
+    %JSONINFOREADER Reads the main JsonInfo setup-file
     
-    
-    properties
+    properties (Constant)
+        JSON_DIR = 'C:\\lab\\'
+        JSON_FILENAME = 'setupInfo.json'
     end
     
     methods (Static)
         function jsonStruct = getJson()
-            %%%% get the json %%%%
-            jsonTxt = fileread('C:\\lab\\setupInfo.json');
+            %%%% Get the json %%%%
+            path = [JsonInfoReader.JSON_DIR JsonInfoReader.JSON_FILENAME];
+            jsonTxt = fileread(path);
             jsonStruct = jsondecode(jsonTxt);
             
-            %%%% add extra fields %%%%
+            %%%% Add extra fields %%%%
             if ~isfield(jsonStruct, 'debugMode')
                 jsonStruct.debugMode = false;
             end
@@ -101,11 +103,32 @@ classdef JsonInfoReader
             
         end
         
-        function [f, minim, maxim, units] = getFunctionFromLookupTable(tabl)
+        function [f, minim, maxim] = getFunctionFromLookupTable(path)
             % Creates linear interpolation from lookup table.
             %
-            % table - string. Path of lookup table file
-            arr = importdata(tabl);
+            % Input:
+            %   filename - string. Path of lookup table file.
+            % Output:
+            %   f -             function handle. f(value in percentage) = value in physical units
+            %   minim, maxim -  double. Limit values for extrapolation
+            %
+            % Table file is assumed to have two columns:
+            %   1st column: value in percentage
+            %   2nd column: corresponding value in physical units
+            
+            % Find correct path
+            if ~PathHelper.isFileExists(path)
+                % Maybe we have the filename within the 'c:\lab' directory
+                appendedPath = PathHelper.joinToFullPath(JsonInfoReader.JSON_DIR, path);
+                if ~PathHelper.isFileExists(appendedPath)
+                    EventStation.anonymousError('Path ''%s'' for lookup table does not exist!', path)
+                end
+                path = appendedPath;
+            end
+                
+            
+            % Get function
+            arr = importdata(path);
             data = arr.data;
             percentage = data(:,1);
             physicalValue = data(:,2);
@@ -113,12 +136,6 @@ classdef JsonInfoReader
             
             minim = min(percentage);
             maxim = max(percentage);
-            headers = arr.colheaders;
-            if size(headers)>=2
-                units = headers{2};
-            else
-                units = '';
-            end
         end
     end
     

@@ -9,16 +9,22 @@ classdef ViewExpandablePanel < GuiComponent
         maxSize = -1;
         isMinimized = false;
         parentComponent;
+        
+        undockFcn = [];
     end
     
     methods
-        function obj = ViewExpandablePanel(parent, controller, textToDisplay)
-            %%%%%%% init the ui controller %%%%%%%
+        function obj = ViewExpandablePanel(parent, controller, textToDisplay, undockFcnOptional)
+            %%%% init the ui controller %%%%
             obj@GuiComponent(parent, controller);
-            obj.component = uix.BoxPanel('Parent', parent.component,'Title',textToDisplay);
+            obj.component = uix.BoxPanel('Parent', parent.component, ...
+                'Title', textToDisplay);
             obj.parentComponent = parent.component;
             
-            %%%%%%% init the expand callback %%%%%%%
+            %%%% init minimize callback %%%%
+            if exist('undockFcnOptional', 'var')
+                obj.undockFcn = undockFcnOptional;
+            end
             set(obj.component, 'MinimizeFcn', {@obj.callbackMinimize} );
         end
         
@@ -62,6 +68,19 @@ classdef ViewExpandablePanel < GuiComponent
                 component = parent;
                 parent = component.Parent;
             end
+        end
+    end
+       
+    methods % Undocking
+        function set.undockFcn(obj, fcn)
+            assert(isa(fcn, 'function_handle'))
+            obj.undockFcn = fcn;
+            set(obj.component, 'DockFcn', {@obj.callbackUndock} );
+        end
+        
+        function callbackUndock(obj, ~, ~)
+            obj.callbackMinimize();
+            obj.undockFcn();
         end
     end
     

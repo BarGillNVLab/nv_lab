@@ -509,8 +509,8 @@ classdef (Sealed) ClassDummyStage  < ClassStage
                 obj.sendWarning(warningMsg);
             elseif Experiment.current(TrackablePosition.EXP_NAME)
                 exp = getObjByName(Experiment.NAME);
-                if exp.isOn
-                    exp.isOn = false;
+                if exp.isRunning
+                    exp.isRunning = false;
                     obj.sendWarning(warningMsg);
                 end
             end

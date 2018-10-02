@@ -8,11 +8,19 @@ classdef ViewSpcmInImage < GuiComponent
     
     methods
         function obj = ViewSpcmInImage(parent,controller)
-            panel = ViewExpandablePanel(parent, controller, 'SPCM Counter');
-            obj@GuiComponent(parent,controller);
-            spcmView = ViewSpcm(panel,controller, 'isStandalone', false, obj.VIEW_HEIGHT, obj.VIEW_WIDTH);
+            panel = ViewExpandablePanel(parent, controller, 'SPCM Counter', @ViewSpcmInImage.popup);
+            obj@GuiComponent(parent, controller);
+            spcmView = ViewSpcm(panel, controller, ...
+                'isStandalone', false, obj.VIEW_HEIGHT, obj.VIEW_WIDTH);
             obj.component = spcmView.component;
         end
+    end     
+       
+    methods (Static)
+        function popup
+            GuiControllerSpcmCounter().start;
+        end
+        
     end
     
 end

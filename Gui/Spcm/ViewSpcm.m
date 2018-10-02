@@ -51,13 +51,6 @@ classdef ViewSpcm < ViewVBox & EventListener
             end
             axes()
             
-            if ~obj.isStandalone
-                obj.btnPopout = uicontrol(obj.PROP_BUTTON{:}, ...
-                    'Parent', obj.component, ...
-                    'String', 'Pop-out', ...
-                    'Callback', @(h,e) obj.popupNew);
-            end
-            
             %%% Buttons / Controls %%%
             hboxButtons = uix.HBox('Parent', obj.component, ...
                 'Spacing', 3);
@@ -115,22 +108,29 @@ classdef ViewSpcm < ViewVBox & EventListener
             obj.update;     % There might already be records in the counter
             
             %%% Define size %%%
-            if (length(varargin) == 2 && ~strcmp(varargin{1}, 'isStandalone')) ...
-                    || (length(varargin) == 4 && strcmp(varargin{1}, 'isStandalone'))
-                obj.height = varargin{1};
-                obj.width = varargin{2};
-            else 
-                obj.height = 500;
-                obj.width = 850;
+            % Default values
+            obj.height = 500;
+            obj.width = 850;
+            
+            switch length(varargin)
+                case 2
+                    if ~strcmp(varargin{1}, 'isStandalone')
+                        % not a standalone
+                        obj.height = varargin{1};
+                        obj.width = varargin{2};
+                    end
+                case 4
+                    if strcmp(varargin{1}, 'isStandalone')
+                        heightArgIndex = 3;
+                    else
+                        heightArgIndex = 1;
+                    end
+                    obj.height = varargin{heightArgIndex};
+                    obj.width = varargin{heightArgIndex+1};
             end
-
+            
             controlsHeight = 80;
-            if obj.isStandalone
-                h = [-1, controlsHeight];
-            else
-                h = [-1, 20, controlsHeight];
-            end
-            obj.setHeights(h);
+            obj.setHeights([-1, controlsHeight]);
         end
 
         
@@ -145,7 +145,7 @@ classdef ViewSpcm < ViewVBox & EventListener
                 spcmCount = getObjByName(Experiment.NAME);
                 obj.edtIntegrationTime.String = spcmCount.integrationTimeMillisec;
                 
-                obj.btnStartStop.isRunning = spcmCount.isOn;
+                obj.btnStartStop.isRunning = spcmCount.isRunning;
                 
             else
                 % The counter is unavailable
@@ -155,35 +155,31 @@ classdef ViewSpcm < ViewVBox & EventListener
         
         function update(obj)
             % Axes AND uicontrols
+            
             if ~Experiment.current(SpcmCounter.EXP_NAME)
                 return
             end
             
+            %%% Plot
+            % Get plot data
             counter = getObjByName(SpcmCounter.NAME);
             if obj.isUsingWrap
-                [time,kcps,std] = counter.getRecords(obj.wrap);
+                [time, kcps, std] = counter.getRecords(obj.wrap);
             else
-                [time,kcps,std] = counter.getRecords;
+                [time, kcps, std] = counter.getRecords;
             end
             dimNum = 1;
             AxesHelper.update(obj.vAxes, kcps, dimNum, time, nan, std);
-            
             obj.vAxes.Children.HitTest = 'off'; % So as not to be interacted by "marker" cursor
             
             set(obj.vAxes, 'XLim', [-inf, inf]);	% Creates smooth "sweep" of data
             drawnow;                                % consider using animatedline
             
+            % Update uicontrols
             obj.refresh;
         end
         
         %%%% Callbacks %%%%
-        function popupNew(obj, creator)
-            if ~obj.isStandalone
-                GuiControllerSpcmCounter().start;
-                creator.HitTest = 'on';
-            end
-        end
-        
         function cbxUsingWrapCallback(obj, ~, ~)
             obj.recolor(obj.edtWrap, ~obj.isUsingWrap)
             obj.update;

@@ -14,6 +14,10 @@ classdef SpcmCounter < Experiment
         integrationTimeMillisec     % float, in milliseconds
     end
     
+    properties (Access = private)
+        mTimer = []; % Timer for new records
+    end
+    
     properties (Constant, Hidden)
         EXP_NAME = 'SpcmCounter'
     end
@@ -30,7 +34,7 @@ classdef SpcmCounter < Experiment
             obj@Experiment();
             obj.integrationTimeMillisec = obj.INTEGRATION_TIME_DEFAULT_MILLISEC;
             obj.records = obj.DEFAULT_EMPTY_STRUCT;
-            obj.isOn = false;
+            obj.stopFlag = true; % It is stopped (not running) by default
             
             obj.averages = 1;   % This Experiment has no averaging over repeats
         end
@@ -41,14 +45,18 @@ classdef SpcmCounter < Experiment
         
         function reset(obj)
             obj.records = obj.DEFAULT_EMPTY_STRUCT;
+            obj.mTimer = [];
             obj.sendEventReset;
         end
         
         function newRecord(obj, kcps, std)
             % creates new record in a struct of the type "record" =
             % record.{time,kcps,std}, with proper validation.
-            integrationTime = obj.integrationTimeMillisec / 1000;
-            time = obj.records(end).time + integrationTime;
+            if isempty(obj.mTimer)
+                obj.mTimer = tic;
+            end
+            time = toc(obj.mTimer);
+            
             if kcps < 0 || std < 0 || kcps < std
                 recordNum = length(obj.records);
                 EventStation.anonymousWarning('Invalid values in time %d (record #%i)', time, recordNum)
@@ -61,16 +69,18 @@ classdef SpcmCounter < Experiment
         function [time, kcps, std] = getRecords(obj, lenOpt)
             lenRecords = length(obj.records);
             if ~exist('lenOpt', 'var')
-                lenOpt = lenRecords;
+                wrapLength = lenRecords;
+            else
+                wrapLength = lenOpt;
             end
             
-            difference = lenRecords - lenOpt;
+            difference = lenRecords - wrapLength;
             if difference < 0
                 padding = abs(difference) - 1;
-                maxTime = lenOpt*obj.integrationTimeMillisec/1000;  % Create time for end of wrap
+                maxTime = wrapLength*obj.integrationTimeMillisec/1000;  % Create time for end of wrap
                 zeroStruct = struct('time', maxTime, 'kcps', 0, 'std', 0);
                 data = [obj.records, ...
-                    repelem(obj.DEFAULT_EMPTY_STRUCT,padding), ...
+                    repelem(obj.DEFAULT_EMPTY_STRUCT, padding), ...
                     zeroStruct];
             elseif difference == 0
                 data = obj.records;
@@ -98,7 +108,7 @@ classdef SpcmCounter < Experiment
     %% Overridden from Experiment
     methods
         function run(obj)
-            obj.isOn = true;
+            obj.stopFlag = false;
             sendEventExpResumed(obj);
             
             integrationTime = obj.integrationTimeMillisec;  % For convenience
@@ -108,7 +118,7 @@ classdef SpcmCounter < Experiment
             spcm.prepareReadByTime(integrationTime/1000);
             
             try
-                while obj.isOn
+                while ~obj.stopFlag
                     % Creating data to be saved
                     [kcps, std] = spcm.readFromTime;
                     obj.newRecord(kcps, std);
@@ -129,7 +139,7 @@ classdef SpcmCounter < Experiment
         end
         
         function pause(obj)
-            obj.isOn = false;
+            obj.stopFlag = true;
             pause((obj.integrationTimeMillisec + 1) / 1000);    % Let me finish what I was doing
             obj.sendEventExpPaused;
         end

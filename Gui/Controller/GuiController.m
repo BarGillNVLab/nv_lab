@@ -72,7 +72,7 @@ classdef GuiController < handle
         function start(obj)
             openAlready = GuiController.findOpenOrNan(obj.windowName);
             if obj.openOnlyOne && isobject(openAlready)
-                sprintf('%s is already open!', obj.windowName);
+%                 fprintf('%s is already open!\n', obj.windowName);
                 figure(openAlready);
             else
                 try

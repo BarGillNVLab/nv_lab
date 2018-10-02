@@ -30,7 +30,7 @@ classdef GuiControllerSpcmCounter < GuiController
 %             % If the counter is running, we want to turn it off
 %             if Experiment.current(SpcmCounter.EXP_NAME)
 %                 spcmCounter = getObjByName(Experiment.NAME);
-%                 if ~spcmCounter.isOn; return; end
+%                 if spcmCounter.stopFlag; return; end
 %                 EventStation.anonymousWarning('SPCM Counter is now turned off');
 %                 spcmCounter.pause;
 %                 spcmCounter.reset;

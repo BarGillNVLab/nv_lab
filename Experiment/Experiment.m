@@ -1,6 +1,6 @@
 classdef (Abstract) Experiment < EventSender & EventListener & Savable
-    %EXPERIMENT Summary of this class goes here
-    %   Detailed explanation goes here
+    %EXPERIMENT A generic experiment in the lab.
+    % Abstract class for creating all other experiments.
     
     properties (SetAccess = protected)
         mCategory               % string. For loading (might change in subclasses)
@@ -20,8 +20,6 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
     end
     
     properties
-        isOn = false;       % Maybe isOn is like ~(the private property stopFlag)?
-        
         averages            % int. Number of measurements to average from
         repeats             % int. Number of repeats per measurement
         track               % logical. initialize tracking
@@ -43,7 +41,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
         currIter = 1;          % int. number of current iteration (average)
     end
     
-    properties (SetAccess = {?Trackable})
+    properties (SetAccess = {?Trackable, ?SpcmCounter})
         stopFlag = true;
         pauseFlag = false;	% false -> new signal will be acquired. true --> signal will be required.
         pausedAverage = false; 
@@ -161,10 +159,11 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
         function run(obj)
             prepare(obj)
             
+            GuiControllerExperimentPlot(obj.EXP_NAME).start;
+            
             obj.stopFlag = false;
             sendEventExpResumed(obj);
             
-            GuiControllerExperimentPlot(obj.EXP_NAME).start;
             for i = 1:obj.averages
                 obj.currIter = i;
                 try
@@ -175,6 +174,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
                     fprintf('%.*f%%\n', percision, percentage)
                     
                     if obj.stopFlag
+                        sendEventExpPaused(obj);
                         break
                     end
                 catch err
@@ -190,7 +190,6 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             if ~obj.stopFlag
                 % The condition is mainly for sending the event
                 obj.stopFlag = true;
-                sendEventExpPaused(obj);
             end
         end
     end
@@ -225,24 +224,22 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
     %% Overridden from Savable
     methods (Access = protected)
         function outStruct = saveStateAsStruct(obj, category, type)
-            % Saves the state as struct. if you want to save stuff, make
+            % Saves the state as struct. If you want to save stuff, make
             % (outStruct = struct;) and put stuff inside. If you dont
-            % want to save, make (outStruct = NaN;)
+            % want to save now, make (outStruct = NaN;)
             %
             % category - string. Some objects saves themself only with
             %                    specific category (image/experiments/etc.)
             % type - string.     Whether the objects saves at the beginning
             %                    of the run (parameter) or at its end (result)
             
-            
-            if strcmp(category, obj.mCategory) ... % mCategory is overrided by Tracker, and we need to check it
-                    && strcmp(type, Savable.TYPE_RESULTS)
-                for paramNameCell = obj.getAllExpParameterProperties()
-                    paramName = paramNameCell{:};
-                    outStruct.(paramName) = obj.(paramName);
+            if strcmp(category, obj.mCategory) % mCategory is overrided by Tracker, and we need to check it
+                if strcmp(type, Savable.TYPE_PARAMS)
+                    outStruct = obj.saveParamsToStruct;     % Has default implementation. Might be overidden by subclasses.
+                    outStruct.expName = obj.EXP_NAME;
+                else
+                    outStruct = obj.saveResultsToStruct;    % Has default implementation. Might be overidden by subclasses.
                 end
-                outStruct.expName = obj.EXP_NAME;
-                
             else
                 outStruct = NaN;
             end
@@ -284,6 +281,25 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
         end
     end
     
+    %% Default saving options for Experiment. Might be overridden by subclasses
+    methods
+        function outStruct = saveParamsToStruct(obj)
+            outStruct.mCurrentXAxisParam = obj.mCurrentXAxisParam;
+            outStruct.mCurrentXAxisParam2 = obj.mCurrentXAxisParam2;
+            
+            % The following code might be useful in the future
+%                     for paramNameCell = obj.getAllExpParameterProperties()
+%                         paramName = paramNameCell{:};
+%                         outStruct.(paramName) = obj.(paramName);
+%                     end
+        end
+        
+        function outStruct = saveResultsToStruct(obj)
+            outStruct.mCurrentYAxisParam = obj.mCurrentYAxisParam;
+            outStruct.mCurrentYAxisParam2 = obj.mCurrentYAxisParam2;
+        end
+    end
+    
     %% Helper functions
     methods
         function initialize(obj, numScans)
@@ -302,6 +318,10 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
                 obj.mwOnDelay = mw.onDelay;
                 obj.mwOffDelay = mw.offDelay;
             end
+        end
+        
+        function tf = isRunning(obj)
+            tf = ~obj.stopFlag;
         end
     end
     

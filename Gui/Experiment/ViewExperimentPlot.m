@@ -41,11 +41,14 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
         function btnStopCallback(obj, ~, ~)
             exp = obj.getExperiment;
             exp.pause;
+            obj.refresh;
         end
         
         function btnStartCallback(obj, ~, ~)
             exp = obj.getExperiment;
             exp.run;
+            
+            obj.refresh;
             if exp.currIter == 1
                 obj.plot;   % refresh plot, since nothing should display now
             end
@@ -140,7 +143,8 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
             % experiment is "ours".
             if strcmp(event.creator.EXP_NAME, obj.expName)
                 obj.refresh;
-                if isfield(event.extraInfo, Experiment.EVENT_DATA_UPDATED)
+                if isfield(event.extraInfo, Experiment.EVENT_DATA_UPDATED) ...
+                        || isfield(event.extraInfo, Experiment.EVENT_EXP_RESUMED)
                     obj.plot
                 end
             end

@@ -79,7 +79,7 @@ classdef SaveLoad < Savable & EventSender
             % Initialize the relevant SaveLoad objects.
             % Currently, two are special enough to need init() -
             % 1. One for category Image; it is a derived class as it
-            %    has different behaviour - it needs to listen to the
+            %    has different behavior - it needs to listen to the
             %    StageScanner to save the scans.
             % 2. One for category Experiments: Similarly, it needs to
             %    listen to class Experiment.
@@ -238,7 +238,7 @@ classdef SaveLoad < Savable & EventSender
 
                         % Property name - replace all spaces with underscores
                         nameToSave = matlab.lang.makeValidName(savableObject.name);
-                        if isfield(outStruct,nameToSave)
+                        if isfield(outStruct, nameToSave)
                             % If object was already saved in the parameter stage, merge structs
                             outStruct.(nameToSave) = StructHelper.merge(outStruct.(nameToSave),objectStruct);
                         else

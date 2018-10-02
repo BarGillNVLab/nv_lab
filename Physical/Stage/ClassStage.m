@@ -467,7 +467,7 @@ classdef (Abstract) ClassStage < EventSender & Savable & EventListener
             axesIndex = obj.getAxis(obj.availableAxes);
             pos = obj.Pos(axesIndex);
             
-            %%%% If we're off bounds by a bit, send bound to fixedPos
+            %%%% If we're off bounds by a bit, set fixedPos as bound
             [lowerBound, upperBound] = obj.ReturnLimits(axesIndex);
             pos(pos > upperBound) = upperBound(pos > upperBound);
             pos(pos < lowerBound) = lowerBound(pos < lowerBound);

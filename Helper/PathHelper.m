@@ -112,7 +112,7 @@ classdef PathHelper
         end
         
         function folderName = getFolderFromFullPathFile(inputFileString)
-            %%% retreives the folder from a file
+            %%% Retreives the folder from a file
             %
             % inputFileString - string
             %
@@ -121,7 +121,7 @@ classdef PathHelper
         end
         
         function fileName = getFileNameFromFullPathFile(inputFileString)
-            %%% retreives the filename from a full path
+            %%% Retreives the filename from a full path
             %
             % inputFileString - string
             %
@@ -180,7 +180,7 @@ classdef PathHelper
         end
         
         function fullpath = joinToFullPath(folder, fileName)
-            % convert a folder with a filename to one file fullpath
+            % Converts a folder with a filename to one file fullpath
             % for example:
             % folder = 'c:\reem'       (ending backslash is optional)
             % filename = 'myfile.txt'

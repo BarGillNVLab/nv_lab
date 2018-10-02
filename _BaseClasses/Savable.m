@@ -143,7 +143,14 @@ classdef (Abstract) Savable < BaseObject
         
         function removeSavable(savableObject)
             allObjects = Savable.getAllSavableObjects();
-            objectsToKeep = cellfun(@(x) ~strcmp(x.name, savableObject.name), allObjects.cells);
+            if strcmp(savableObject.name, Experiment.NAME)
+                % This is an experiment, and we only remove objects that are experiments with 
+                % the same EXP_NAME property is the same
+                isCurrExpFunc = @(x) isa(x, 'Experiment') && strcmp(x.EXP_NAME, savableObject.EXP_NAME);
+                objectsToKeep = cellfun(@(x) ~isCurrExpFunc(x), allObjects.cells);
+            else
+                objectsToKeep = cellfun(@(x) ~strcmp(x.name, savableObject.name), allObjects.cells);
+            end
             allObjects.cells = allObjects.cells(objectsToKeep);
         end
     end

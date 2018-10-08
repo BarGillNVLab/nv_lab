@@ -16,11 +16,14 @@ classdef AomNiDaqControlled < LaserPartAbstract & NiDaqControlled
     end
     
     methods
-        % constructor
+        % Constructor
         function obj = AomNiDaqControlled(name, niDaqChannel, minVal, maxVal)
             obj@LaserPartAbstract(name, minVal, maxVal, NiDaq.UNITS)
             obj@NiDaqControlled(name, niDaqChannel, minVal, maxVal);
             obj.niDaqChannel = niDaqChannel;
+            
+            % Initialize
+            obj.valueInternal = obj.getValueRealWorld;
         end
     end
     

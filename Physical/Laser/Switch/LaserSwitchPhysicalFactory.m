@@ -25,16 +25,7 @@ classdef LaserSwitchPhysicalFactory
             
             switch lower(struct.classname)
                 case {'pulsegenerator', 'pulsestreamer', 'pulseblaster'}
-                    % Maybe we need a global delay of the signal, due to
-                    % finite speed of signal
-                    if isnan(FactoryHelper.usualChecks(struct, {LaserSwitchPhysicalFactory.OPTIONAL_FIELDS{1}}))
-                        % usualChecks() returning nan means everything ok
-                        switchChannel = Channel.Digital(struct.switchChannelName, struct.switchChannel, struct.delay);
-                    else
-                        % No delay requested
-                        switchChannel = Channel.Digital(struct.switchChannelName, struct.switchChannel);
-                    end
-                    switchPhysicalPart = SwitchPgControlled(partName, switchChannel);
+                    switchPhysicalPart = SwitchPgControlled.create(partName, struct);
                 otherwise
                     EventStation.anonymousError(...
                         'Can''t create a %s-class fast switch for laser "%s" - unknown classname! Aborting.', ...

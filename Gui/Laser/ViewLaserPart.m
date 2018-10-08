@@ -115,8 +115,8 @@ classdef ViewLaserPart < ViewHBox & EventListener
         % Internal setter for the new value
         function out = setValueInternally(obj, newLaserValue)
             % newLaserValue - double.
-            newValString = num2str(newLaserValue);
-            set(obj.edtPowerPercentage, 'String', strcat(newValString, obj.units));
+            newLaserValue = round(newLaserValue, obj.SIGNIFICANT_DIGITS);
+            set(obj.edtPowerPercentage, 'String', strcat(num2str(newLaserValue), obj.units));
             set(obj.sliderPower, 'Value', newLaserValue);
             out = true;
         end

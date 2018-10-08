@@ -18,21 +18,32 @@ classdef AomDoubleNiDaqControlled < LaserPartAbstract
     end
     
     properties (Constant)
-        NEEDED_FIELDS = {'channelOne', 'channelTwo', 'swapChannelName'};
+        NEEDED_FIELDS = {'channelOne', 'channelTwo', 'swapSwitch'};
         OPTIONAL_FIELDS = {'currentChannel', 'minVal', 'maxVal'}
     end
     
     methods
-        function obj = AomDoubleNiDaqControlled(laserName, pgChannelName, channelOne, channelTwo, minVal, maxVal)
+        function obj = AomDoubleNiDaqControlled(laserName, pgChannelStruct, channelOneStruct, channelTwoStruct, minVal, maxVal)
+            % AOM is made of 3 parts, all are created elsewhere
             obj@LaserPartAbstract(laserName, minVal, maxVal, NiDaq.UNITS);
             
+            %%% Create swapper
             swapperName = sprintf('%s swapper', laserName);
-            NameOne = sprintf('%s channel #1', laserName);
-            NameTwo = sprintf('%s channel #2', laserName);
+            obj.swapSwitch = SwitchPgControlled.create(swapperName, pgChannelStruct);
             
-            obj.swapSwitch = SwitchPgControlled(swapperName, pgChannelName);
-            obj.aomOne = AomNiDaqControlled(NameOne, channelOne, minVal, maxVal);
-            obj.aomTwo = AomNiDaqControlled(NameTwo, channelTwo, minVal, maxVal);
+            %%% Create channel 1
+            NameOne = sprintf('%s channel #1', laserName);
+            % Append necessary data to channel struct
+            channelOneStruct.minVal = minVal;
+            channelOneStruct.maxVal = maxVal;
+            obj.aomOne = AomNiDaqControlled.create(NameOne, channelOneStruct);
+            
+            %%% Create channel 2
+            NameTwo = sprintf('%s channel #2', laserName);
+            % Append necessary data to channel struct
+            channelTwoStruct.minVal = minVal;
+            channelTwoStruct.maxVal = maxVal;
+            obj.aomTwo = AomNiDaqControlled.create(NameTwo, channelTwoStruct);
         end     % constructor
     end
        
@@ -99,9 +110,9 @@ classdef AomDoubleNiDaqControlled < LaserPartAbstract
             
             name = sprintf('%s Double AOM', laserName);
             
-            niDaqChannelOne = jsonStruct.channelOne.channel;
-            niDaqChannelTwo = jsonStruct.channelTwo.channel;
-            swapSwitch = jsonStruct.swapChannelName;
+            niDaqChannelOne = jsonStruct.channelOne;
+            niDaqChannelTwo = jsonStruct.channelTwo;
+            swapSwitch = jsonStruct.swapSwitch;
             minVal = jsonStruct.minVal;
             maxVal = jsonStruct.maxVal;
             

@@ -1,5 +1,5 @@
 classdef SwitchPgControlled < EventSender & EventListener
-    %SWITCHPSCONTROLLED Switch, controlled by a pulse generator (PG)
+    %SWITCHPGCONTROLLED Switch, controlled by a pulse generator (PG)
     %   A PG is either a pulse blaster or a pulse streamer, and they both
     %   have the same interface.
     
@@ -11,7 +11,7 @@ classdef SwitchPgControlled < EventSender & EventListener
         channel     % string
     end
     
-    methods
+    methods (Access = private)
         function obj = SwitchPgControlled(name, pgChannel)
             % name - the nickname of the object
             % pgChannel - 'Channel. PG will work with *this*.'
@@ -21,13 +21,14 @@ classdef SwitchPgControlled < EventSender & EventListener
             BaseObject.addObject(obj);  % so it can be reached by BaseObject.getByName()
             
             obj.channel = pgChannel;
-            % When new PG is implemented:
             assert(pgChannel.isDigital, 'Switch channels must be of type Digital!');
             PG.registerChannel(pgChannel);
             obj.channel = pgChannel.name;
             obj.isEnabled = false;
         end
-        
+    end
+       
+    methods
         function set.isEnabled(obj, newValue)
             % newValue - logical (i.e. true \ false \ 1 \ 0)
             if ValidationHelper.isTrueOrFalse(newValue)
@@ -44,6 +45,21 @@ classdef SwitchPgControlled < EventSender & EventListener
             else
                 EventStation.anonymousError('Can''t set "isEnabled" to anything other than (true \ false \ 1 \ 0). Aborting');
             end
+        end
+    end
+    
+    methods (Static)
+        function switchPhysicalPart = create(partName, struct)
+            % Maybe we need a global delay of the signal, due to
+            % finite speed of signal
+            if isnan(FactoryHelper.usualChecks(struct, {LaserSwitchPhysicalFactory.OPTIONAL_FIELDS{1}}))
+                % usualChecks() returning nan means everything ok
+                switchChannel = Channel.Digital(struct.switchChannelName, struct.switchChannel, struct.delay);
+            else
+                % No delay requested
+                switchChannel = Channel.Digital(struct.switchChannelName, struct.switchChannel);
+            end
+            switchPhysicalPart = SwitchPgControlled(partName, switchChannel);
         end
     end
     

@@ -7,7 +7,7 @@ classdef NiDaq < EventSender
         dummyChannel    % vector of doubles. Saves value of write channels, for dummy mode
         
         channelArray
-        % 2D array.         (todo: Better make it a struct array, when we get to it)
+        % 2D array.         (todo: Better make it an array of Channels)
         % 1st column - channels ('dev/...')
         % 2nd column - channel names ('laser green')
         % 3rd column - channel minimum value. by default it is 0.
@@ -140,6 +140,12 @@ classdef NiDaq < EventSender
     
     methods (Access = protected)
         function index = getIndexFromChannelOrName(obj, channelOrChannelName)
+            if channelOrChannelName(1) == '_'
+                % This is a virtual channel. We need to get the index of
+                % the real channel (for example, 'ao3' and not '_ao3_vs_aognd')
+                channelOrChannelName = regexp(channelOrChannelName, 'ao\d', 'match', 'once');
+            end
+            
             channelNamesIndexes = find(contains(obj.channelArray(1:end, NiDaq.IDX_CHANNEL_NAME), channelOrChannelName));
             if ~isempty(channelNamesIndexes)
                 index = channelNamesIndexes(1);
@@ -233,7 +239,7 @@ classdef NiDaq < EventSender
             end
             
             % Terminal configuration - DAQ constant
-            if ~contains(channel, '/ao')
+            if ~contains(channel, 'ao')
                 terminalConfig =  daq.ni.NIDAQmx.DAQmx_Val_RSE;
             else
                 % Virtual channel - reading from output channel
@@ -559,7 +565,7 @@ classdef NiDaq < EventSender
                 if statusInternal ~= 0 || isempty(errorString)
                     obj.sendError(['NIDAQ Error ' num2str(status)])
                 else
-                    obj.sendError(['NIDAQ Error ' num2str(status) ':' errorString]);
+                    obj.sendError(['NIDAQ Error ' num2str(status) ': ' errorString]);
                 end
             end
 %             lh = addlistener(s,'ErrorOccurred' @(src,event), disp(getReport(event.Error)));

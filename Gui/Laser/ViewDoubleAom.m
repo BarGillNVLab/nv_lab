@@ -126,11 +126,11 @@ classdef ViewDoubleAom < ViewVBox & EventListener
             lPart = obj.laserPart;
             mValues = lPart.values;
             
-            aomOneValue = mValues(1);
+            aomOneValue = round(mValues(1), ViewLaserPart.SIGNIFICANT_DIGITS);
             obj.edtPowerPercentage1.String = strcat(num2str(aomOneValue), NiDaq.UNITS);
             obj.sliderPower1.Value = aomOneValue;
             
-            aomTwoValue = mValues(2);
+            aomTwoValue = round(mValues(2), ViewLaserPart.SIGNIFICANT_DIGITS);
             obj.edtPowerPercentage2.String = strcat(num2str(aomTwoValue), NiDaq.UNITS);
             obj.sliderPower2.Value = aomTwoValue;
 

@@ -117,7 +117,7 @@ classdef (Abstract) SerialControlled < handle
         % One command to rule them all
         function string = query(obj, command, regex)
             % Sends command and empties output before next command --
-            % should be used even if output is irrelevant
+            % should be used even if output is irrelevant.
             % We can filter out only wanted information, using regular
             % expressions (RegEx, for short), the output will return the
             % tokens specified in the regex.
@@ -125,7 +125,7 @@ classdef (Abstract) SerialControlled < handle
             string = obj.readAll;
             if exist('regex', 'var') && ~isempty(string)
                 string = regexp(string, regex, 'tokens', 'once');    % returns cell of strings
-                if ~isempty(string) %cell2mat can't handle a 0x0 cell array
+                if ~isempty(string) % cell2mat can't handle a 0x0 cell array
                     string = cell2mat(string);
                 else
                     string = '';

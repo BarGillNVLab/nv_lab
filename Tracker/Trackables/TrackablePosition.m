@@ -18,13 +18,11 @@ classdef TrackablePosition < Trackable % & StageScanner
     
      properties (SetAccess = private)
         %properties to use in the Newton-Raphson method. 
-        %written by Lynn. temp.
         
-        initialValue %holds the value with which the scanner starts
-        sizeOfDifference
-        currentValue
-        currentFirstDerivative
-        currentSecondDerivative
+        sizeOfDifference %Holds the size of the movement we make in the stage in order to calculate numerical derivative
+        currentValue %Holds the position of the stage in each step of the Newton Raphson Algorithm
+        currentFirstDerivative %Holds the value of the first derivative in each step of the Newton Raphson Algorithm
+        currentSecondDerivative %Holds the value of the second derivative in each step of the Newton Raphson Algorithm
         
     end
     
@@ -47,6 +45,7 @@ classdef TrackablePosition < Trackable % & StageScanner
         % Default properties
         NUM_MAX_ITERATIONS = 120;   % After that many steps, convergence is improbable
         PIXEL_TIME = 1 ;  % in seconds
+        NUM_MAX_ITERATIONS_NEWTON_RAPHSON = 120; % written by lynn. After that many steps, convergence is improbable
         
         % vector constants, for [X Y Z]
         INITIAL_STEP_VECTOR = [0.05 0.05 0.1];    %[0.1 0.1 0.05];
@@ -58,7 +57,8 @@ classdef TrackablePosition < Trackable % & StageScanner
         
         DEFAULT_CONTINUOUS_TRACKING = false;
         
-        SIZE_OF_DIFFERENCE = 0.01; % dx to use in the newthon-raphson method. temp. written by lynn.
+        SIZE_OF_DIFFERENCE = 1e-3; % dx to use in the newthon-raphson method. temp. written by lynn.
+        ALMOST_ZERO = 1e-10;
     end
     
     methods
@@ -93,6 +93,9 @@ classdef TrackablePosition < Trackable % & StageScanner
             
             %written by lynn
             obj.sizeOfDifference = obj.SIZE_OF_DIFFERENCE;
+            obj.currentValue = NaN*ones(1,length(ClassStage.SCAN_AXES));
+            obj.currentFirstDerivative = ones(1,length(ClassStage.SCAN_AXES));
+            obj.currentSecondDerivative = NaN*ones(1,length(ClassStage.SCAN_AXES));
         end
     end
     
@@ -141,7 +144,7 @@ classdef TrackablePosition < Trackable % & StageScanner
             % Execution of at least one iteration is acheived by using
             % {while(true) {statements} if(condition) {break}}
             while true
-                obj.HovavAlgorithm;
+                obj.NewtonRaphsonAlgorithm;
                 obj.recordCurrentState;
                 if ~obj.isRunningContinuously; break; end
                 obj.sendEventTrackableExpEnded;
@@ -367,6 +370,11 @@ classdef TrackablePosition < Trackable % & StageScanner
             obj.mSignal = [];
             obj.mScanParams = StageScanParams;
             obj.stepSize = obj.initialStepSize;
+            
+            obj.currentValue = NaN*ones(1,length(ClassStage.SCAN_AXES));
+            obj.currentFirstDerivative = ones(1,length(ClassStage.SCAN_AXES));
+            obj.currentSecondDerivative = NaN*ones(1,length(ClassStage.SCAN_AXES));
+            
         end
         
         function tf = isDivergent(obj)
@@ -375,94 +383,78 @@ classdef TrackablePosition < Trackable % & StageScanner
             tf = (obj.stepNum >= obj.NUM_MAX_ITERATIONS);
         end
         
-        %written by lynn
-        %a beta function that runs the search algorithem of newton raphson
-        function newtonRaphsonAlgorithm(obj)
+        % a beta function that runs the search algorithem of newton raphson
+        function NewtonRaphsonAlgorithm(obj)
             
             stage = getObjByName(obj.mStageName);
             spcm = getObjByName(Spcm.NAME);
-            phAxes = stage.getAxis(stage.availableAxes); %not sure why we need this
+            phAxes = stage.getAxis(stage.availableAxes);
+            len = length(phAxes);
             scanner = StageScanner.init;
             
-%             % Initialize scan parameters for search
-%             sp = obj.mScanParams;
-%             sp.fixedPos = stage.Pos(phAxes);
-%             sp.pixelTime = obj.pixelTime;
-%             
-%             tracker = getObjByName(Tracker.NAME);
-%             thresh = tracker.kcpsThreshholdFraction;
-%             
-%             while ~obj.stopFlag && any(obj.stepSize > obj.MINIMUM_STEP_VECTOR(phAxes)) && ~obj.isDivergent
-%                 if obj.stepSize(obj.currAxis) > obj.MINIMUM_STEP_VECTOR(obj.currAxis)
-%                     obj.stepNum = obj.stepNum + 1;
-%                     pos = sp.fixedPos(obj.currAxis);
-%                     step = obj.stepSize(obj.currAxis);
-%                     
-%                     % scan to find forward and backward 'derivative'
-%                     % backward
-%                     sp.fixedPos(obj.currAxis) = pos - step;
-%                     signals(1) = scanner.scanPoint(stage, spcm, sp);
-%                     % current
-%                     sp.fixedPos(obj.currAxis) = pos;
-%                     signals(2) = scanner.scanPoint(stage, spcm, sp);
-%                     % forward
-%                     sp.fixedPos(obj.currAxis) = pos + step;
-%                     signals(3) = scanner.scanPoint(stage, spcm, sp);
-%                     
-%                     shouldMoveBack = Tracker.isDifferenceAboveThreshhold(signals(1), signals(2), thresh);
-%                     shouldMoveFwd = Tracker.isDifferenceAboveThreshhold(signals(3), signals(2), thresh);
-%                     
-%                     shouldContinue = false;
-%                     if shouldMoveBack
-%                         if shouldMoveFwd
-%                             % local minimum; don't move
-%                             disp('Conflict.... make longer scans?')
-%                         else
-%                             % should go back and look for maximum:
-%                             % prepare for next step
-%                             newStep = -step;
-%                             pos = pos + newStep;
-%                             newSignal = signals(1);   % value @ best position yet
-%                             shouldContinue = true;
-%                         end
-%                         
-%                     else
-%                         if shouldMoveFwd
-%                             % should go forward and look for maximum:
-%                             % prepare for next step
-%                             newStep = step;
-%                             pos = pos + newStep;
-%                             newSignal = signals(3);   % value @ best position yet
-%                             shouldContinue = true;
-%                         else
-%                             % local maximum or plateau; don't move
-%                         end
-%                     end
-%                     
-%                     while shouldContinue
-%                         if obj.isDivergent || obj.stopFlag; return; end
-%                         % we are still iterating; save current position before moving on
-%                         obj.mSignal = newSignal;    % Save value @ best position yet
-%                         obj.recordCurrentState;
-%                         
-%                         obj.stepNum = obj.stepNum + 1;
-%                         % New pos = (pos + step), if you should move forward;
-%                         %           (pos - step), if you should move backwards
-%                         pos = pos + newStep;
-%                         sp.fixedPos(obj.currAxis) = pos;
-%                         sp.isFixed(obj.currAxis) = true;
-%                         newSignal = scanner.scanPoint(stage, spcm, sp);
-%                         
-%                         shouldContinue = Tracker.isDifferenceAboveThreshhold(newSignal, obj.mSignal, thresh);
-%                     end
-%                     obj.stepSize(obj.currAxis) = step/2;
-%                 end
-%                 sp.isFixed(obj.currAxis) = true;        % We are done with this axis, for now
-%                 obj.currAxis = mod(obj.currAxis, len) + 1; % Cycle through 1:len
-%             end
+            % Initialize scan parameters for search
+            sp = obj.mScanParams;
+            sp.fixedPos = stage.Pos(phAxes);
+            sp.pixelTime = obj.pixelTime;
+            obj.currentValue = sp.fixedPos;   
+            
+            while obj.currAxis <= len
+                while ~obj.stopFlag && ~obj.failToConverge && obj.currentFirstDerivative(obj.currAxis) > obj.ALMOST_ZERO
+
+                    obj.stepNum = obj.stepNum + 1;
+                    pos = obj.currentValue(obj.currAxis);
+
+                    sp.fixedPos(obj.currAxis) = pos + obj.SIZE_OF_DIFFERENCE;
+    %                     firstScanResult = scanner.scanPoint(stage, spcm, sp);
+                    firstScanResult = scanner.dummyScanGaussianPoint(sp.fixedPos);
+
+                    sp.fixedPos(obj.currAxis) = pos;
+    %                     currentScanResult = scanner.scanPoint(stage, spcm, sp);
+                    currentScanResult = scanner.dummyScanGaussianPoint(sp.fixedPos);
+
+                    sp.fixedPos(obj.currAxis) = pos - obj.SIZE_OF_DIFFERENCE;
+    %                     secondScanResult = scanner.scanPoint(stage, spcm, sp);
+                    secondScanResult = scanner.dummyScanGaussianPoint(sp.fixedPos);
+
+                    obj.currentFirstDerivative(obj.currAxis) = obj.calculateFirstDerivative(firstScanResult,secondScanResult);
+
+                    obj.currentSecondDerivative(obj.currAxis) = obj.calculateSecondDerivative(firstScanResult,secondScanResult,currentScanResult);
+
+                    if obj.currentSecondDerivative(obj.currAxis) ~= 0
+                        obj.currentValue(obj.currAxis) = obj.currentValue(obj.currAxis) - (obj.currentFirstDerivative(obj.currAxis)/obj.currentSecondDerivative(obj.currAxis));
+                    end
+                end
+                sp.isFixed(obj.currAxis) = true;        % We are done with this axis, for now
+                obj.currAxis = obj.currAxis + 1;
+                obj.stepNum = 0;
+            end
         end
         
+        % a function that holds a boolean value represents whether the
+        % newthon-raphson algorithm failed to converge.
+        % for now based on number of steps. may have changes.
+        function ftc = failToConverge(obj)
+            ftc = (obj.stepNum >= obj.NUM_MAX_ITERATIONS_NEWTON_RAPHSON) || (obj.currentSecondDerivative(obj.currAxis) == 0);
+        end
     end
     
+    methods (Static)
+        % a function that calculates the first derivative for each step in
+        % the newton raphson algorithm.
+        % param1 - firstScanResult - The result of the scan at the current point plus dx
+        % param2 - secondScanResult - The result of the scan at the current point minus dx
+        function firstDerivative = calculateFirstDerivative(firstScanResult, secondScanResult)
+            firstDerivative = (firstScanResult - secondScanResult) / (2*TrackablePosition.SIZE_OF_DIFFERENCE);
+        end
+        
+        % a function that calculates the second derivative for each step in
+        % the newton raphson algorithm.
+        % param1 - firstScanResult - The result of the scan at the current point plus dx
+        % param2 - secondScanResult - The result of the scan at the current point minus dx
+        % param3 - currentScanResult - The result of the scan at the current point
+        function secondDerivative = calculateSecondDerivative(firstScanResult, secondScanResult, currentScanResult)
+            secondDerivative = (firstScanResult + secondScanResult - 2*currentScanResult)/ (TrackablePosition.SIZE_OF_DIFFERENCE^2);
+        end
+    end
 end
 

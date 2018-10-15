@@ -537,16 +537,20 @@ classdef StageScanner < EventSender & EventListener & Savable
             obj.autosaveAfterScan();
         end
         
-        function value = dummyScanGaussian(obj,scanParams)
-            pos = scanParams.fixedPos;
+        function value = dummyScanGaussianPoint(obj, pos)
             stage = getObjByName(obj.mStageName);
             phAxes = stage.availableAxes;
             stage.move(phAxes, pos);
             
-            X = scanParams.getScanAxisVector(1);
-            Y = scanParams.getScanAxisVector(2);
-            Z = scanParams.getScanAxisVector(3);
-            f = @(x,y,z) 100*exp(-((z+5).^2+x.^2+(y-7).^2)/100);   % some test function
+            x0 = 1;
+            y0 = 7;
+            z0 = 5;
+            
+            X = pos(1);
+            Y = pos(2);
+            Z = pos(3);
+            
+            f = @(x,y,z) 100*exp(-((z-z0).^2+(x-x0).^2+(y-y0).^2)/100);   % some test function
             value = f(X,Y,Z);
         end
         

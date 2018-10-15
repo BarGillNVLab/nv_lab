@@ -113,8 +113,9 @@ classdef ViewLoad < ViewVBox & EventListener
         function handleButtonLoad(obj)
             saveLoad = SaveLoad.getInstance(obj.category);
             loadingFolder = saveLoad.mLoadingFolder;
-            [fileName,folderName,~] = uigetfile('*.mat', 'Choose file to load...', loadingFolder);
+            [folderName,fileName] = GuiControllerLoadImage(loadingFolder);
             
+            %viewImg(obj.parent, controller, loadingFolder)
             if ~isequal(fileName,0)  % user has not canceled
                 saveLoad = SaveLoad.getInstance(obj.category);
                 saveLoad.setLoadingFolder(folderName);
@@ -123,6 +124,9 @@ classdef ViewLoad < ViewVBox & EventListener
             end
         end
         
+      
+        
+     
         function handleButtonDelete(obj)
             saveLoad = SaveLoad.getInstance(obj.category);
             filename = saveLoad.mLoadedFileName;

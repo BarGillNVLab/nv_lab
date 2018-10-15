@@ -25,10 +25,7 @@ classdef ViewToy < ViewVBox & BaseObject
             
             obj@ViewVBox(parent, controller,padding,specaing);
             
-            hboxButtons = uix.VBox('Parent', obj.component, ...
-                'Spacing', 3);
-            
-            vboxTitle = uix.HBox('Parent', hboxButtons);
+            vboxTitle = uix.HBox('Parent', obj.component);
             uix.Empty('Parent', vboxTitle);
             uicontrol(obj.PROP_TEXT_NO_BG{:}, 'Parent', vboxTitle, ...
                 'String', 'ONE    CHANCE',...
@@ -39,7 +36,7 @@ classdef ViewToy < ViewVBox & BaseObject
             
             
             
-            vboxSecound = uix.HBox('Parent', hboxButtons);
+            vboxSecound = uix.HBox('Parent', obj.component);
             uix.Empty('Parent', vboxSecound);
             obj.input1_editText = uicontrol(obj.PROP_EDIT{:},...
                 'Parent', vboxSecound,...
@@ -62,7 +59,7 @@ classdef ViewToy < ViewVBox & BaseObject
             vboxSecound.Widths=([80,120,25,80,120,10,80,80]);
             
             
-            vboxThird = uix.HBox('Parent', hboxButtons);
+            vboxThird = uix.HBox('Parent', obj.component);
             uix.Empty('Parent', vboxThird);
             uicontrol(obj.PROP_BUTTON{:}, 'Parent', vboxThird, ...
                 'String', 'total', ...
@@ -73,7 +70,7 @@ classdef ViewToy < ViewVBox & BaseObject
             hboxButtons.Heights = [100,100,100];
             
             obj.height = 321;
-            obj.width = 508;
+            obj.width = 600;
             
         end
         
@@ -93,7 +90,7 @@ classdef ViewToy < ViewVBox & BaseObject
             edtText=obj.input1_editText;
             if ~ValidationHelper.isStringValueANumber(edtText.String)
                 edtText.String = '';
-                obj.sendError('Only numbers can be accepted! Reverting.');
+                EventStation.anonymousError('Only numbers can be accepted! Reverting.');
         
             end
         end
@@ -102,21 +99,17 @@ classdef ViewToy < ViewVBox & BaseObject
             edtText2=obj.input2_editText;
             if ~ValidationHelper.isStringValueANumber(edtText2.String)
                 edtText2.String = '';
-                obj.sendError('Only numbers can be accepted! Reverting.');
+                EventStation.anonymousError('Only numbers can be accepted! Reverting.');
             
             end
         end
     end
     
-    % methods (Access = private)
-    %   function objO = ViewToy(objName)
-    %      objO@BaseObject(objName.NAME);
-    % end
-    %end
+  
     
     methods (Static)
-        function init()
-            aToy = ViewToy(ViewToy.NAME);
+        function init(parent, controller)
+            aToy = ViewToy(parent,controller,3,3);
             addBaseObject(aToy);
         end
     end

@@ -1,31 +1,31 @@
-classdef GuiControllerTryViews < GuiController
-    %GUICONTROLLERTRYNEWVIEWS Gui Controller for testing new views
-    %   
+classdef GuiControllerLoadImage < GuiController
+       
     
     properties
+        folder
+        fileName
     end
        
     methods
-        function obj = GuiControllerTryViews()
+        function obj = GuiControllerLoadImage(imgFolder)
             Setup.init;
             shouldConfirmOnExit = false;
-            windowName = 'Gui Tester for Views';
+            windowName = 'Gui Load Image';
             openOnlyOne = true;  
-            % even that many instances of this GUI can be opened (for
-            % multiple stages),  every stage can open just a single
-            % instance of a GuiControllerTiltCalculator! 
-            % this means that every stage will have its own unique GUI for
-            % tilt-calculating with its own numbers stored inside
+           
             
             obj = obj@GuiController(windowName, shouldConfirmOnExit, openOnlyOne);
+            obj.folder=imgFolder;
+            ob=viewImg(windowName,controller,obj.folder);
+            obj.fileName=ob.files;
         end
         
         function view = getMainView(obj, figureWindowParent)
             % this function should get the main View of this GUI.
             % can call any view constructor with the params:
-            % parent=figureWindowParent, controller=obj
-            ViewToy.init(figureWindowParent, obj);
-            view = getObjByName(ViewToy.NAME);
+            %
+            ViewImg.init(figureWindowParent, obj);
+            view = getObjByName( figureWindowParent, objViewImg.NAME);
         end
         
         function onAboutToStart(obj)

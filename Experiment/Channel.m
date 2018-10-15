@@ -1,14 +1,18 @@
-classdef Channel < handle
+classdef Channel < handle &  matlab.mixin.Copyable
     %CHANNEL Represents one channel for channel hubs (like Pulse Generators or NiDaq).
     % Data type with all properties common to channels, which also provides validation of values.
     % Includes 'value' property. Maybe will not be used.
     
+     properties
+        points = [];
+        points1 = [];
+     end
     
     properties (Constant, Hidden)
         TYPE_DIGITAL = 'digital'
         TYPE_ANALOG = 'analog'
     end
-    
+ 
     properties (Access = private)
         valuePrivate
     end
@@ -78,6 +82,28 @@ classdef Channel < handle
         function obj = Analog(name, address, minValue, maxValue)
             obj = Channel(Channel.TYPE_ANALOG, name, address, minValue, maxValue);
         end
+    end
+    methods
+        function dSeq=addDelay(obj)
+        
+        pg = getObjByName(PulseGenerator.NAME);
+        seq1 = pg.sequence;
+        seq = seq1.copy
+            for i=1:length(channels)
+                for j=1:seq.pulses
+                    if pulses.onChannel
+                        t = seq.edgeTimes(j:j+1);
+                        obj.points = [obj.points; t];
+                        ch = channels(i);
+                        obj.points1=obj.points + ch.delay;
+                        sequence()
+                    end
+                    
+                    
+                end
+            end
+        end
+        
     end
     
 end

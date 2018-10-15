@@ -15,6 +15,7 @@ classdef ImageScanResult < Savable & EventSender & EventListener
         mAxesString  % string
         mLabelBot   % string
         mLabelLeft  % string
+        
     end
     
     properties (Access = private) % For plotting over Image
@@ -30,12 +31,14 @@ classdef ImageScanResult < Savable & EventSender & EventListener
         colormapLimits = [0 1]; % 2x1 double
         colormapAuto = true;    % logical
         cursorType              % integer. Index for value in CURSOR_OPTIONS
+       
     end
+    
     
     properties (Constant)
         NAME = 'imageScanResult'
         IMAGE_FILE_SUFFIX = 'png'
-        
+        IMAGE_FILE_SUFFIX1='fig'
         % Events
         EVENT_IMAGE_UPDATED = 'imageUpdated';
 
@@ -556,9 +559,16 @@ classdef ImageScanResult < Savable & EventSender & EventListener
             filename = PathHelper.removeDotSuffix(filename);
             filename = [filename '.' ImageScanResult.IMAGE_FILE_SUFFIX];
             fullpath = PathHelper.joinToFullPath(folder, filename);
-            
+           
             % Save png image
             saveas(figureInvis, fullpath);
+             
+            
+            filename1=[filename '.' ImageScanResult.IMAGE_FILE_SUFFIX1];
+            fullpath1 = PathHelper.joinToFullPath(folder, filename1);
+            % Save fig image
+            savefig(fullpath1);
+            
             
             % close the figure
             close(figureInvis);

@@ -196,6 +196,8 @@ classdef TrackablePosition < Trackable % & StageScanner
                     obj.mStageName = newStageName;
                     obj.sendEvent(struct(obj.EVENT_STAGE_CHANGED, true));
                 end
+                
+                
             end
         end
         

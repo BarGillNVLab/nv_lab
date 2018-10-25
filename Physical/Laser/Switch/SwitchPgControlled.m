@@ -38,7 +38,7 @@ classdef SwitchPgControlled < EventSender & EventListener
                 if newValue
                     PG.on(obj.channel); %#ok<MCSUP>
                 else
-                    PG.off;
+                    PG.off(obj.channel); %#ok<MCSUP>
                 end
                 obj.sendEvent(struct('isEnabled', newValue));
                 % ^ let everyone know about the success! :)

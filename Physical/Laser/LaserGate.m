@@ -32,7 +32,7 @@ classdef LaserGate < Savable % Needs to be EventSender
         SAVE_PROPERTY_AOM_VALUE = 'aom_curValue'
         SAVE_PROPERTY_AOM_ENABLED = 'aom_isEnabled'
         SAVE_PROPERTY_AOM_DOUBLE_ACTIVE = 'aom_activeChannel'
-        SAVE_PROPERTY_AOM_DOUBLE_VALUES = 'mAom.values'
+        SAVE_PROPERTY_AOM_DOUBLE_VALUES = 'aom_values'
         SAVE_PROPERTY_SOURCE_VALUE = 'source_curValue'
         SAVE_PROPERTY_SOURCE_ENABLED = 'source_isEnabled'
     end
@@ -136,7 +136,7 @@ classdef LaserGate < Savable % Needs to be EventSender
                 mAom = obj.aom;
                 if isa(mAom, 'AomDoubleNiDaqControlled')
                     outStruct.(obj.SAVE_PROPERTY_AOM_DOUBLE_ACTIVE) = mAom.activeChannel;
-                    outStruct.SAVE_PROPERTY_AOM_DOUBLE_VALUES = mAom.values;
+                    outStruct.(obj.SAVE_PROPERTY_AOM_DOUBLE_VALUES) = mAom.values;
                 else
                     outStruct.(obj.SAVE_PROPERTY_AOM_ENABLED) = mAom.isEnabled;
                     outStruct.(obj.SAVE_PROPERTY_AOM_VALUE) = mAom.value;
@@ -221,23 +221,23 @@ classdef LaserGate < Savable % Needs to be EventSender
             end
             if obj.isAomAvail
                 if isa(obj.aom, 'AomDoubleNiDaqControlled')
-                % Get everything we need
-                activeChannel = savedStruct.(obj.SAVE_PROPERTY_AOM_DOUBLE_ACTIVE);
-                inactiveChannel = 3 - activeChannel;    % (1 -> 2) & (2 -> 1)
-                mValues = savedStruct.(obj.SAVE_PROPERTY_AOM_DOUBLE_VALUES);
-                
-                % Create string for each AOM
-                activeChannelVal = StringHelper.formatNumber(mValues(activeChannel));
-                activeChannelString = sprintf('active AOM: %d, value: %s%s', activeChannel, activeChannelVal, NiDaq.UNITS);
-                
-                inactiveChannelVal = StringHelper.formatNumber(mValues(inactiveChannel));
-                inactiveChannelString = sprintf('inactive AOM: %d, value: %s%s', inactiveChannel, inactiveChannelVal, NiDaq.UNITS);
-                
-                % Append at the end of the original string
-                string = sprintf('%s\n%s\n%s', ...
-                    string, ...
-                    StringHelper.indent(activeChannelString, indentation), ...
-                    StringHelper.indent(inactiveChannelString, indentation));
+                    % Get everything we need
+                    activeChannel = savedStruct.(obj.SAVE_PROPERTY_AOM_DOUBLE_ACTIVE);
+                    inactiveChannel = 3 - activeChannel;    % (1 -> 2) & (2 -> 1)
+                    mValues = savedStruct.(obj.SAVE_PROPERTY_AOM_DOUBLE_VALUES);
+                    
+                    % Create string for each AOM
+                    activeChannelVal = StringHelper.formatNumber(mValues(activeChannel));
+                    activeChannelString = sprintf('active AOM: %d, value: %s%s', activeChannel, activeChannelVal, NiDaq.UNITS);
+                    
+                    inactiveChannelVal = StringHelper.formatNumber(mValues(inactiveChannel));
+                    inactiveChannelString = sprintf('inactive AOM: %d, value: %s%s', inactiveChannel, inactiveChannelVal, NiDaq.UNITS);
+                    
+                    % Append at the end of the original string
+                    string = sprintf('%s\n%s\n%s', ...
+                        string, ...
+                        StringHelper.indent(activeChannelString, indentation), ...
+                        StringHelper.indent(inactiveChannelString, indentation));
                 elseif obj.aom.canSetValue
                     value = savedStruct.(obj.SAVE_PROPERTY_AOM_VALUE);
                     valString = StringHelper.formatNumber(value, 2);

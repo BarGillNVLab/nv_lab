@@ -1,4 +1,4 @@
-classdef (Abstract) PulseGenerator < EventSender & Savable
+classdef (Abstract) PulseGenerator < EventSender
     %PULSEGENERATOR Class for representing a pulse generator (PulseBlaster or PulseStreamer)
     % An abstract class, which knows to handle objects of class
     %   Sequence
@@ -11,6 +11,13 @@ classdef (Abstract) PulseGenerator < EventSender & Savable
                                     % of the devices have the same period.
                                     % This value tells us what (if at all)
                                     % is the period of the system.
+    end
+    
+    properties (Access = protected)
+        onChannelsBinary = 0;       % Stores in binary the state of each of
+                                    % the channels e.g. 11 (= 1 + 2 + 8)
+                                    % means that only channels 0, 1 and 3
+                                    % are on.
     end
     
     properties (SetAccess = private)
@@ -39,7 +46,6 @@ classdef (Abstract) PulseGenerator < EventSender & Savable
             % Default constructor.
             name = PulseGenerator.NAME;
             obj@EventSender(name);
-            obj@Savable(name);
         end
         
         function initSequence(obj)
@@ -249,59 +255,6 @@ classdef (Abstract) PulseGenerator < EventSender & Savable
 
     end
     
-    %% overriding from Savable
-    methods (Access = protected)
-        function outStruct = saveStateAsStruct(obj, category, type)
-            % Saves the state as struct. if you want to save stuff, make
-            % (outStruct = struct;) and put stuff inside. If you dont
-            % want to save, make (outStruct = NaN;)
-            %
-            % category - string. Some objects saves themself only with
-            %                    specific category (image/experiments/etc.)
-            % type - string.     Whether the objects saves at the beginning
-            %                    of the run (parameter) or at its end (result)
-            
-            if strcmp(category, Savable.CATEGORY_EXPERIMENTS) ...
-                    && strcmp(type, Savable.TYPE_PARAMS) ...
-                    && ~Experiment.current(SpcmCounter.EXP_NAME)        % which doesn't use the PG
-                outStruct = struct('sequence', obj.sequence);
-            else
-                outStruct = NaN;
-            end
-        end
-        
-        function loadStateFromStruct(obj, savedStruct, category, subCategory) %#ok<INUSD>
-            % loads the state from a struct.
-            % to support older versoins, always check for a value in the
-            % struct before using it. view example in the first line.
-            % category - a string, some savable objects will load stuff
-            %            only for the 'image_lasers' category and not for
-            %            'image_stages' category, for example
-            % subCategory - string. could be empty string
-            
-            if isfield(savedStruct, 'sequence')
-                obj.sequence = savedStruct.sequence;
-            end
-        end
-        
-        function string = returnReadableString(obj, savedStruct)
-            % return a readable string to be shown. if this object
-            % doesn't need a readable string, make (string = NaN;) or
-            % (string = '';)
-            
-            seq = savedStruct.sequence;
-            
-            if ~isempty(seq)
-                len = length(seq.pulses);
-                string = sprintf(['PulseGenerator -- %s:\n', ...
-                    '%d pulses in sequence, %d%s in total.'], ...
-                    obj.name, len, seq.duration, StringHelper.MICROSEC);
-            else
-                string = NaN;
-            end
-        end
-    end
-    
     %%
     methods (Static)
         function obj = create(struct)
@@ -310,9 +263,9 @@ classdef (Abstract) PulseGenerator < EventSender & Savable
                 case 'dummy'
                     obj = PulseGeneratorDummyClass.GetInstance(struct);
                 case PulseGenerator.NAME_PULSE_BLASTER
-                    obj = PulseBlasterClass.GetInstance(struct);
+                    obj = PulseBlasterNewClass.GetInstance(struct);
                 case PulseGenerator.NAME_PULSE_STREAMER
-                    obj = PulseStreamerClass.getInstance(struct);
+                    obj = PulseStreamerNewClass.getInstance(struct);
                 otherwise
                     EventStation.anonymousWarning('Could not create Pulse Generator of type %s!', type)
             end

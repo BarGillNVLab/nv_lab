@@ -1,4 +1,4 @@
-classdef (Sealed) PulseBlasterClass < PulseGenerator
+classdef (Sealed) PulseBlasterNewClass < PulseGenerator
     
     properties (Constant, Hidden)
         MAX_REPEATS = 1e6;       	% int. Maximum value for obj.repeats
@@ -15,7 +15,7 @@ classdef (Sealed) PulseBlasterClass < PulseGenerator
     end
     
     methods (Access = private)
-        function obj = PulseBlasterClass()
+        function obj = PulseBlasterNewClass()
             obj@PulseGenerator;
             % Private default constructor.
         end
@@ -65,47 +65,54 @@ classdef (Sealed) PulseBlasterClass < PulseGenerator
         function on(obj, channelNames)
             % Turns on channels named (channelNames)
             % Returns error if not all were turned on
-            if (~obj.PBisReady())
-                obj.PBesrInit(); % initialize PBesr
-                obj.PBesrSetClock();
-            end
+            obj.getReady;
             
             if isempty(channelNames)
-                channels = 0;
+                inputChannels = 0;
+                obj.sendWarning('Warning! No channel was turned on or off!');
             else
-                channels = obj.channelName2Address(channelNames); % converts from a cell of names to channel numbers, if needed
+                inputChannels = obj.channelName2Address(channelNames); % converts from a cell of names to channel numbers, if needed
                 minChan = min(obj.AVAILABLE_ADDRESSES); % Probably 0, but just in case
                 maxChan = max(obj.AVAILABLE_ADDRESSES);
-                if sum(rem(channels,1)) || min(channels) < minChan || max(channels)> maxChan
+                if sum(rem(inputChannels,1)) || min(inputChannels) < minChan || max(inputChannels)> maxChan
                     error('Input must be valid channels! Ignoring.')
                 end
-                channels = sum(2.^channels);
+                inputChannels = sum(2.^inputChannels);
+            end
+            % Channles should be on either if they were on until now, or if we asked to turn them on now.
+            channels = bitor(obj.onChannelsBinary, inputChannels);
+            
+            obj.chooseOnCahnnels(channels)
+        end
+        
+        function off(obj, channelNames)
+            obj.getReady;
+            
+            if isempty(channelNames)
+                % We want everything off
+                channels = 0;
+            else
+                inputChannels = obj.channelName2Address(channelNames); % converts from a cell of names to channel numbers, if needed
+                minChan = min(obj.AVAILABLE_ADDRESSES); % Probably 0, but just in case
+                maxChan = max(obj.AVAILABLE_ADDRESSES);
+                if sum(rem(inputChannels,1)) || min(inputChannels) < minChan || max(inputChannels)> maxChan
+                    error('Input must be valid channels! Ignoring.')
+                end
+                % We want on only channels which were on before AND NOT
+                % channels which are turned off.
+                channels = bitget(obj.onChannelsBinary,1:8); 
+                channels(inputChannels+1) = false;  % Channels are internally labeled 0:7, but the matlab vector is 1:8
+                channels = binaryVectorToDecimal(channels, 'LSBFirst');
             end
             
-            obj.PBesrStartProgramming(); % enter the programming mode
-            
-            label = obj.PBesrInstruction(channels, 'ON', 'CONTINUE', 0, 100);
-            obj.PBesrInstruction(channels, 'ON', 'BRANCH', label, 100);
-            
-            obj.PBesrStopProgramming(); % exit the programming mode
-            
-            obj.PBesrStop();
-            obj.PBesrStart();
-        end
-        function off(obj)
-            obj.on([]);
+            obj.chooseOnCahnnels(channels);
         end
         
         function run(obj)
             uploadSequence(obj)
             % function RunPBSequence
-            if (~obj.PBisReady())
-                obj.PBesrInit(); %initialize PBesr
-                obj.PBesrSetClock();
-            end
-            
+            obj.getReady;
             obj.PBesrStop();
-            
             obj.PBesrStart(); %start pulsing. it will start pulse sequence which were progammed/loaded to PBESR card before.
         end
         
@@ -381,6 +388,37 @@ classdef (Sealed) PulseBlasterClass < PulseGenerator
         %                 error('Channel Name (%s) or number (%f) already exist, and not as a pair.',channelName,channelNumber);
         %             end
         %         end
+    end
+    
+    methods (Access = private)
+        % Internal workings
+                   
+        function chooseOnCahnnels(obj, channels)
+            % Turn (or keep) on only the channels referred to by channels.
+            % 
+            % input:
+            % - channels:   binary representation of the channels which are
+            %               on. For example, 11 (= 1 + 2 + 8) means that
+            %               only channels 0, 1 and 3 are on.
+            
+            obj.PBesrStartProgramming(); % enter the programming mode
+                label = obj.PBesrInstruction(channels, 'ON', 'CONTINUE', 0, 100);
+                obj.PBesrInstruction(channels, 'ON', 'BRANCH', label, 100);
+            obj.PBesrStopProgramming(); % exit the programming mode
+            
+            obj.PBesrStop();
+            obj.PBesrStart();
+            
+            % Store the new state internally
+            obj.onChannelsBinary = channels;
+        end
+        
+        function getReady(obj)
+            if (~obj.PBisReady())
+                obj.PBesrInit(); % initialize PBesr
+                obj.PBesrSetClock();
+            end
+        end
     end
     
     methods %!%(Access = private)
@@ -714,12 +752,12 @@ classdef (Sealed) PulseBlasterClass < PulseGenerator
                 obj = getObjByName(PulseGenerator.NAME_PULSE_BLASTER);
             catch
                 % None exists, so we create a new one
-                missingField = FactoryHelper.usualChecks(struct, PulseBlasterClass.NEEDED_FIELDS);
+                missingField = FactoryHelper.usualChecks(struct, PulseBlasterNewClass.NEEDED_FIELDS);
                 if ~isnan(missingField)
                     error('Error while creating a PulseBlaster object: missing field "%s"!', missingField);
                 end
                 
-                obj = PulseBlasterClass();
+                obj = PulseBlasterNewClass();
                 path = struct.libPathName;
                 Initialize(obj, path)
                 

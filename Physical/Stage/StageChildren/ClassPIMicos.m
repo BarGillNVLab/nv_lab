@@ -195,11 +195,11 @@ classdef ClassPIMicos < ClassStage
                             confirm = questdlg(questionString, 'Unexpected error', retryString, abortString, abortString);
                             switch confirm
                                 case retryString
-                                    obj.sendWarning(error.identifier, '%s', error.message);
+                                    obj.sendWarning(error.message);
                                 case abortString
-                                    obj.sendError(error);
+                                    obj.sendError(error.message);
                                 otherwise
-                                    obj.sendError(error);
+                                    obj.sendError(error.message);
                             end
                     end
                     if (tries == 5)

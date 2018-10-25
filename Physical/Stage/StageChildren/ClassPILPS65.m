@@ -6,7 +6,7 @@ classdef (Sealed) ClassPILPS65 < ClassPIMicos
     properties (Constant, Access = protected)
         controllerModel = 'E-861';
         validAxes = 'xyz';
-        units = ' um';
+        units = 'um';
     end
     
     properties (Constant, Access = private)  % todo: is this the right place for it?
@@ -46,7 +46,7 @@ classdef (Sealed) ClassPILPS65 < ClassPIMicos
     properties (Constant)
         NAME = 'Stage (fine) - PI LPS65'
         
-        NEEDED_FILEDS = {'niDaqChannel'}
+        NEEDED_FIELDS = {'niDaqChannel'}
         
         STEP_MINIMUM_SIZE = 0.0005  % Check!
         STEP_DEFAULT_SIZE = 0.1     % Check!
@@ -67,7 +67,7 @@ classdef (Sealed) ClassPILPS65 < ClassPIMicos
             
             niDaqChannel = stageStruct.niDaqChannel;
             removeObjIfExists(ClassPILPS65.NAME);
-            obj = ClassPIP562(niDaqChannel);
+            obj = ClassPILPS65(niDaqChannel);
         end
     end
     
@@ -135,7 +135,7 @@ classdef (Sealed) ClassPILPS65 < ClassPIMicos
                 
                 if numberOfConnectedDevices ~= length(obj.validAxes)
                     calllib(obj.libAlias, 'PI_CloseDaisyChain', obj.ID);
-                    obj.sendError('There should be %d devices, one for each axis!', length(obj.validAxes))
+                    obj.sendError(sprintf('There should be %d devices, one for each axis!', length(obj.validAxes)))
                 end
             end
             
@@ -172,7 +172,7 @@ classdef (Sealed) ClassPILPS65 < ClassPIMicos
             for i=1:length(obj.validAxes)
                 [~,~,~,axisUnits] = SendPICommand(obj, 'PI_qSPA', obj.axesID(i), obj.szAxes, hex2dec('7000601'), 0, '', 4);
                 if ~strcmpi(strtrim(axisUnits), obj.units)
-                    obj.sendError('%s axis - Stage units are in%s, should be%s', upper(obj.axesName(i)), axisUnits, obj.units);
+                    obj.sendError(sprintf('%s axis - Stage units are in%s, should be%s', upper(obj.axesName(i)), axisUnits, obj.units));
                 else
                     fprintf('%s axis - Units are in%s for position and%s/s for velocity.\n', upper(obj.axesName(i)), obj.units, obj.units);
                 end

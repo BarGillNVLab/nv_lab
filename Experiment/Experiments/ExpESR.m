@@ -25,9 +25,9 @@ classdef ExpESR < Experiment
                             %       ('pulsed is to be implemented in the future, if needed)
         nChannels           % int. Must be <= the number of FGs in the system
         
-        halfPiTime = 0.025  %in us
-        piTime = 0.05       %in us
-        threeHalvesPiTime = 0.075 %in us
+        halfPiTime          %in us. For pulsed ESR.
+        piTime              %in us. For pulsed ESR.
+        threeHalvesPiTime   %in us. For pulsed ESR.
     end
     
     properties (Access = private)
@@ -47,7 +47,7 @@ classdef ExpESR < Experiment
             obj.frequency = obj.ZERO_FIELD_SPLITTING + (-100 : 1 : 100);     %in MHz
             obj.amplitude = -10;        % dBm
             obj.mode = 'CW';            % Can only be 'CW' for now.
-            obj.nChannels = 1;        % two channels can be added....
+            obj.nChannels = 1;          % two channels can be added....
 
             obj.detectionDuration = 500;
             
@@ -55,7 +55,8 @@ classdef ExpESR < Experiment
             obj.freqMirrored = obj.mirrorFrequency;
             
             obj.mCurrentXAxisParam = ExpParamDoubleVector('Frequency', [], 'Mhz', obj.EXP_NAME);
-            obj.mCurrentYAxisParam = ExpParamDoubleVector('FL', [], 'normalised', obj.EXP_NAME);
+            obj.mCurrentResultParam = ExpParamDoubleVector('FL', [], 'normalised', obj.EXP_NAME);
+            obj.mCurrentResultParam2 = ExpParamDoubleVector('FL', [], 'normalised', obj.EXP_NAME);
         end
     end
     
@@ -303,9 +304,9 @@ classdef ExpESR < Experiment
             
             if obj.currIter == 1
                 % Nothing to calculate the mean over
-                obj.mCurrentYAxisParam.value = S1./S2;
+                obj.mCurrentResultParam.value = S1./S2;
             else
-                obj.mCurrentYAxisParam.value = mean(S1./S2, 2);
+                obj.mCurrentResultParam.value = mean(S1./S2, 2);
             end
             
             if ~isSingleMeasurement
@@ -319,7 +320,7 @@ classdef ExpESR < Experiment
                     YMirror = mean(S3./S4,2);
                 end
                 
-                obj.mCurrentYAxisParam2.value = flip(YMirror);
+                obj.mCurrentResultParam2.value = flip(YMirror);
             end
         end
         

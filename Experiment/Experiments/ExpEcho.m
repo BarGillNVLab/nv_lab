@@ -52,7 +52,8 @@ classdef ExpEcho < Experiment
             obj.laserInitializationDuration = 20;   % laser initialization in pulsed experiments in \mus (??)
             
             obj.mCurrentXAxisParam = ExpParamDoubleVector('Time', [], StringHelper.MICROSEC, obj.EXP_NAME);
-            obj.mCurrentYAxisParam = ExpParamDoubleVector('FL', [], 'normalised', obj.EXP_NAME);
+            obj.mCurrentResultParam = ExpParamDoubleVector('FL', [], 'normalised', obj.EXP_NAME);
+            obj.mCurrentResultParam2 = ExpParamDoubleVector('FL', [], 'normalised', obj.EXP_NAME);
         end
     end
     
@@ -249,21 +250,24 @@ classdef ExpEcho < Experiment
             
             if obj.currIter == 1
                 % Nothing to calculate the mean over
-                obj.mCurrentYAxisParam.value = S1./S2;
+                obj.mCurrentResultParam.value = S1./S2;
             else
-                obj.mCurrentYAxisParam.value = mean(S1./S2, 2);
+                obj.mCurrentResultParam.value = mean(S1./S2, 2);
             end
             
             if obj.doubleMeasurement
                 S3 = squeeze(obj.signal(3, :, 1:obj.currIter));
                 S4 = squeeze(obj.signal(4, :, 1:obj.currIter));
                 
+                
                 if obj.currIter == 1
                     % There is nothing to calculate the mean over
-                    obj.mCurrentYAxisParam2.value = S3./S4;
+                    obj.mCurrentResultParam2.value = S3./S4;
                 else
-                    obj.mCurrentYAxisParam2.value = mean(S3./S4,2);
+                    obj.mCurrentResultParam2.value = mean(S3./S4,2);
                 end
+            else    
+                obj.mCurrentResultParam2.value = [];
             end
         end
         

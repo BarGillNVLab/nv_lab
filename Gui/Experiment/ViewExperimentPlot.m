@@ -1,10 +1,9 @@
 classdef ViewExperimentPlot < ViewVBox & EventListener
-    %VIEWEXPERIMENTPLOT Summary of this class goes here
-    %   Detailed explanation goes here
+    %VIEWEXPERIMENTPLOT
     
     properties (Access = private)
         expName
-        nDim = 1;   % data is 1D 99% of the time. Can be overridden by subclasses
+        nDim = 1;   % data is 1D 99% of the time. Can be overridden
         
         vAxes
         progressbarAverages
@@ -58,7 +57,7 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
         function plot(obj)
             % Check whether we have anything to plot
             exp = obj.getExperiment;
-            data = exp.mCurrentYAxisParam.value;
+            data = exp.mCurrentResultParam.value;
             
             if isempty(obj.vAxes.Children)
                 % Nothing is plotted yet
@@ -71,7 +70,7 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
                     firstAxisVector = exp.mCurrentXAxisParam.value;
                 end
                 bottomLabel = exp.mCurrentXAxisParam.label;
-                leftLabel = exp.mCurrentYAxisParam.label;
+                leftLabel = exp.mCurrentResultParam.label;
                 AxesHelper.fill(obj.vAxes, data, obj.nDim, ...
                     firstAxisVector, [], bottomLabel, leftLabel);
                 
@@ -91,10 +90,10 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
                 AxesHelper.update(obj.vAxes, data, obj.nDim, firstAxisVector)
             end
             
-            if ~isempty(exp.mCurrentYAxisParam2.value)
+            if isstruct(exp.mCurrentResultParam2) && ~isempty(exp.mCurrentResultParam2.value)
                 % If there is more than one Y axis parameter, we want to
                 % plot it above the first one
-                data = exp.mCurrentYAxisParam2.value;
+                data = exp.mCurrentResultParam2.value;
                 AxesHelper.add(obj.vAxes, data, firstAxisVector)
                 
 %                 % We now need a legend

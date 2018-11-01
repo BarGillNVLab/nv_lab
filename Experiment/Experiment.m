@@ -10,13 +10,13 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
                                 % uploaded to hardware
         
         mCurrentXAxisParam      % ExpParameter in charge of axis x (which has name and value)
-        mCurrentYAxisParam		% ExpParameter in charge of axis y (which has name and value)
-
-        mCurrentXAxisParam2     % Extra X parameter - maybe needed, but usually empty.
-        mCurrentYAxisParam2     % Extra Y parameter - maybe needed, but usually empty.
-        
         topParam                % Optional ExpParameter, parallel to the x axis parameter
+        mCurrentYAxisParam		% ExpParameter in charge of axis y - maybe needed, but usually empty.
         rightParam              % Optional ExpParameter, parallel to the y axis parameter
+
+        mCurrentResultParam     % ExpParameter in charge of Experiment result (which has name and value)
+        mCurrentResultParam2    % Extra ExpParameter in charge of Experiment result - usually empty
+        
     end
     
     properties
@@ -83,9 +83,8 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             emptyValue = [];
             emptyUnits = '';
             obj.mCurrentXAxisParam = ExpParamDoubleVector('X axis', emptyValue, emptyUnits, obj.EXP_NAME);
-            obj.mCurrentXAxisParam2 = ExpParamDoubleVector('', emptyValue, emptyUnits, obj.EXP_NAME);
             obj.mCurrentYAxisParam = ExpParamDoubleVector('Y axis', emptyValue, emptyUnits, obj.EXP_NAME);
-            obj.mCurrentYAxisParam2 = ExpParamDoubleVector('', emptyValue, emptyUnits, obj.EXP_NAME);
+            obj.mCurrentResultParam = ExpParamDoubleVector('', emptyValue, emptyUnits, obj.EXP_NAME);
             
             obj.mCategory = Savable.CATEGORY_EXPERIMENTS; % will be overridden in Trackable
             
@@ -129,6 +128,14 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
                     obj.(paramName).expName = obj.EXP_NAME;  % expParam, I am (now) your parent!
                 end
             end
+        end
+        
+        function delete(obj)
+            
+            
+            % We don't want to accidently save over current file
+            sl = SaveLoad.getInstance(Savable.CATEGORY_EXPERIMENTS);
+            sl.clearLocal;
         end
     end
        
@@ -184,6 +191,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             end
             
             obj.pause;
+            sendEventExpPaused(obj);
         end
         
         function pause(obj)
@@ -259,8 +267,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             if ~strcmp(category, obj.mCategory); return; end
             
             
-            % We use @str2func which is superior to @eval, when possible
-            className = str2func(savedStruct.expName); % function handle for the class
+            className = str2func(savedStruct.expName); % function handle for the class. We use @str2func which is superior to @eval, when possible
             exp = className();
                 
             for paramNameCell = exp.getAllExpParameterProperties()
@@ -284,19 +291,15 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
     %% Default saving options for Experiment. Might be overridden by subclasses
     methods
         function outStruct = saveParamsToStruct(obj)
-            outStruct.mCurrentXAxisParam = obj.mCurrentXAxisParam;
-            outStruct.mCurrentXAxisParam2 = obj.mCurrentXAxisParam2;
-            
-            % The following code might be useful in the future
-%                     for paramNameCell = obj.getAllExpParameterProperties()
-%                         paramName = paramNameCell{:};
-%                         outStruct.(paramName) = obj.(paramName);
-%                     end
+            for paramNameCell = obj.getAllExpParameterProperties()
+                paramName = paramNameCell{:};
+                outStruct.(paramName) = obj.(paramName);
+            end
         end
         
         function outStruct = saveResultsToStruct(obj)
-            outStruct.mCurrentYAxisParam = obj.mCurrentYAxisParam;
-            outStruct.mCurrentYAxisParam2 = obj.mCurrentYAxisParam2;
+            outStruct.mCurrentResultParam = obj.mCurrentResultParam;
+            outStruct.mCurrentResultParam2 = obj.mCurrentResultParam2;
         end
     end
     

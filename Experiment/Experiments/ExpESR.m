@@ -55,8 +55,8 @@ classdef ExpESR < Experiment
             obj.freqMirrored = obj.mirrorFrequency;
             
             obj.mCurrentXAxisParam = ExpParamDoubleVector('Frequency', [], 'Mhz', obj.EXP_NAME);
-            obj.mCurrentResultParam = ExpParamDoubleVector('FL', [], 'normalised', obj.EXP_NAME);
-            obj.mCurrentResultParam2 = ExpParamDoubleVector('FL', [], 'normalised', obj.EXP_NAME);
+            obj.signalParam = ExpParamDoubleVector('FL', [], 'normalised', obj.EXP_NAME);
+            obj.signalParam2 = ExpParamDoubleVector('FL', [], 'normalised', obj.EXP_NAME);
         end
     end
     
@@ -304,9 +304,9 @@ classdef ExpESR < Experiment
             
             if obj.currIter == 1
                 % Nothing to calculate the mean over
-                obj.mCurrentResultParam.value = S1./S2;
+                obj.signalParam.value = S1./S2;
             else
-                obj.mCurrentResultParam.value = mean(S1./S2, 2);
+                obj.signalParam.value = mean(S1./S2, 2);
             end
             
             if ~isSingleMeasurement
@@ -320,12 +320,30 @@ classdef ExpESR < Experiment
                     YMirror = mean(S3./S4,2);
                 end
                 
-                obj.mCurrentResultParam2.value = flip(YMirror);
+                obj.signalParam2.value = flip(YMirror);
             end
         end
         
         function wrapUp(obj)
             
+        end
+        
+        function dataParam = normalizedData(obj)
+            persistent dat
+            if isempty(dat)
+                dat = ExpParamDoubleVector('FL', [], 'normalized', obj.EXP_NAME);
+            end
+            signal = obj.signalParam.value;
+            background = obj.signalParam2.value;
+            
+            if isempty(background)
+                dat.value = [];
+                obj.sendError('Cannot normalize data without double measurement!')
+            else
+                dat.value = signal - background;
+            end
+            
+            dataParam = dat;
         end
     end
     

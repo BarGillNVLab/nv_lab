@@ -14,9 +14,8 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
         mCurrentYAxisParam		% ExpParameter in charge of axis y - maybe needed, but usually empty.
         rightParam              % Optional ExpParameter, parallel to the y axis parameter
         
-        mCurrentResultParam     % ExpParameter in charge of Experiment result (which has name and value)
-        mCurrentResultParam2    % Extra ExpParameter in charge of Experiment result - usually empty
-        
+        signalParam             % ExpParameter in charge of Experiment (raw) result (which has name and value)
+        signalParam2            % ditto, for second optional raw result
     end
     
     properties
@@ -84,7 +83,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             emptyUnits = '';
             obj.mCurrentXAxisParam = ExpParamDoubleVector('X axis', emptyValue, emptyUnits, obj.EXP_NAME);
             obj.mCurrentYAxisParam = ExpParamDoubleVector('Y axis', emptyValue, emptyUnits, obj.EXP_NAME);
-            obj.mCurrentResultParam = ExpParamDoubleVector('', emptyValue, emptyUnits, obj.EXP_NAME);
+            obj.signalParam = ExpParamDoubleVector('', emptyValue, emptyUnits, obj.EXP_NAME);
             
             obj.mCategory = Savable.CATEGORY_EXPERIMENTS; % will be overridden in Trackable
             
@@ -217,8 +216,8 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
         
         function clear(obj)
             obj.mCurrentXAxisParam.value = [];
-            obj.mCurrentResultParam.value = [];
-            obj.mCurrentResultParam2.value = [];
+            obj.signalParam.value = [];
+            obj.signalParam.value = [];
             obj.currIter = 0;
         end
     end
@@ -232,6 +231,10 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
         % Perform the main part of the experiment.
         
         wrapUp(obj)
+        
+        normalizedData(obj)
+        % Returns ExpParams of the results from the experiment, after
+        % normalization.
     end
     
     
@@ -319,8 +322,8 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
         end
         
         function outStruct = saveResultsToStruct(obj)
-            outStruct.mCurrentResultParam = obj.mCurrentResultParam;
-            outStruct.mCurrentResultParam2 = obj.mCurrentResultParam2;
+            outStruct.signalParam = obj.signalParam;
+            outStruct.signalParam2 = obj.signalParam2;
         end
     end
     

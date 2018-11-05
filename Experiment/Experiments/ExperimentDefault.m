@@ -19,6 +19,9 @@ classdef ExperimentDefault < Experiment
         
         function wrapUp(obj)
         end
+        
+        function normalizedData(obj)
+        end
     end
     
 end

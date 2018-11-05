@@ -4,10 +4,13 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
     properties (Access = private)
         expName
         nDim = 1;   % data is 1D 99% of the time. Can be overridden
+        isPlotNormalized = false;
         
         vAxes
         progressbarAverages
         btnStartStop
+        radioNormalized
+        radioUnnormalized
     end
     
     methods
@@ -24,10 +27,33 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
                 'NextPlot', 'replacechildren', ...
                 'OuterPosition', [0.1, 0.1, 0.8, 0.8]);
             obj.progressbarAverages = progressbar(fig, 0, 'Starting experiment. Please wait.');
-            obj.btnStartStop = ButtonStartStop(fig, 'Start', 'Pause');
+            
+            hboxControls = uix.HBox('Parent', fig, ...
+                'Spacing', 10, 'Padding', 1);
+            obj.btnStartStop = ButtonStartStop(hboxControls, 'Start', 'Pause');
                 obj.btnStartStop.startCallback = @obj.btnStartCallback;
                 obj.btnStartStop.stopCallback  = @obj.btnStopCallback;
-            fig.Heights = [-1, 40, 30];
+            bgNormalize = uibuttongroup(...
+                'Parent', hboxControls, ...
+                'Title', 'Display Mode', ...
+                'SelectionChangedFcn',@obj.callbackRadioSelection);
+                    rbHeight = 15; % "rb" stands for "radio button"
+                    rbWidth = 150;
+                    padding = 10;
+
+                    obj.radioUnnormalized = uicontrol(obj.PROP_RADIO{:}, 'Parent', bgNormalize, ...
+                        'String', 'Unnormalized', ...
+                        'Position', [padding, 2*padding+rbHeight, rbWidth, rbHeight], ...  % [fromLeft, fromBottom, width, height]
+                        'UserData', false ... == not normalized
+                        );
+                    obj.radioNormalized = uicontrol(obj.PROP_RADIO{:}, 'Parent', bgNormalize, ...
+                        'String', 'Normalized', ...
+                        'Position', [padding, padding, rbWidth, rbHeight], ...  % [fromLeft, fromBottom, width, height]
+                        'UserData', true ... == normalized
+                        );
+            hboxControls.Widths = [-1, 200];
+                
+            fig.Heights = [-1, 40, 80];
             
             obj.height = 500;
             obj.width = 700;
@@ -49,11 +75,21 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
             obj.refresh;
         end
         
+        function callbackRadioSelection(obj, ~, event)
+            obj.isPlotNormalized = event.NewValue.UserData;
+            obj.plot;
+            drawnow
+        end
+        
         %%% Plotting %%%
         function plot(obj)
             % Check whether we have anything to plot
             exp = obj.getExperiment;
-            data = exp.mCurrentResultParam.value;
+            if obj.isPlotNormalized
+                data = exp.normalizedData().value;
+            else
+                data = exp.signalParam.value;
+            end
 
             if isempty(data) || all(isnan(data))
                 % Default plot
@@ -67,7 +103,7 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
             if isempty(obj.vAxes.Children)
                 % Nothing is plotted yet
                 bottomLabel = exp.mCurrentXAxisParam.label;
-                leftLabel = exp.mCurrentResultParam.label;
+                leftLabel = exp.signalParam.label;
                 AxesHelper.fill(obj.vAxes, data, obj.nDim, ...
                     firstAxisVector, [], bottomLabel, leftLabel);
                 
@@ -86,15 +122,18 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
                 AxesHelper.update(obj.vAxes, data, obj.nDim, firstAxisVector)
             end
             
-            if isstruct(exp.mCurrentResultParam2) && ~isempty(exp.mCurrentResultParam2.value)
+            if isa(exp.signalParam2, 'ExpParameter') && ~isempty(exp.signalParam2.value) ...
                 % If there is more than one Y axis parameter, we want to
-                % plot it above the first one
-                data = exp.mCurrentResultParam2.value;
-                AxesHelper.add(obj.vAxes, data, firstAxisVector)
-                
-%                 % We now need a legend
-%                 label1 = 'signal';
-%                 label2 = exp.mCurrentYAxisParam2.label;
+                % plot it above the first one,
+                if ~obj.isPlotNormalized
+                    % unless We are in normalized mode.
+                    data = exp.signalParam2.value;
+                    AxesHelper.add(obj.vAxes, data, firstAxisVector)
+                end
+                obj.radioNormalized.Enable = 'on';
+            else
+                % We can't normalize, since there is only one signal
+                obj.radioNormalized.Enable = 'off';
             end
             
             
@@ -105,24 +144,6 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
             progressbar(obj.progressbarAverages, frac, string);
 
         end
-        
-%         function clear(obj)
-%             % Default plot == Only labels
-%             exp = obj.getExperiment;
-%             
-%             firstAxisVector = AxesHelper.DEFAULT_X;
-%             data = AxesHelper.DEFAULT_Y;
-%             bottomLabel = exp.mCurrentXAxisParam.label;
-%             leftLabel = exp.mCurrentResultParam.label;
-%             AxesHelper.fill(obj.vAxes, data, obj.nDim, ...
-%                 firstAxisVector, [], bottomLabel, leftLabel);
-%             
-%             % Clear Progress
-%             nDone = 0;
-%             string = sprintf('%d of %d averages (%.2f%%) done', nDone, exp.averages, nDone);
-%             progressbar(obj.progressbarAverages, nDone, string);
-%         end
-        
         
         function refresh(obj)
             exp = obj.getExperiment;

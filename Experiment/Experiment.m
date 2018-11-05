@@ -13,7 +13,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
         topParam                % Optional ExpParameter, parallel to the x axis parameter
         mCurrentYAxisParam		% ExpParameter in charge of axis y - maybe needed, but usually empty.
         rightParam              % Optional ExpParameter, parallel to the y axis parameter
-
+        
         mCurrentResultParam     % ExpParameter in charge of Experiment result (which has name and value)
         mCurrentResultParam2    % Extra ExpParameter in charge of Experiment result - usually empty
         
@@ -38,7 +38,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
     properties (SetAccess = protected)
         signal              % double. Measured signal in the experiment (basically, unprocessed)
         timeout             % double. Time (in seconds) before experiment trial is marked as a fail
-        currIter = 1;          % int. number of current iteration (average)
+        currIter = 0;       % int. number of current iteration (average)
     end
     
     properties (SetAccess = {?Trackable, ?SpcmCounter})
@@ -130,7 +130,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             end
         end
         
-        function delete(obj)
+        function delete(obj) %#ok<INUSD>
             
             
             % We don't want to accidently save over current file
@@ -164,14 +164,25 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
     %% Running
     methods
         function run(obj)
-            prepare(obj)
+            %%% Primary function of class. Runs the Experiment.
             
+            if ~obj.pauseFlag
+                % Preparing
+                clear(obj);
+                % ^ If we have a previous Experiment that ran, it is time to delete the results, before they interfere with the current ones
+                prepare(obj)
+                obj.pauseFlag = true;   % If we pause now, it will already be the middle of an experiment, and we can resume it.
+            end
+            
+            % Starting
             GuiControllerExperimentPlot(obj.EXP_NAME).start;
             
             obj.stopFlag = false;
             sendEventExpResumed(obj);
             
-            for i = 1:obj.averages
+            first = obj.currIter + 1;	% If we paused and did not restart, this is not 1
+            
+            for i = first : obj.averages
                 obj.currIter = i;
                 try
                     perform(obj);
@@ -182,7 +193,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
                     
                     if obj.stopFlag
                         sendEventExpPaused(obj);
-                        break
+                        return
                     end
                 catch err
                     err2warning(err)
@@ -191,14 +202,24 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             end
             
             obj.pause;
+            obj.pauseFlag = false;
             sendEventExpPaused(obj);
         end
         
         function pause(obj)
-            if ~obj.stopFlag
-                % The condition is mainly for sending the event
-                obj.stopFlag = true;
-            end
+            obj.stopFlag = true;
+        end
+        
+        function restart(obj)
+            obj.pauseFlag = false;
+            obj.run;
+        end
+        
+        function clear(obj)
+            obj.mCurrentXAxisParam.value = [];
+            obj.mCurrentResultParam.value = [];
+            obj.mCurrentResultParam2.value = [];
+            obj.currIter = 0;
         end
     end
     
@@ -233,7 +254,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
     methods (Access = protected)
         function outStruct = saveStateAsStruct(obj, category, type)
             % Saves the state as struct. If you want to save stuff, make
-            % (outStruct = struct;) and put stuff inside. If you dont
+            % (outStruct = struct;) and put stuff inside. If you don't
             % want to save now, make (outStruct = NaN;)
             %
             % category - string. Some objects saves themself only with
@@ -267,7 +288,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             if ~strcmp(category, obj.mCategory); return; end
             
             
-            className = str2func(savedStruct.expName); % function handle for the class. We use @str2func which is superior to @eval, when possible
+            className = str2func(savedStruct.expName); % function handle for the class. We use @str2func, which is superior to @eval, when possible
             exp = className();
                 
             for paramNameCell = exp.getAllExpParameterProperties()
@@ -330,7 +351,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
     
     
     methods (Static)
-        function obj = init
+        function obj = init()
             % Creates a default Experiment.
             try
                 % Logic is reversed (without a clean way out):

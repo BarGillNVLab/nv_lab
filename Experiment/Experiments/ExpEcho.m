@@ -260,11 +260,11 @@ classdef ExpEcho < Experiment
                 S4 = squeeze(obj.signal(4, :, 1:obj.currIter));
                 
                 
-                if obj.currIter == 1
+                if obj.currIter ~= 1
+                    obj.mCurrentResultParam2.value = mean(S3./S4,2);
+                else
                     % There is nothing to calculate the mean over
                     obj.mCurrentResultParam2.value = S3./S4;
-                else
-                    obj.mCurrentResultParam2.value = mean(S3./S4,2);
                 end
             else    
                 obj.mCurrentResultParam2.value = [];

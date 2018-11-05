@@ -36,6 +36,7 @@ classdef (Abstract) Trackable < Experiment
         function obj = Trackable
             obj@Experiment;
             obj.isRunningContinuously = obj.DEFAULT_CONTINUOUS_TRACKING;
+            obj.timer = ExactTimer();
         end
         
         %%% Events
@@ -91,16 +92,6 @@ classdef (Abstract) Trackable < Experiment
             end
         end
         
-        function t = myToc(obj)
-            % By using this function we get time 0 for the beginning of
-            % tracking (maybe usable by other experiments as well)
-            if isempty(obj.timer)
-                t = 0;
-                obj.timer = tic;
-            else
-                t = toc(obj.timer);
-            end
-        end
     end
     
     methods % Setters

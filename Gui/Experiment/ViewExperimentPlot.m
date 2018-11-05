@@ -1,5 +1,5 @@
 classdef ViewExperimentPlot < ViewVBox & EventListener
-    %VIEWEXPERIMENTPLOT
+    %VIEWEXPERIMENTPLOT GUI showing results and progress of an Experiment
     
     properties (Access = private)
         expName
@@ -24,7 +24,7 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
                 'NextPlot', 'replacechildren', ...
                 'OuterPosition', [0.1, 0.1, 0.8, 0.8]);
             obj.progressbarAverages = progressbar(fig, 0, 'Starting experiment. Please wait.');
-            obj.btnStartStop = ButtonStartStop(fig);
+            obj.btnStartStop = ButtonStartStop(fig, 'Start', 'Pause');
                 obj.btnStartStop.startCallback = @obj.btnStartCallback;
                 obj.btnStartStop.stopCallback  = @obj.btnStopCallback;
             fig.Heights = [-1, 40, 30];
@@ -46,11 +46,7 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
         function btnStartCallback(obj, ~, ~)
             exp = obj.getExperiment;
             exp.run;
-            
             obj.refresh;
-            if exp.currIter == 1
-                obj.plot;   % refresh plot, since nothing should display now
-            end
         end
         
         %%% Plotting %%%
@@ -58,17 +54,18 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
             % Check whether we have anything to plot
             exp = obj.getExperiment;
             data = exp.mCurrentResultParam.value;
+
+            if isempty(data) || all(isnan(data))
+                % Default plot
+                firstAxisVector = AxesHelper.DEFAULT_X;
+                data = AxesHelper.DEFAULT_Y;
+            else
+                % First plot
+                firstAxisVector = exp.mCurrentXAxisParam.value;
+            end
             
             if isempty(obj.vAxes.Children)
                 % Nothing is plotted yet
-                if isempty(data) || all(isnan(data))
-                    % Default plot
-                    firstAxisVector = AxesHelper.DEFAULT_X;
-                    data = AxesHelper.DEFAULT_Y;
-                else
-                    % First plot
-                    firstAxisVector = exp.mCurrentXAxisParam.value;
-                end
                 bottomLabel = exp.mCurrentXAxisParam.label;
                 leftLabel = exp.mCurrentResultParam.label;
                 AxesHelper.fill(obj.vAxes, data, obj.nDim, ...
@@ -86,7 +83,6 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
                         exp.rightParam.label)
                 end
             else
-                firstAxisVector = exp.mCurrentXAxisParam.value;
                 AxesHelper.update(obj.vAxes, data, obj.nDim, firstAxisVector)
             end
             
@@ -110,9 +106,31 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
 
         end
         
+%         function clear(obj)
+%             % Default plot == Only labels
+%             exp = obj.getExperiment;
+%             
+%             firstAxisVector = AxesHelper.DEFAULT_X;
+%             data = AxesHelper.DEFAULT_Y;
+%             bottomLabel = exp.mCurrentXAxisParam.label;
+%             leftLabel = exp.mCurrentResultParam.label;
+%             AxesHelper.fill(obj.vAxes, data, obj.nDim, ...
+%                 firstAxisVector, [], bottomLabel, leftLabel);
+%             
+%             % Clear Progress
+%             nDone = 0;
+%             string = sprintf('%d of %d averages (%.2f%%) done', nDone, exp.averages, nDone);
+%             progressbar(obj.progressbarAverages, nDone, string);
+%         end
+        
         
         function refresh(obj)
             exp = obj.getExperiment;
+            if exp.pauseFlag
+                obj.btnStartStop.startString = 'Resume';
+            else
+                obj.btnStartStop.startString = 'Start';
+            end
             obj.btnStartStop.isRunning = ~exp.stopFlag;
         end
         

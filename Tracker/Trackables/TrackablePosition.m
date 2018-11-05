@@ -243,7 +243,7 @@ classdef TrackablePosition < Trackable % & StageScanner
             record.position = obj.mScanParams.fixedPos;
             record.step = obj.stepSize;
             record.value = obj.mSignal;
-            record.time = obj.myToc;  % personalized toc function
+            record.time = obj.timer.toc;  % personalized timer
             
             obj.mHistory{end+1} = record;
             obj.sendEventTrackableUpdated;

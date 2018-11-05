@@ -15,7 +15,7 @@ classdef SpcmCounter < Experiment
     end
     
     properties (Access = private)
-        mTimer = []; % Timer for new records
+        mTimer	% Timer for new records
     end
     
     properties (Constant, Hidden)
@@ -34,6 +34,7 @@ classdef SpcmCounter < Experiment
             obj@Experiment();
             obj.integrationTimeMillisec = obj.INTEGRATION_TIME_DEFAULT_MILLISEC;
             obj.records = obj.DEFAULT_EMPTY_STRUCT;
+            obj.mTimer = ExactTimer;
             obj.stopFlag = true; % It is stopped (not running) by default
             
             obj.averages = 1;   % This Experiment has no averaging over repeats
@@ -45,17 +46,14 @@ classdef SpcmCounter < Experiment
         
         function reset(obj)
             obj.records = obj.DEFAULT_EMPTY_STRUCT;
-            obj.mTimer = [];
+            obj.mTimer.reset;
             obj.sendEventReset;
         end
         
         function newRecord(obj, kcps, std)
             % creates new record in a struct of the type "record" =
             % record.{time,kcps,std}, with proper validation.
-            if isempty(obj.mTimer)
-                obj.mTimer = tic;
-            end
-            time = toc(obj.mTimer);
+            time = obj.mTimer.toc;  % Personalized timer
             
             if kcps < 0 || std < 0 || kcps < std
                 recordNum = length(obj.records);

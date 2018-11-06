@@ -43,6 +43,7 @@ classdef ExpESR < Experiment
             obj.averages = 100;
             obj.isTracking = true;   % Initialize tracking
             obj.trackThreshhold = 0.7;
+            obj.shouldAutosave = false;
             
             obj.frequency = obj.ZERO_FIELD_SPLITTING + (-100 : 1 : 100);     %in MHz
             obj.amplitude = -10;        % dBm
@@ -55,8 +56,8 @@ classdef ExpESR < Experiment
             obj.freqMirrored = obj.mirrorFrequency;
             
             obj.mCurrentXAxisParam = ExpParamDoubleVector('Frequency', [], 'Mhz', obj.EXP_NAME);
-            obj.signalParam = ExpParamDoubleVector('FL', [], 'normalised', obj.EXP_NAME);
-            obj.signalParam2 = ExpParamDoubleVector('FL', [], 'normalised', obj.EXP_NAME);
+            obj.signalParam = ExpResultDoubleVector('FL', [], 'normalised', obj.EXP_NAME);
+            obj.signalParam2 = ExpResultDoubleVector('FL', [], 'normalised', obj.EXP_NAME);
         end
     end
     
@@ -77,7 +78,7 @@ classdef ExpESR < Experiment
         
         function set.amplitude(obj, newVal) % newVal is in dBm
             if ~isscalar(newVal) || length(newVal) ~= FrequencyGenerator.nAvailable
-                obj.sendError('Invalid number of amplituded for ESR Experiment! Ignoring.')
+                obj.sendError('Invalid number of amplitudes for ESR Experiment! Ignoring.')
             end
             if ~ValidationHelper.isInBorders(newVal ,obj.MIN_AMPL, obj.MAX_AMPL)
                 errMsg = sprintf('Amplitude must be between %d and %d!', obj.MIN_AMPL, obj.MAX_AMPL);
@@ -231,6 +232,9 @@ classdef ExpESR < Experiment
             n = BooleanHelper.ifTrueElse(isSingleMeasurement, 2, 4);
             obj.signal = zeros(n, length(obj.frequency), obj.averages);
             
+            % Set parameter, for saving
+            obj.mCurrentXAxisParam.value = obj.frequency;
+            
             % Initialize SPCM
             obj.timeout = 10 * numScans * seqTime;       % some multiple of the actual duration
             spcm = getObjByName(Spcm.NAME);
@@ -299,8 +303,7 @@ classdef ExpESR < Experiment
                 end
             end
             
-            obj.mCurrentXAxisParam.value = obj.frequency;
-            
+                        
             S1 = squeeze(obj.signal(1, :, 1:obj.currIter));
             S2 = squeeze(obj.signal(2, :, 1:obj.currIter));
             

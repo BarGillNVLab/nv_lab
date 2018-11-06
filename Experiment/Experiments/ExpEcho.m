@@ -2,14 +2,14 @@ classdef ExpEcho < Experiment
     %EXPECHO Echo experiment
     
     properties (Constant, Hidden)
-        MAX_FREQ = 5e3; % in MHz (== 5GHz)
+        MAX_FREQ = 5e3;   % in MHz (== 5GHz)
         
         MIN_AMPL = -60;   % in dBm
         MAX_AMPL = 3;     % in dBm
         
         MAX_TAU_LENGTH = 1000;
-        MIN_TAU = 1e-3; % in \mus (== 1 ns)
-        MAX_TAU = 1e3; % in \mus (== 1 ms)
+        MIN_TAU = 1e-3;   % in \mus (== 1 ns)
+        MAX_TAU = 1e3;    % in \mus (== 1 ms)
         
         EXP_NAME = 'Echo';
     end
@@ -47,13 +47,14 @@ classdef ExpEcho < Experiment
             obj.averages = 20;
             obj.isTracking = true;   % Initialize tracking
             obj.trackThreshhold = 0.7;
+            obj.shouldAutosave = true;
             
             obj.detectionDuration = [0.25, 5];      % detection windows, in \mus
             obj.laserInitializationDuration = 20;   % laser initialization in pulsed experiments in \mus (??)
             
             obj.mCurrentXAxisParam = ExpParamDoubleVector('Time', [], StringHelper.MICROSEC, obj.EXP_NAME);
-            obj.signalParam = ExpParamDoubleVector('FL', [], 'normalised', obj.EXP_NAME);
-            obj.signalParam2 = ExpParamDoubleVector('FL', [], 'normalised', obj.EXP_NAME);
+            obj.signalParam = ExpResultDoubleVector('FL', [], 'normalised', obj.EXP_NAME);
+            obj.signalParam2 = ExpResultDoubleVector('FL', [], 'normalised', obj.EXP_NAME);
         end
     end
     
@@ -178,6 +179,9 @@ classdef ExpEcho < Experiment
             measurementlength = 1 + double(obj.doubleMeasurement);   % 1 is single, 2 is double
             obj.signal = zeros(2 * measurementlength, length(obj.tau), obj.averages);
             
+            % Set parameter, for saving
+            obj.mCurrentXAxisParam.value = 2*obj.tau;
+            
             % Initialize SPCM
             obj.timeout = 15 * numScans * seqTime;       % some multiple of the actual duration
             spcm = getObjByName(Spcm.NAME);
@@ -243,8 +247,6 @@ classdef ExpEcho < Experiment
             end
             
             % Saving results in the Experiment parameters
-            obj.mCurrentXAxisParam.value = 2*obj.tau;
-            
             S1 = squeeze(obj.signal(1, :, 1:obj.currIter));
             S2 = squeeze(obj.signal(2, :, 1:obj.currIter));
             

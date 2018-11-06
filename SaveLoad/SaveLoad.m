@@ -41,6 +41,7 @@ classdef SaveLoad < Savable & EventSender
             PathHelper.getPathToNvLab(), PathHelper.SetupMode, JsonInfoReader.setupNumber);
         PATH_DEFAULT_AUTO_SAVE = sprintf('%sControl code\\%s\\_AutoSave\\Setup %s\\', ...
             PathHelper.getPathToNvLab(), PathHelper.SetupMode, JsonInfoReader.setupNumber);
+        PATH_SAVE_BACKUP = SaveLoad.PATH_DEFAULT_AUTO_SAVE;   % For now, keep it the same
         SAVE_FILE_SUFFIX = '.mat';
         
         STRUCT_STATUS_NOT_SAVED = 'not yet saved!';
@@ -431,6 +432,12 @@ classdef SaveLoad < Savable & EventSender
             obj.setFileName(fileName);
             
             obj.saveLocalStructToFile(fileFullPath);
+        end
+        
+        function saveBackup(obj)
+            fullPath = sprintf('%s%s', obj.PATH_SAVE_BACKUP, 'temp.mat');
+            newStructStatus = obj.STRUCT_STATUS_NOT_SAVED;  % It will be overrun, if no one does anything
+            obj.saveLocalStructToFile(fullPath, newStructStatus);
         end
             
         

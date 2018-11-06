@@ -24,6 +24,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
         isTracking          % logical. initialize tracking
         trackThreshhold     % double (between 0 and 1). Change in signal that will start the tracker
         laserInitializationDuration  % laser initialization in pulsed experiments
+        shouldAutosave
     end
     
     properties (Access = protected)
@@ -83,7 +84,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             emptyUnits = '';
             obj.mCurrentXAxisParam = ExpParamDoubleVector('X axis', emptyValue, emptyUnits, obj.EXP_NAME);
             obj.mCurrentYAxisParam = ExpParamDoubleVector('Y axis', emptyValue, emptyUnits, obj.EXP_NAME);
-            obj.signalParam = ExpParamDoubleVector('', emptyValue, emptyUnits, obj.EXP_NAME);
+            obj.signalParam = ExpResultDoubleVector('', emptyValue, emptyUnits, obj.EXP_NAME);
             
             obj.mCategory = Savable.CATEGORY_EXPERIMENTS; % will be overridden in Trackable
             
@@ -170,6 +171,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
                 clear(obj);
                 % ^ If we have a previous Experiment that ran, it is time to delete the results, before they interfere with the current ones
                 prepare(obj)
+                obj.sendEventParamChanged;  % That happenned at preperation
                 obj.pauseFlag = true;   % If we pause now, it will already be the middle of an experiment, and we can resume it.
             end
             
@@ -200,8 +202,8 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
                 end
             end
             
-            obj.pause;
             obj.pauseFlag = false;
+            obj.pause;
             sendEventExpPaused(obj);
         end
         
@@ -413,7 +415,10 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             expNamesCell = expNames;
             expClassNamesCell = expClassNames;
         end
+    end
         
+    %% Saving & loading
+    methods (Static)
         function save(path)
             % Saves the experiment.
             % Three use cases - 
@@ -427,12 +432,15 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             sl = SaveLoad.getInstance(Savable.CATEGORY_EXPERIMENTS);
             switch nargin
                 case 0
+                    % Use case 1
                     sl.save;
                 case 1
                     filename = PathHelper.getFileNameFromFullPathFile(path);
                     if isempty(filename)
+                        % Use case 3
                         path = PathHelper.joinToFullPath(path, sl.mLoadedFileName);
                     end
+                    path = [PathHelper.removeDotSuffix(path), SaveLoad.SAVE_FILE_SUFFIX];  % Making sure there is proper suffix
                     sl.saveAs(path)
             end
         end

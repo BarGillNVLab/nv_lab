@@ -34,6 +34,7 @@ classdef (Abstract) ExpParameter < HiddenMethodsHandle & PropertiesDisplaySorted
         TYPE_LOGICAL = 'logical'
         TYPE_DOUBLE = 'double'
         TYPE_VECTOR_OF_DOUBLES = 'vector of doubles'
+        TYPE_RESULT = 'result vector of doubles'
     end
     
     methods
@@ -69,7 +70,7 @@ classdef (Abstract) ExpParameter < HiddenMethodsHandle & PropertiesDisplaySorted
             end
             obj.value = newValue;
             
-            if obj.isAssociatedToExp
+            if obj.isAssociatedToExp && ~strcmp(obj.type, obj.TYPE_RESULT)
                 exp = getObjByName(Experiment.NAME);
                 exp.sendEventParamChanged();
             end

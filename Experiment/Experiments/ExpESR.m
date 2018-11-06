@@ -41,7 +41,7 @@ classdef ExpESR < Experiment
             
             obj.repeats = 200;
             obj.averages = 100;
-            obj.track = true;   % Initialize tracking
+            obj.isTracking = true;   % Initialize tracking
             obj.trackThreshhold = 0.7;
             
             obj.frequency = obj.ZERO_FIELD_SPLITTING + (-100 : 1 : 100);     %in MHz
@@ -288,13 +288,15 @@ classdef ExpESR < Experiment
                 obj.signal(:, i, obj.currIter) = sig;
                 
                 % Add tracking
-                    %%% Patch: for CW, we need to decrease MW power
-                    if strcmp(obj.mode, 'CW') 
-                        didAmplitudeChange = true;
-                        fg1.amplitude = obj.amplitude(1) - 1.5;
-                    end
-                tracker.compareReference(sig(2), Tracker.REFERENCE_TYPE_KCPS, TrackablePosition.EXP_NAME);
-                    if didAmplitudeChange, fg1.amplitude = obj.amplitude(1); end
+                if obj.isTracking
+                        %%% Patch: for CW, we need to decrease MW power
+                        if strcmp(obj.mode, 'CW') 
+                            didAmplitudeChange = true;
+                            fg1.amplitude = obj.amplitude(1) - 1.5;
+                        end
+                    tracker.compareReference(sig(2), Tracker.REFERENCE_TYPE_KCPS, TrackablePosition.EXP_NAME);
+                        if didAmplitudeChange, fg1.amplitude = obj.amplitude(1); end
+                end
             end
             
             obj.mCurrentXAxisParam.value = obj.frequency;

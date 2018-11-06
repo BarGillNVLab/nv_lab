@@ -64,8 +64,29 @@ classdef (Sealed) PulseGeneratorDummyClass < PulseGenerator
             end
         end
         
-        function off(obj)
-            obj.values(:) = false;
+        function off(obj, channel)
+            if isempty(channel)
+                obj.values(:) = false;
+                return
+            end
+            
+            address = obj.channelName2Address(channel);
+            mAddresses = obj.channelAddresses;
+            for i = 1:length(address)
+                ind = (mAddresses == address(i));
+                if isempty(ind)
+                    format = 'Channel ''%s'' could not be found! Ignoring.';
+                    if iscell(channel)
+                        warnMsg = sprintf(format, channel{i});
+                    else
+                        warnMsg = sprintf(format, channel);
+                    end
+                    obj.sendWarning(warnMsg);
+                    continue
+                end
+                obj.values(ind) = true;
+            end
+            
         end
         
         function run(obj) %#ok<MANU>

@@ -45,7 +45,7 @@ classdef ExpEcho < Experiment
             % Set properties inherited from Experiment
             obj.repeats = 10;
             obj.averages = 20;
-            obj.track = true;   % Initialize tracking
+            obj.isTracking = true;   % Initialize tracking
             obj.trackThreshhold = 0.7;
             
             obj.detectionDuration = [0.25, 5];      % detection windows, in \mus

@@ -21,7 +21,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
     properties
         averages            % int. Number of measurements to average from
         repeats             % int. Number of repeats per measurement
-        track               % logical. initialize tracking
+        isTracking          % logical. initialize tracking
         trackThreshhold     % double (between 0 and 1). Change in signal that will start the tracker
         laserInitializationDuration  % laser initialization in pulsed experiments
     end

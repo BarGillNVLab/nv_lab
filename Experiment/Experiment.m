@@ -184,7 +184,6 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             first = obj.currIter + 1;	% If we paused and did not restart, this is not 1
             
             for i = first : obj.averages
-                obj.currIter = i;
                 try
                     perform(obj);
                     sendEventDataUpdated(obj)   % Plots and saves
@@ -192,6 +191,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
                     percision = log10(obj.averages);    % Enough percision, according to division result
                     fprintf('%.*f%%\n', percision, percentage)
                     
+                    obj.currIter = i;   % We succeeded in this attempt, so we update the iteration number
                     if obj.stopFlag
                         sendEventExpPaused(obj);
                         return

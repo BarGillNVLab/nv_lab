@@ -92,7 +92,7 @@ classdef ViewLoad < ViewVBox & EventListener
             % Implement here other buttons for other categories!
             switch category
                 case Savable.CATEGORY_IMAGE
-                    cellOfStrings = {'To Stages!', 'To Lasers!'};
+                    cellOfStrings = {'To Scan Parameters!', 'To Lasers!'};
                 otherwise
                     cellOfStrings = {'To System!'};
             end

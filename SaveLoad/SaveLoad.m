@@ -88,14 +88,7 @@ classdef SaveLoad < Savable & EventSender
             try
                 getObjByName(SaveLoadCatImage.NAME);
             catch               % i.e. no available object
-                % For dev purposes, we eant to be able to save & load from
-                % another directory
-                setupNum = JsonInfoReader.setupNumber;
-                if strcmp(setupNum, '999')
-                    SaveLoadImageLocal;
-                else
-                    SaveLoadCatImage;	% init this object
-                end
+                SaveLoadCatImage;	% init this object
             end
             
             try
@@ -435,9 +428,18 @@ classdef SaveLoad < Savable & EventSender
         end
         
         function saveBackup(obj)
+            % Normal saving saves the new filename, so that later saves
+            % will be done in the same file. We therefore can't use
+            % the usual save, and we duplicate the saving mechanism here.
+            
+            myStruct = obj.mLocalSaveStruct;
+            if ~isstruct(myStruct)
+                return
+            end
+            
             fullPath = sprintf('%s%s', obj.PATH_SAVE_BACKUP, 'temp.mat');
-            newStructStatus = obj.STRUCT_STATUS_NOT_SAVED;  % It will be overrun, if no one does anything
-            obj.saveLocalStructToFile(fullPath, newStructStatus);
+            obj.createFolderIfNeeded(fullPath);
+            save(fullPath, 'myStruct');
         end
             
         

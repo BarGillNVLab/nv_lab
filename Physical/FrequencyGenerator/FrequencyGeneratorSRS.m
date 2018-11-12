@@ -1,28 +1,58 @@
-classdef FrequencyGeneratorSRS < FrequencyGenerator & SerialControlled
+classdef FrequencyGeneratorSRS < FrequencyGenerator
     %FREQUENCYGENERATORSRS SRS frequency genarator class
+    
     properties (Constant, Hidden)
-        LIMITS_FREQUENCY = [0, 4.05e9];  % Hz
+        MIN_FREQ = 0;  % Hz
         LIMITS_AMPLITUDE = [-100, 10];   % dB. These values may not be reached, depending on the output type.
         
         TYPE = 'srs';
         NAME = 'srsFrequencyGenerator';
         
-        NEEDED_FIELDS = {'address', 'serialNumber'}
+        NEEDED_FIELDS = {'port', 'serialNumber', 'maxFrequency'}
+    end
+    
+    properties (SetAccess = protected)
+        maxFreq
+    end
+       
+    properties (Access = private)
+        t       % tcpip object
     end
     
     methods (Access = private)
-        function obj = FrequencyGeneratorSRS(name, address)
+        function obj = FrequencyGeneratorSRS(name, address, port, maxFrequency)
+            % All models are the same in regards to controlling them, but
+            % some can generator higher frequencies; this is therefore a
+            % parameter of the constructor.
             obj@FrequencyGenerator(name);
-            obj@SerialControlled(address);
+            obj.t = tcpip(address, port);
+            fopen(obj.t);
+            
+            obj.maxFreq = maxFrequency;
+            
+            obj.initialize;
+        end
+        
+        function delete(obj)
+            fclose(obj.t);
+            delete(obj.t)
         end
     end
    
+    %%
     methods
-       function value = readOutput(obj)
-           value = obj.read;
-       end
+        function sendCommand(obj, command)
+            % Actually sends command to hardware
+            fprintf(obj.t, command);
+        end
+        
+        function value = readOutput(obj)
+            % Get value returned from object
+            value = fscanf(obj.t, '%s');
+        end
     end
     
+    %%
     methods (Static)
         function obj = getInstance(struct)
             missingField = FactoryHelper.usualChecks(struct, ...
@@ -33,8 +63,8 @@ classdef FrequencyGeneratorSRS < FrequencyGenerator & SerialControlled
                     missingField);
             end
             
-            name = [FrequencyGeneratorSRS.NAME, '-', struct.serialNum];
-            obj = FrequencyGeneratorSRS(name, struct.address);
+            name = [FrequencyGeneratorSRS.NAME, '-', struct.serialNumber];
+            obj = FrequencyGeneratorSRS(name, struct.address, struct.port, struct.maxFrequency);
             addBaseObject(obj);
         end
         

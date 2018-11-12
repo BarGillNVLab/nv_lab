@@ -7,12 +7,15 @@ classdef (Abstract) FrequencyGenerator < BaseObject
     %
     % Subclasses need to:
     % 1. specify values for the constants:
-    %       LIMITS_FREQUENCY
+    %       MIN_FREQ
     %       LIMITS_AMPLITUDE
     % 2. implement the functions:
     %       varargout = sendCommand(obj, command, value)
+    %       value = readOutput(obj)
     %       (Static) newFG = getInstance(struct)
     %       (Static) command = nameToCommandName(name)
+    % 3. call obj.initialize by the end of the constructor
+    
     
     properties (Dependent)
         frequency   % Hz
@@ -22,7 +25,7 @@ classdef (Abstract) FrequencyGenerator < BaseObject
     
     properties (Abstract, Constant)
         % Minimum and maximum values
-        LIMITS_FREQUENCY    % for MW frequency
+        MIN_FREQ            % for MW frequency
         LIMITS_AMPLITUDE    % for MW amplitude
         
         TYPE    % for now, one of: {'srs', 'synthhd', 'synthnv'}
@@ -39,9 +42,16 @@ classdef (Abstract) FrequencyGenerator < BaseObject
         outputPrivate       % logical. Output on or off;
     end
     
+    properties (Abstract, SetAccess = protected)
+        maxFreq
+    end
+    
     methods (Access = protected)
         function obj = FrequencyGenerator(name)
             obj@BaseObject(name);
+        end
+        
+        function initialize(obj)
             obj.frequencyPrivate = obj.queryValue('frequency');
             obj.amplitudePrivate = obj.queryValue('amplitude');
             obj.outputPrivate    = obj.queryValue('enableOutput');
@@ -95,9 +105,9 @@ classdef (Abstract) FrequencyGenerator < BaseObject
         
         function set.frequency(obj, newFrequency)      % in Hz
             % Change frequency level of the frequency generator
-            if ~ValidationHelper.isInBorders(newFrequency, obj.LIMITS_FREQUENCY(1), obj.LIMITS_FREQUENCY(2))
+            if ~ValidationHelper.isInBorders(newFrequency, obj.MIN_FREQ, obj.maxFreq)
                 error('MW frequency must be between %d and %d.\nRequested: %d', ...
-                    obj.LIMITS_FREQUENCY(1), obj.LIMITS_FREQUENCY(2), newFrequency)
+                    obj.MIN_FREQ, obj.maxFreq, newFrequency)
             end
             
             switch length(newFrequency)
@@ -146,6 +156,7 @@ classdef (Abstract) FrequencyGenerator < BaseObject
         % Converts request type to a command that can be sent to Hardware.
     end
     
+    %% Initializtion and Setup
     methods (Static)
         function freqGens = getFG()
             % Returns an instance of cell{all FG's}
@@ -154,7 +165,7 @@ classdef (Abstract) FrequencyGenerator < BaseObject
             
             persistent fgCellContainer
             if isempty(fgCellContainer) || ~isvalid(fgCellContainer)
-                FGjson = JsonInfoReader.getJson.frequencyGenerator;
+                FGjson = JsonInfoReader.getJson.frequencyGenerators;
                 fgCellContainer = CellContainer;
                 isDefault = false(size(FGjson));    % initialize
                 
@@ -168,7 +179,7 @@ classdef (Abstract) FrequencyGenerator < BaseObject
                         else; type = FrequencyGeneratorDummy.TYPE; end
                     
                     % Usual checks on fields
-                    missingField = FactoryHelper.usualChecks(struct, ...
+                    missingField = FactoryHelper.usualChecks(curFgStruct, ...
                         FrequencyGenerator.NEEDED_FIELDS);
                     if ischar(missingField) && ~any(isnan(missingField)) && ...  Some field is missing
                             ~strcmp(type, FrequencyGeneratorDummy.TYPE) % This FG is not dummy

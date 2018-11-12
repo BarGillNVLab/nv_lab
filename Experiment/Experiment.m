@@ -53,6 +53,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
     
     properties (Constant)
         NAME = 'Experiment'
+        ON_HOLD_EXPERIMENT = 'Experiment on hold'
         
         PATH_ALL_EXPERIMENTS = sprintf('%sControl code\\%s\\Experiment\\Experiments\\', ...
             PathHelper.getPathToNvLab(), PathHelper.SetupMode);
@@ -88,11 +89,11 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             
             obj.mCategory = Savable.CATEGORY_EXPERIMENTS; % will be overridden in Trackable
             
-            obj.robAndKillPrevious;
+            obj.robAndPausePrevious;
             
         end
         
-        function robAndKillPrevious(obj)
+        function robAndPausePrevious(obj)
             % Copy parameters from previous experiment (if exists) and replace its base object
             try
                 prevExp = getObjByName(Experiment.NAME);
@@ -100,7 +101,12 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
                     prevExp.pause;
                     obj.robExperiment(prevExp);
                 end % No need to tell the user otherwise.
-                delete(prevExp);
+                if isa(obj, 'Trackable') || isa(prevExp, 'Trackable')
+                    prevExp.name = obj.ON_HOLD_EXPERIMENT;
+                    addBaseObject(prevExp);     % Putting it on hold
+                else
+                    delete(prevExp);
+                end
                 replaceBaseObject(obj);
             catch
                 % We got here if there was no Experiment here yet
@@ -184,6 +190,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             first = obj.currIter + 1;	% If we paused and did not restart, this is not 1
             
             for i = first : obj.averages
+                obj.currIter = i;
                 try
                     perform(obj);
                     sendEventDataUpdated(obj)   % Plots and saves
@@ -191,7 +198,6 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
                     percision = log10(obj.averages);    % Enough percision, according to division result
                     fprintf('%.*f%%\n', percision, percentage)
                     
-                    obj.currIter = i;   % We succeeded in this attempt, so we update the iteration number
                     if obj.stopFlag
                         sendEventExpPaused(obj);
                         return

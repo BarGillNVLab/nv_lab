@@ -39,8 +39,8 @@ classdef ExpESR < Experiment
         function obj = ExpESR
             obj@Experiment();
             
-            obj.repeats = 200;
-            obj.averages = 100;
+            obj.repeats = 20;
+            obj.averages = 10;
             obj.isTracking = true;   % Initialize tracking
             obj.trackThreshhold = 0.7;
             obj.shouldAutosave = false;
@@ -101,7 +101,7 @@ classdef ExpESR < Experiment
             end
             % If we got here, then newVal is OK.
             obj.nChannels = newVal;
-            obj.changeFlag = 1;
+            obj.changeFlag = true;
         end
         
         function set.mode(obj, newVal)
@@ -114,7 +114,7 @@ classdef ExpESR < Experiment
                     obj.sendError('Unknown mode! Ignoring.')
             end
             % If we got here, then the mode was changed
-            obj.changeFlag = 1;
+            obj.changeFlag = true;
         end
         
         function set.mirrorSweepAround(obj, newVal)
@@ -132,7 +132,7 @@ classdef ExpESR < Experiment
             
             % If we got here, then newVal is OK.
             obj.mirrorSweepAround = newVal;
-            obj.changeFlag = 1;
+            obj.changeFlag = true;
         end
         
         function checkDetectionDuration(obj, newVal)
@@ -223,11 +223,9 @@ classdef ExpESR < Experiment
             pg = getObjByName(PulseGenerator.NAME);
             pg.sequence = S;
             pg.repeats = obj.repeats;
-            obj.changeFlag = false;
             seqTime = pg.sequence.duration * 1e-6; % Multiplication in 1e-6 is for converting usecs to secs.
             
             % Initialize signal matrix
-            numScans = 2*obj.repeats;
             isSingleMeasurement = (isempty(obj.mirrorSweepAround) || obj.nChannels > 1);
             n = BooleanHelper.ifTrueElse(isSingleMeasurement, 2, 4);
             obj.signal = zeros(n, length(obj.frequency), obj.averages);
@@ -236,10 +234,13 @@ classdef ExpESR < Experiment
             obj.mCurrentXAxisParam.value = obj.frequency;
             
             % Initialize SPCM
+            numScans = 2*obj.repeats;
             obj.timeout = 10 * numScans * seqTime;       % some multiple of the actual duration
             spcm = getObjByName(Spcm.NAME);
             spcm.setSPCMEnable(true);
             spcm.prepareGatedCount(numScans, obj.timeout);
+            
+            obj.changeFlag = false;     % All devices have been set, according to the ExpParams
             
             % Inform user
             averageTime = obj.repeats * seqTime * length(obj.frequency) * n / 2;

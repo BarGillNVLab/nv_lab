@@ -50,6 +50,9 @@ classdef Tracker < EventSender & EventListener & Savable
             if obj.isDifferenceAboveThreshhold(reference, newValue, threshhold)
                 trackable = obj.getTrackable(trackableName);
                 trackable.startTrack;
+                
+                mainExp = getObjByName(Experiment.ON_HOLD_EXPERIMENT);
+                mainExp.robAndPausePrevious;        % Take back control
             end
         end
     end

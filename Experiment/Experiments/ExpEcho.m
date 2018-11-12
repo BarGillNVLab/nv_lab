@@ -43,8 +43,8 @@ classdef ExpEcho < Experiment
             obj.freqGenName = obj.getFgName(FG);
             
             % Set properties inherited from Experiment
-            obj.repeats = 10;
-            obj.averages = 20;
+            obj.repeats = 1000;
+            obj.averages = 2000;
             obj.isTracking = true;   % Initialize tracking
             obj.trackThreshhold = 0.7;
             obj.shouldAutosave = true;
@@ -133,6 +133,9 @@ classdef ExpEcho < Experiment
         function prepare(obj)
             % Initializtions before run
             
+            checkDetectionDuration(obj, obj.detectionDuration); % The mode might have changed; before running, we check
+                                                                % obj.detectionDuration again.
+            
             % Sequence
             %%% Useful parameters for what follows
             initDuration = obj.laserInitializationDuration-sum(obj.detectionDuration);
@@ -141,7 +144,7 @@ classdef ExpEcho < Experiment
                 % The length of the sequence will change when we change
                 % tau. To counter that, we add some delay at the end.
                 % (mwOffDelay is a property of class Experiment)
-                lastDelay = obj.mwOffDelay+2*max(obj.tau);
+                lastDelay = obj.mwOffDelay + 2*max(obj.tau);
             else
                 lastDelay = obj.mwOffDelay;
             end
@@ -166,7 +169,6 @@ classdef ExpEcho < Experiment
             pg = getObjByName(PulseGenerator.NAME);
             pg.sequence = S;
             pg.repeats = obj.repeats;
-            obj.changeFlag = false;
             seqTime = pg.sequence.duration * 1e-6; % Multiplication in 1e-6 is for converting usecs to secs.
             
             % Set Frequency Generator
@@ -175,7 +177,6 @@ classdef ExpEcho < Experiment
             fg.frequency = obj.frequency;
             
             % Initialize signal matrix
-            numScans = 2*obj.repeats;
             measurementlength = 1 + double(obj.doubleMeasurement);   % 1 is single, 2 is double
             obj.signal = zeros(2 * measurementlength, length(obj.tau), obj.averages);
             
@@ -183,10 +184,13 @@ classdef ExpEcho < Experiment
             obj.mCurrentXAxisParam.value = 2*obj.tau;
             
             % Initialize SPCM
+            numScans = 2*obj.repeats;
             obj.timeout = 15 * numScans * seqTime;       % some multiple of the actual duration
             spcm = getObjByName(Spcm.NAME);
             spcm.setSPCMEnable(true);
             spcm.prepareGatedCount(numScans, obj.timeout);
+            
+            obj.changeFlag = false;     % All devices have been set, according to the ExpParams
             
             % Inform user
             averageTime = obj.repeats * seqTime * length(obj.tau) * (1+obj.doubleMeasurement);
@@ -204,7 +208,7 @@ classdef ExpEcho < Experiment
             tracker = getObjByName(Tracker.NAME);
             
             % Some magic numbers
-            maxLastDelay = obj.mwOffDelay + max(obj.tau);
+            maxLastDelay = obj.mwOffDelay + 2 * max(obj.tau);
             len = 2*(1 + double(obj.doubleMeasurement));    % 2 for single, 4 for double
             sig = zeros(1, len);   % allocate memory
             
@@ -226,8 +230,9 @@ classdef ExpEcho < Experiment
                         end
                         obj.signal(:, t, obj.currIter) = sig;
                         
-                        
-                        tracker.compareReference(sig(2), Tracker.REFERENCE_TYPE_KCPS, TrackablePosition.EXP_NAME);
+                        if obj.isTracking
+                            tracker.compareReference(sig(2), Tracker.REFERENCE_TYPE_KCPS, TrackablePosition.EXP_NAME);
+                        end
                         success = true;     % Since we got till here
                         break;
                     catch err

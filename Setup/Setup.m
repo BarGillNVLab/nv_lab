@@ -49,8 +49,9 @@ classdef Setup < handle
             StageScanner.init;
             ExperimentDefault.init;
             SaveLoad.init;
-            LaserGate.getLasers;	% the first call to getLasers() also inits them
-			ClassStage.getStages;	% the first call to getStages() also inits them
+            FrequencyGenerator.getFG % the first call to getFG() also inits them
+            LaserGate.getLasers;	 % the first call to getLasers() also inits them
+			ClassStage.getStages;	 % the first call to getStages() also inits them
             Tracker.init;
             % Joystick.init should be also here. For the moment, it is found in the appropriate stage
         end

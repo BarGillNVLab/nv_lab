@@ -3,12 +3,16 @@ classdef (Sealed) FrequencyGeneratorDummy < FrequencyGenerator
     %   Detailed explanation goes here
     
     properties (Constant, Hidden)
-        LIMITS_FREQUENCY = [0, 4.05e9];  %Hz
-        LIMITS_AMPLITUDE = [-100, 10];   %dB
+        MIN_FREQ = 0;                   %Hz
+        LIMITS_AMPLITUDE = [-100, 10];  %dB
         
         TYPE = 'dummy'
         
         NEEDED_FIELDS = {'name'}
+    end
+    
+    properties (SetAccess = protected)
+        maxFreq = 4.05e9;
     end
     
     methods (Access = private)

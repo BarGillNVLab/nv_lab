@@ -3,8 +3,8 @@ classdef FrequencyGeneratorWindfreak < FrequencyGenerator & SerialControlled
     % includes, for now, synthHD & synthNV
     
     properties (Constant, Hidden)
-        LIMITS_FREQUENCY = [0, 4.05e9];  % Hz
-        LIMITS_AMPLITUDE = [-60, 18];    % dB. These values may not be reached, depending on the output type.
+        MIN_FREQ = 0;                   % Hz
+        LIMITS_AMPLITUDE = [-60, 18];   % dB. These values may not be reached, depending on the output type.
         
         TYPE = {'synthhd', 'synthnv'};
         
@@ -16,6 +16,10 @@ classdef FrequencyGeneratorWindfreak < FrequencyGenerator & SerialControlled
             obj@FrequencyGenerator(name);
             obj@SerialControlled(address);
         end
+    end
+    
+    properties (SetAccess = protected)
+        maxFreq = 4.05e9;
     end
     
     methods

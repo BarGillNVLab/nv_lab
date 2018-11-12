@@ -22,7 +22,7 @@ classdef (Abstract) FrequencyGenerator < BaseObject
     
     properties (Abstract, Constant)
         % Minimum and maximum values
-        LIMITS_FREQUENCY    % for MW frequency
+        MIN_FREQ            % for MW frequency
         LIMITS_AMPLITUDE    % for MW amplitude
         
         TYPE    % for now, one of: {'srs', 'synthhd', 'synthnv'}
@@ -37,6 +37,10 @@ classdef (Abstract) FrequencyGenerator < BaseObject
         frequencyPrivate    % double
         amplitudePrivate    % double.
         outputPrivate       % logical. Output on or off;
+    end
+    
+    properties (Abstract, SetAccess = protected)
+        maxFreq
     end
     
     methods (Access = protected)
@@ -97,7 +101,7 @@ classdef (Abstract) FrequencyGenerator < BaseObject
             % Change frequency level of the frequency generator
             if ~ValidationHelper.isInBorders(newFrequency, obj.LIMITS_FREQUENCY(1), obj.LIMITS_FREQUENCY(2))
                 error('MW frequency must be between %d and %d.\nRequested: %d', ...
-                    obj.LIMITS_FREQUENCY(1), obj.LIMITS_FREQUENCY(2), newFrequency)
+                    obj.MIN_FREQ, obj.maxFreq, newFrequency)
             end
             
             switch length(newFrequency)

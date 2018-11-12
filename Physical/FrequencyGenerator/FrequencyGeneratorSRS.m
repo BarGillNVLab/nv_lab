@@ -1,19 +1,29 @@
 classdef FrequencyGeneratorSRS < FrequencyGenerator & SerialControlled
     %FREQUENCYGENERATORSRS SRS frequency genarator class
+    
     properties (Constant, Hidden)
-        LIMITS_FREQUENCY = [0, 4.05e9];  % Hz
+        MIN_FREQ = 0;  % Hz
         LIMITS_AMPLITUDE = [-100, 10];   % dB. These values may not be reached, depending on the output type.
         
         TYPE = 'srs';
         NAME = 'srsFrequencyGenerator';
         
-        NEEDED_FIELDS = {'address', 'serialNumber'}
+        NEEDED_FIELDS = {'address', 'serialNumber', 'maxFrequency'}
+    end
+    
+    properties (SetAccess = protected)
+        maxFreq
     end
     
     methods (Access = private)
-        function obj = FrequencyGeneratorSRS(name, address)
+        function obj = FrequencyGeneratorSRS(name, address, maxFrequency)
+            % All models are the same in regards to controlling them, but
+            % some can generator higher frequencies; this is therefore a
+            % parameter of the constructor.
             obj@FrequencyGenerator(name);
             obj@SerialControlled(address);
+            
+            obj.maxFreq = maxFrequency;
         end
     end
    
@@ -34,7 +44,7 @@ classdef FrequencyGeneratorSRS < FrequencyGenerator & SerialControlled
             end
             
             name = [FrequencyGeneratorSRS.NAME, '-', struct.serialNum];
-            obj = FrequencyGeneratorSRS(name, struct.address);
+            obj = FrequencyGeneratorSRS(name, struct.address, struct.maxFrequency);
             addBaseObject(obj);
         end
         

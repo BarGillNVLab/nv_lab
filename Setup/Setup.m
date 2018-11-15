@@ -50,6 +50,7 @@ classdef Setup < handle
             ExperimentDefault.init;
             SaveLoad.init;
             FrequencyGenerator.getFG;	% the first call to getFG() also inits them
+            MW.create(jsonStruct.microwave);
             LaserGate.getLasers;        % the first call to getLasers() also inits them
 			ClassStage.getStages;       % the first call to getStages() also inits them
             Tracker.init;

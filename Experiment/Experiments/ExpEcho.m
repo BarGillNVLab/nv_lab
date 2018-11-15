@@ -158,9 +158,9 @@ classdef ExpEcho < Experiment
             S.addEvent(obj.detectionDuration(2),...
                                             {'greenLaser', 'detector'});                    % Reference detection
             S.addEvent(obj.laserOffDelay);                                                  % Calibration of the laser with SPCM (laser off)
-            S.addEvent(obj.halfPiTime);                                                     % MW
+            S.addEvent(obj.halfPiTime,      'MW');                                          % MW
             S.addEvent(obj.tau(end),        '',                         'tau');             % Delay
-            S.addEvent(obj.piTime)                                                          % MW
+            S.addEvent(obj.piTime,          'MW');                                          % MW
             S.addEvent(obj.tau(end),        '',                         'tau');             % Delay
             S.addEvent(obj.halfPiTime,      'MW',                       'projectionPulse'); % MW
             S.addEvent(lastDelay,           '',                         'lastDelay');       % Last delay, making sure the MW is off

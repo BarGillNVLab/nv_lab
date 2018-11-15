@@ -20,7 +20,7 @@ classdef SwitchPgControlled < EventSender & EventListener
             obj@EventListener(PG.NAME);
             BaseObject.addObject(obj);  % so it can be reached by BaseObject.getByName()
             
-            obj.channel = pgChannel;
+%             obj.channel = pgChannel;
             assert(pgChannel.isDigital, 'Switch channels must be of type Digital!');
             PG.registerChannel(pgChannel);
             obj.channel = pgChannel.name;
@@ -67,6 +67,9 @@ classdef SwitchPgControlled < EventSender & EventListener
     methods
         % event is the event sent from the EventSender
         function onEvent(obj, event)
+            if event.isError
+                return
+            end
             PG = event.creator;
             newEnabled = PG.isOn(obj.name);
             if newEnabled ~= obj.isEnabled

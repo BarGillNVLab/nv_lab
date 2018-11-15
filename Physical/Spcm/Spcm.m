@@ -2,7 +2,7 @@ classdef (Abstract) Spcm < EventSender
     %SPCM single photon counter
     %   the spcm is controlled by the NiDaq
     
-    properties
+    properties (Access = private)
         availableProperties = struct;
     end
     
@@ -108,7 +108,12 @@ classdef (Abstract) Spcm < EventSender
                         'Please fix the .json file and try again.'], ...
                         spcmTypeStruct.classname);
             end
-
+            
+            % Create switch for 'detector'
+            switchStruct = spcmTypeStruct.xSwitch;
+            SwitchPgControlled.create(switchStruct.switchChannelName, switchStruct);
+            
+            % Add to object map
             addBaseObject(spcmObject);
         end
     end

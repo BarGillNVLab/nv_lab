@@ -13,7 +13,8 @@ classdef (Sealed) PulseStreamerNewClass < PulseGenerator
     
     properties (Access = private)
         ps          % PulseStreamer object. Scalar local variable for communication with PS.
-        trigger     % PSStart object. Probably either hardware or software.
+        trigger     % PSStart object.
+        automaticRearm % PSTriggerMode object
     end
     
     %% 
@@ -44,13 +45,13 @@ classdef (Sealed) PulseStreamerNewClass < PulseGenerator
         end
         
         function run(obj)
-%             if obj.sequenceInMemory == 1 && obj.trigger > 1 % Hardware trigger
-%                 if obj.automaticRearm == PSTriggerMode.Single
-%                     obj.ps.rearm();
-%                 end
-%             else
-                obj.uploadSequence;
-%             end
+            if obj.sequenceInMemory % The PS already has it in memory
+                if obj.automaticRearm == PSTriggerMode.Single
+                    obj.ps.rearm(); % Need to rearm the trigger
+                end
+            else % The PS doesn't have it in memory
+                obj.uploadSequence; 
+            end
             if obj.trigger == PSTriggerStart.Software
                 obj.ps.startNow;
             end
@@ -136,7 +137,7 @@ classdef (Sealed) PulseStreamerNewClass < PulseGenerator
                     channels = binaryVectorToDecimal(channels, 'LSBFirst');
                 end
 
-                obj.chooseOnCahnnels(channels);
+                obj.chooseOnChannels(channels);
             end
         end
         

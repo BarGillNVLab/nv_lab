@@ -32,7 +32,9 @@ classdef FrequencyGeneratorSRS < FrequencyGenerator
             
             obj.initialize;
         end
-        
+    end
+       
+    methods
         function delete(obj)
             fclose(obj.t);
             delete(obj.t)

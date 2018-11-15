@@ -168,6 +168,12 @@ classdef (Abstract) PulseGenerator < EventSender
 
         end
         
+        function tf = isOn(obj, channelName)
+            address = obj.channelName2Address(channelName);
+            ind = address + 1;  % Addresses start at 0, but MATLAB vectors start at 1
+            tf = bitget(obj.onChannelsBinary, ind);
+        end
+        
         function names = channelNames(obj)
             if isempty(obj.channels)
                 names = {};

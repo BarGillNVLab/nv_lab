@@ -7,7 +7,7 @@ classdef (Sealed) PulseGeneratorDummyClass < PulseGenerator
         MAX_PULSES = Inf;           % int. Maximum number of pulses in acceptable sequences
         MAX_DURATION = Inf;         % double. Maximum duration of pulse.
         
-        AVAILABLE_ADDRESSES = 1:8;	% List of all available physical addresses.
+        AVAILABLE_ADDRESSES = 0:7;	% List of all available physical addresses.
                                     % Should be either vector of doubles or cell of char arrays
     end
     

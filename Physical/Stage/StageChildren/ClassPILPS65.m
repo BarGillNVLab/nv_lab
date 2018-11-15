@@ -11,7 +11,7 @@ classdef (Sealed) ClassPILPS65 < ClassPIMicos
     
     properties (Constant, Access = private)  % todo: is this the right place for it?
         maxScanSize = [198 98];
-        szAxes = '1';
+        szAxes = '3';
     end
     
     properties (Access = protected)

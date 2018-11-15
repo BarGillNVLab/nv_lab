@@ -82,7 +82,7 @@ classdef (Sealed) PulseBlasterNewClass < PulseGenerator
             % Channles should be on either if they were on until now, or if we asked to turn them on now.
             channels = bitor(obj.onChannelsBinary, inputChannels);
             
-            obj.chooseOnCahnnels(channels)
+            obj.chooseOnChannels(channels)
         end
         
         function off(obj, channelNames)
@@ -105,7 +105,7 @@ classdef (Sealed) PulseBlasterNewClass < PulseGenerator
                 channels = binaryVectorToDecimal(channels, 'LSBFirst');
             end
             
-            obj.chooseOnCahnnels(channels);
+            obj.chooseOnChannels(channels);
         end
         
         function run(obj)
@@ -393,7 +393,7 @@ classdef (Sealed) PulseBlasterNewClass < PulseGenerator
     methods (Access = private)
         % Internal workings
                    
-        function chooseOnCahnnels(obj, channels)
+        function chooseOnChannels(obj, channels)
             % Turn (or keep) on only the channels referred to by channels.
             % 
             % input:
@@ -749,7 +749,7 @@ classdef (Sealed) PulseBlasterNewClass < PulseGenerator
         function obj = GetInstance(struct)
             % Returns a singelton instance.
             try
-                obj = getObjByName(PulseGenerator.NAME_PULSE_BLASTER);
+                obj = getObjByName(PulseGenerator.NAME);
             catch
                 % None exists, so we create a new one
                 missingField = FactoryHelper.usualChecks(struct, PulseBlasterNewClass.NEEDED_FIELDS);

@@ -7,7 +7,7 @@ classdef FrequencyGeneratorSRS < FrequencyGenerator
         
         TYPE = 'srs';
         NAME = 'srsFrequencyGenerator';
-        
+
         NEEDED_FIELDS = {'port', 'serialNumber', 'maxFrequency'}
     end
     
@@ -67,6 +67,7 @@ classdef FrequencyGeneratorSRS < FrequencyGenerator
             
             name = [FrequencyGeneratorSRS.NAME, '-', struct.serialNumber];
             obj = FrequencyGeneratorSRS(name, struct.address, struct.port, struct.maxFrequency);
+
             addBaseObject(obj);
         end
         

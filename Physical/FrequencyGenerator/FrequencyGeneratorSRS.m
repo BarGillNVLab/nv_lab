@@ -7,7 +7,7 @@ classdef FrequencyGeneratorSRS < FrequencyGenerator
         
         TYPE = 'srs';
         NAME = 'srsFrequencyGenerator';
-
+        
         NEEDED_FIELDS = {'port', 'serialNumber', 'maxFrequency'}
     end
     

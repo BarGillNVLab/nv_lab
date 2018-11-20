@@ -55,7 +55,7 @@ classdef ExpESR < Experiment
             obj.mirrorSweepAround = []; % Use this for a single frequency range
             obj.freqMirrored = obj.mirrorFrequency;
             
-            obj.mCurrentXAxisParam = ExpParamDoubleVector('Frequency', [], 'Mhz', obj.EXP_NAME);
+            obj.mCurrentXAxisParam = ExpParamDoubleVector('Frequency', [], 'MHz', obj.EXP_NAME);
             obj.signalParam = ExpResultDoubleVector('FL', [], 'normalised', obj.EXP_NAME);
             obj.signalParam2 = ExpResultDoubleVector('FL', [], 'normalised', obj.EXP_NAME);
         end

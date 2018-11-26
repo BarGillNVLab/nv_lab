@@ -1,10 +1,6 @@
 classdef ViewStagePanelTrack < GuiComponent & EventListener
     %VIEWSTAGEPANELTRACK
     
-    properties (Constant)
-        TRACKABLE_POSITION_NAME = TrackablePosition.EXP_NAME;
-    end
-    
     properties
         btnTrack        % button. Starts tracker GUI
         cbxContinuous    % checkbox
@@ -15,7 +11,7 @@ classdef ViewStagePanelTrack < GuiComponent & EventListener
     methods
         function obj = ViewStagePanelTrack(parent, controller, stage, laser) %#ok<INUSD>
             obj@GuiComponent(parent, controller);
-            obj@EventListener(TrackablePosition.EXP_NAME)
+            obj@EventListener(TrackablePosition.NAME)
             
             obj.mStageName = stage.name;
 
@@ -41,7 +37,7 @@ classdef ViewStagePanelTrack < GuiComponent & EventListener
         end
         
         function refresh(obj)
-            trackablePos = getExpByName(obj.TRACKABLE_POSITION_NAME);
+            trackablePos = getObjByName(TrackablePosition.NAME);
             obj.cbxContinuous.Value = trackablePos.isRunningContinuously;
         end
         
@@ -50,7 +46,7 @@ classdef ViewStagePanelTrack < GuiComponent & EventListener
             % We need to first make sure we have a working experiment, and
             % that it is running the right stage and laser
             try
-                trackablePos = getExpByName(obj.TRACKABLE_POSITION_NAME);
+                trackablePos = getObjByName(TrackablePosition.NAME);
                 trackablePos.mStageName = obj.mStageName;
             catch
                 trackablePos = TrackablePosition(obj.mStageName);
@@ -61,7 +57,7 @@ classdef ViewStagePanelTrack < GuiComponent & EventListener
         end
         
         function cbxContinuousCallback(obj,~,~)
-            trackablePos = getExpByName(obj.TRACKABLE_POSITION_NAME);
+            trackablePos = getObjByName(TrackablePosition.NAME);
             trackablePos.isRunningContinuously = obj.cbxContinuous.Value;
         end
     end
@@ -71,8 +67,8 @@ classdef ViewStagePanelTrack < GuiComponent & EventListener
         % When events happen, this function jumps.
         % event is the event sent from the EventSender
         function onEvent(obj, event)
-            if (isfield(event.extraInfo, Tracker.EVENT_CONTINUOUS_TRACKING_CHANGED) ...
-                    && strcmp(event.creator.EXP_NAME, obj.TRACKABLE_POSITION_NAME)) ...
+            if (isfield(event.extraInfo, Trackable.EVENT_CONTINUOUS_TRACKING_CHANGED) ...
+                    && strcmp(event.creator.NAME, TrackablePosition.NAME)) ...
                     || event.isError
                 
                 obj.refresh();

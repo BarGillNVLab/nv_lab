@@ -26,15 +26,13 @@ classdef GuiControllerSpcmCounter < GuiController
         
         function onClose(obj) %#ok<MANU>
             % Callback. Things to run when need to close the GUI.
-            
+%             
 %             % If the counter is running, we want to turn it off
-%             if Experiment.current(SpcmCounter.EXP_NAME)
-%                 spcmCounter = getObjByName(Experiment.NAME);
-%                 if spcmCounter.stopFlag; return; end
-%                 EventStation.anonymousWarning('SPCM Counter is now turned off');
-%                 spcmCounter.pause;
-%                 spcmCounter.reset;
-%             end
+%             spcmCounter = getObjByName(SpcmCounter.NAME);
+%             if spcmCounter.stopFlag; return; end
+%             EventStation.anonymousWarning('SPCM Counter is now turned off');
+%             spcmCounter.pause;
+%             spcmCounter.reset;
         end
     end
     

@@ -133,7 +133,7 @@ classdef Tracker < EventSender & EventListener & Savable
         % When events happen, this function jumps.
         % event is the event sent from the EventSender
         function onEvent(obj, event)
-            if isfield(event.extraInfo, Tracker.EVENT_TRACKABLE_EXP_ENDED)
+            if isfield(event.extraInfo, Trackable.EVENT_TRACKABLE_EXP_ENDED)
                 % Two actions:
                 %   1. Saves trackable history into the tracker history.
                 %   2. Sends an event that this trackable finished, and now
@@ -157,29 +157,28 @@ classdef Tracker < EventSender & EventListener & Savable
             %
             % They will be programatically found (using something similar
             % to Experiment.getExperimentNames()
-            namesCell = TrackablePosition.EXP_NAME;
+            namesCell = TrackablePosition.NAME;
         end
         
         function trackable = getTrackable(trackableName, varargin)
-            % Maybe this is already the current trackable
-            if strcmp(Experiment.current, trackableName)
-                trackable = getObjByName(Experiment.NAME);
-                return
-            end
-            
-            switch trackableName
-                case TrackablePosition.EXP_NAME
-                    % If this is the case, calling the function might
-                    % have included stage name
-                    if ~isempty(varargin)
-                        stageName = varargin{1};
-                        trackable = TrackablePosition(stageName);
-                    else
-                        % Default stage is invoked
-                        trackable = TrackablePosition;
-                    end
-                otherwise
-                    disp('This should not have happenned')
+            try
+                % Maybe this trackable already exists
+                trackable = getObjByName(trackableName);
+            catch
+                switch trackableName
+                    case TrackablePosition.NAME
+                        % If this is the case, calling the function might
+                        % have included stage name
+                        if ~isempty(varargin)
+                            stageName = varargin{1};
+                            trackable = TrackablePosition(stageName);
+                        else
+                            % Default stage is invoked
+                            trackable = TrackablePosition;
+                        end
+                    otherwise
+                        disp('This should not have happenned')
+                end
             end
         end
         

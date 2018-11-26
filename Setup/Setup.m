@@ -47,7 +47,6 @@ classdef Setup < handle
             Spcm.create(jsonStruct.spcm);
             ImageScanResult.init;
             StageScanner.init;
-            ExperimentDefault.init;
             SaveLoad.init;
             FrequencyGenerator.getFG;	% the first call to getFG() also inits them
             MW.create(jsonStruct.microwave);

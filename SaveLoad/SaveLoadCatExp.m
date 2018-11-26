@@ -9,7 +9,8 @@ classdef SaveLoadCatExp < SaveLoad & EventListener
     methods
         function obj = SaveLoadCatExp
             obj@SaveLoad(Savable.CATEGORY_EXPERIMENTS);
-            obj@EventListener(Experiment.NAME);
+            expNames = Experiment.getExperimentNames;
+            obj@EventListener(expNames);
         end
     end
     

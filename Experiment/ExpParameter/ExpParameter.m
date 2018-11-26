@@ -2,10 +2,10 @@ classdef (Abstract) ExpParameter < HiddenMethodsHandle & PropertiesDisplaySorted
     %EXPPARAMETER objects of type experiment-parameter
     %   ep = EXPPARAMETER(name) creates an empty parameter
     %
-    %   ep = EXPPARAMETER(name,value) creates a parameter with VALUE
+    %   ep = EXPPARAMETER(name, value) creates a parameter with VALUE
     %
-    %   ep = EXPPARAMETER(___,expName) creates a parameter which is
-    %   assigned to an experiment named EXP_NAME
+    %   ep = EXPPARAMETER(___, expName) creates a parameter which is
+    %   assigned to an experiment named expName
     %
     %   An experiment parameter can have a name, supported value-types and the actual
     %   values. Additionally, an ExpParameter-object will alyways point to the
@@ -22,7 +22,6 @@ classdef (Abstract) ExpParameter < HiddenMethodsHandle & PropertiesDisplaySorted
     end
     
     properties (Dependent, SetAccess = private)
-        isAssociatedToExp
         label
     end
     
@@ -71,12 +70,17 @@ classdef (Abstract) ExpParameter < HiddenMethodsHandle & PropertiesDisplaySorted
             obj.value = newValue;
             
             if obj.isAssociatedToExp && ~strcmp(obj.type, obj.TYPE_RESULT)
-                exp = getObjByName(Experiment.NAME);
-                exp.sendEventParamChanged();
+                try
+                    exp = getObjByName(obj.expName);
+                    exp.sendEventParamChanged();
+                catch
+                    % Associated experiment does not exist!
+                    obj.expName = nan;
+                end
             end
         end
         
-        function tf = get.isAssociatedToExp(obj)
+        function tf = isAssociatedToExp(obj)
             tf = ~isempty(obj.expName) && ischar(obj.expName);
         end
         

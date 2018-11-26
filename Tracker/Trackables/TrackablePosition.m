@@ -24,11 +24,9 @@ classdef TrackablePosition < Trackable % & StageScanner
         nMaxIterations
     end
     
-    properties (Constant, Hidden)
-        EXP_NAME = 'trackablePosition';
-    end
-    
     properties (Constant)
+        NAME = 'trackablePosition';
+
         EVENT_STAGE_CHANGED = 'stageChanged'
         
         % Default properties
@@ -48,7 +46,7 @@ classdef TrackablePosition < Trackable % & StageScanner
     
     methods
         function obj = TrackablePosition(stageName)
-            obj@Trackable;
+            obj@Trackable(TrackablePosition.NAME);
             
             % Get stage
             if exist('stageName', 'var')
@@ -131,6 +129,10 @@ classdef TrackablePosition < Trackable % & StageScanner
 
         end
         
+        function normalizedData(obj)
+            obj.sendError('Position tracking does not support normaliztion!')
+        end
+        
         function wrapUp(obj) %#ok<MANU>
             % No analysis required (yet?)
         end
@@ -140,7 +142,7 @@ classdef TrackablePosition < Trackable % & StageScanner
     methods
         function resetTrack(obj)
             obj.resetAlgorithm;
-            obj.timer = [];
+            obj.timer.reset;
             obj.clearHistory;
         end
         

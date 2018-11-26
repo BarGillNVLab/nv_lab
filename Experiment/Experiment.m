@@ -47,14 +47,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
         pausedAverage = false; 
     end
     
-    properties (Abstract, Constant, Hidden)
-        EXP_NAME        % char array. Name of experiment, as recognized by the system.
-    end
-    
     properties (Constant)
-        NAME = 'Experiment'
-        ON_HOLD_EXPERIMENT = 'Experiment on hold'
-        
         PATH_ALL_EXPERIMENTS = sprintf('%sControl code\\%s\\Experiment\\Experiments\\', ...
             PathHelper.getPathToNvLab(), PathHelper.SetupMode);
         
@@ -76,42 +69,20 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
         function sendEventPlotAnalyzeFit(obj); obj.sendEvent(struct(obj.EVENT_PLOT_ANALYZE_FIT, true)); end
         function sendEventParamChanged(obj); obj.sendEvent(struct(obj.EVENT_PARAM_CHANGED, true)); end
         
-        function obj = Experiment()
-            obj@EventSender(Experiment.NAME);
-            obj@Savable(Experiment.NAME);
+        function obj = Experiment(name)
+            obj@EventSender(name);
+            obj@Savable(name);
             obj@EventListener({Tracker.NAME, StageScanner.NAME});
             
             emptyValue = [];
             emptyUnits = '';
-            obj.mCurrentXAxisParam = ExpParamDoubleVector('X axis', emptyValue, emptyUnits, obj.EXP_NAME);
-            obj.mCurrentYAxisParam = ExpParamDoubleVector('Y axis', emptyValue, emptyUnits, obj.EXP_NAME);
-            obj.signalParam = ExpResultDoubleVector('', emptyValue, emptyUnits, obj.EXP_NAME);
+            obj.mCurrentXAxisParam = ExpParamDoubleVector('X axis', emptyValue, emptyUnits, obj.name);
+            obj.mCurrentYAxisParam = ExpParamDoubleVector('Y axis', emptyValue, emptyUnits, obj.name);
+            obj.signalParam = ExpResultDoubleVector('', emptyValue, emptyUnits, obj.name);
             
             obj.mCategory = Savable.CATEGORY_EXPERIMENTS; % will be overridden in Trackable
             
-            obj.robAndPausePrevious;
-            
-        end
-        
-        function robAndPausePrevious(obj)
-            % Copy parameters from previous experiment (if exists) and replace its base object
-            try
-                prevExp = getObjByName(Experiment.NAME);
-                if isa(prevExp, 'Experiment') && isvalid(prevExp)
-                    prevExp.pause;
-                    obj.robExperiment(prevExp);
-                end % No need to tell the user otherwise.
-                if isa(obj, 'Trackable') || isa(prevExp, 'Trackable')
-                    prevExp.name = obj.ON_HOLD_EXPERIMENT;
-                    addBaseObject(prevExp);     % Putting it on hold
-                else
-                    delete(prevExp);
-                end
-                replaceBaseObject(obj);
-            catch
-                % We got here if there was no Experiment here yet
-                addBaseObject(obj);
-            end
+            addBaseObject(obj)
         end
         
         function cellOfStrings = getAllExpParameterProperties(obj)
@@ -122,22 +93,28 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             cellOfStrings = allVariableProperties(isPropExpParam);
         end
         
-        function robExperiment(obj, prevExperiment)
-            % Get all the ExpParameter's from the previous experiment
-            % prevExperiment = the previous experiment
-            
-            for paramNameCell = prevExperiment.getAllExpParameterProperties()
-                paramName = paramNameCell{:};
-                if isprop(obj, paramName)
-                    % If the current experiment has this property also
-                    obj.(paramName) = prevExperiment.(paramName);
-                    obj.(paramName).expName = obj.EXP_NAME;  % expParam, I am (now) your parent!
+        function robAndPausePrevious(obj, prevExp)
+            % Copy parameters from previous experiment
+            if isa(prevExp, 'Experiment') && isvalid(prevExp)
+                prevExp.pause;
+                
+                % Get all the ExpParameter's from the previous experiment
+                for paramNameCell = prevExp.getAllExpParameterProperties()
+                    paramName = paramNameCell{:};
+                    if isprop(obj, paramName)
+                        % If the current experiment has this property also
+                        obj.(paramName) = prevExp.(paramName);
+                        obj.(paramName).expName = obj.name;  % expParam, I am (now) your parent!
+                    end
                 end
+                
+            else
+                obj.sendError('Could not rob previous experiment - since it was not an experiment to begin with')
             end
         end
+
         
         function delete(obj) %#ok<INUSD>
-            
             
             % We don't want to accidently save over current file
             sl = SaveLoad.getInstance(Savable.CATEGORY_EXPERIMENTS);
@@ -172,6 +149,9 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
         function run(obj)
             %%% Primary function of class. Runs the Experiment.
             
+            % This Experiment is running and is therefore the current one.
+            obj.getSetCurrentExp(obj.NAME);
+            
             if ~obj.pauseFlag
                 % Preparing
                 clear(obj);
@@ -182,7 +162,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             end
             
             % Starting
-            GuiControllerExperimentPlot(obj.EXP_NAME).start;
+            GuiControllerExperimentPlot(obj.name).start;
             
             obj.stopFlag = false;
             sendEventExpResumed(obj);
@@ -251,10 +231,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
         % When events happen, this function jumps.
         % Event is the event sent from the EventSender
         function onEvent(obj, event)
-            if isfield(event.extraInfo, Tracker.EVENT_TRACKER_FINISHED)
-                obj.preapre;
-                % After all events are done, we will be able to resume the experiments from where we stopped
-            elseif isfield(event.extraInfo, StageScanner.EVENT_SCAN_STARTED)
+            if isfield(event.extraInfo, StageScanner.EVENT_SCAN_STARTED)
                 obj.pause;
             end
         end
@@ -273,10 +250,17 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             % type - string.     Whether the objects saves at the beginning
             %                    of the run (parameter) or at its end (result)
             
-            if strcmp(category, obj.mCategory) % mCategory is overrided by Tracker, and we need to check it
+            % We should save if either:
+            %   @ This is the current Experiment
+            %   @ This is a trackable
+            shouldSave = (strcmp(category, Savable.CATEGORY_EXPERIMENTS) && strcmp(obj.NAME, obj.current)) ...
+                || strcmp(category, Savable.CATEGORY_TRACKER);
+            
+            if shouldSave
+                     % We only save the current Experiment
                 if strcmp(type, Savable.TYPE_PARAMS)
                     outStruct = obj.saveParamsToStruct;     % Has default implementation. Might be overidden by subclasses.
-                    outStruct.expName = obj.EXP_NAME;
+                    outStruct.expName = obj.name;
                 else
                     outStruct = obj.saveResultsToStruct;    % Has default implementation. Might be overidden by subclasses.
                 end
@@ -361,34 +345,25 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
     end
     
     
-    methods (Static)
-        function obj = init()
-            % Creates a default Experiment.
-            try
-                % Logic is reversed (without a clean way out):
-                % if the try block succeeds, then we need to output a
-                % warning.
-                getObjByName(Experiment.NAME);
-                EventStation.anonymousWarning('Deleting Previous experiment')
-            catch
+    methods (Static, Access = private)
+        function expName = getSetCurrentExp(newExperimentName)
+            % "Static property" which stores the name of the experiment
+            % currently running.
+            % If given input, it will be saved as the new current
+            % experiment name.
+            persistent eName
+            
+            if exist('newExperimentName', 'var')
+                eName = newExperimentName;
+            elseif isempty(eName)
+                eName = '';
             end
-            obj = ExperimentDefault;
+            
+            expName = eName;
         end
-        
-        function tf = current(newExpName)
-            % logical. Whether the requested name is the current one (i.e.
-            % obj.EXP_NAME).
-            %
-            % see also: GETEXPBYNAME
-            try
-                exp = getObjByName(Experiment.NAME);
-                tf = strcmp(exp.EXP_NAME, newExpName);
-            catch
-                tf = false;
-                EventStation.anonymousWarning('I don''t know the Experiment you asked for!');
-            end
-        end
+    end
 
+    methods (Static)
         function [expNamesCell, expClassNamesCell] = getExperimentNames()
             %GETEXPERIMENTSNAMES returns cell of char arrays with names of
             %valid Experiments.
@@ -411,21 +386,26 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
                 expClassNames = PathHelper.removeDotSuffix(expFileNames);
                 expNames = cell(size(expFileNames));
                 for i = 1:length(expFileNames)
-                    % We extract the EXP_NAME property using an in-house
+                    % We extract the NAME property using an in-house
                     % function (which avoids using eval)
-                    expNames{i} = getConstPropertyfromString(expClassNames{i}, 'EXP_NAME');
+                    expNames{i} = getConstPropertyfromString(expClassNames{i}, 'NAME');
                 end
-                expNames{end+1} = SpcmCounter.EXP_NAME;     % todo: think about this
+                expNames{end+1} = SpcmCounter.NAME;     % todo: think about this
             end
             
             expNamesCell = expNames;
             expClassNamesCell = expClassNames;
         end
+        
+        function expName = current()
+            % Public access to private static property
+            expName = Experiment.getSetCurrentExp();
+        end
     end
         
     %% Saving & loading
-    methods (Static)
-        function save(path)
+    methods
+        function save(obj, path)
             % Saves the experiment.
             % Three use cases - 
             % 1. no input argument: saves the file in the default folder,
@@ -434,6 +414,11 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             %    requested.
             % 3. one argument - folder name: saves the file at the
             %    specified folder, with the default name.
+            
+            
+            % In order to save the Experiment which invoked this method, we
+            % need to set it as The Current Experiment
+            Experiment.getSetCurrentExp(obj)
             
             sl = SaveLoad.getInstance(Savable.CATEGORY_EXPERIMENTS);
             switch nargin

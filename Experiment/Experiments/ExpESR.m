@@ -8,11 +8,11 @@ classdef ExpESR < Experiment
         
         MIN_AMPL = -60; % in dBm
         MAX_AMPL = 3;   % in dBm
-        
-        EXP_NAME = 'ESR'
     end
     
     properties (Constant)
+        NAME = 'ESR'
+        
         ZERO_FIELD_SPLITTING = 2.87e3     % in Mhz
     end
     
@@ -37,7 +37,7 @@ classdef ExpESR < Experiment
     methods
         
         function obj = ExpESR
-            obj@Experiment();
+            obj@Experiment(ExpESR.NAME);
             
             obj.repeats = 20;
             obj.averages = 10;
@@ -55,9 +55,9 @@ classdef ExpESR < Experiment
             obj.mirrorSweepAround = []; % Use this for a single frequency range
             obj.freqMirrored = obj.mirrorFrequency;
             
-            obj.mCurrentXAxisParam = ExpParamDoubleVector('Frequency', [], 'MHz', obj.EXP_NAME);
-            obj.signalParam = ExpResultDoubleVector('FL', [], 'normalised', obj.EXP_NAME);
-            obj.signalParam2 = ExpResultDoubleVector('FL', [], 'normalised', obj.EXP_NAME);
+            obj.mCurrentXAxisParam = ExpParamDoubleVector('Frequency', [], 'MHz', obj.NAME);
+            obj.signalParam = ExpResultDoubleVector('FL', [], 'normalised', obj.NAME);
+            obj.signalParam2 = ExpResultDoubleVector('FL', [], 'normalised', obj.NAME);
         end
     end
     
@@ -299,7 +299,7 @@ classdef ExpESR < Experiment
                             didAmplitudeChange = true;
                             fg1.amplitude = obj.amplitude(1) - 1.5;
                         end
-                    tracker.compareReference(sig(2), Tracker.REFERENCE_TYPE_KCPS, TrackablePosition.EXP_NAME);
+                    tracker.compareReference(sig(2), Tracker.REFERENCE_TYPE_KCPS, TrackablePosition.NAME);
                         if didAmplitudeChange, fg1.amplitude = obj.amplitude(1); end
                 end
             end
@@ -337,7 +337,7 @@ classdef ExpESR < Experiment
         function dataParam = normalizedData(obj)
             persistent dat
             if isempty(dat)
-                dat = ExpParamDoubleVector('FL', [], 'normalized', obj.EXP_NAME);
+                dat = ExpParamDoubleVector('FL', [], 'normalized', obj.NAME);
             end
             signal = obj.signalParam.value;
             background = obj.signalParam2.value;

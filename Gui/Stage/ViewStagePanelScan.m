@@ -14,7 +14,8 @@ classdef ViewStagePanelScan < GuiComponent & EventListener
     methods
         function obj = ViewStagePanelScan(parent, controller, stageName)
             obj@GuiComponent(parent, controller);
-            obj@EventListener({stageName, Experiment.NAME, StageScanner.NAME});
+            expNames = Experiment.getExperimentNames();
+            obj@EventListener({stageName, expNames{:}, StageScanner.NAME}); %#ok<CCAT>
             obj.stageName = stageName;
             
             %%%% Scan panel init %%%%

@@ -18,11 +18,9 @@ classdef SpcmCounter < Experiment
         mTimer	% Timer for new records
     end
     
-    properties (Constant, Hidden)
-        EXP_NAME = 'SpcmCounter'
-    end
-    
     properties (Constant)
+        NAME = 'SpcmCounter'
+
         EVENT_SPCM_COUNTER_RESET = 'SpcmCounterReset';
         
         INTEGRATION_TIME_DEFAULT_MILLISEC = 100;
@@ -31,13 +29,14 @@ classdef SpcmCounter < Experiment
     
     methods
         function obj = SpcmCounter
-            obj@Experiment();
+            obj@Experiment(SpcmCounter.NAME);
             obj.integrationTimeMillisec = obj.INTEGRATION_TIME_DEFAULT_MILLISEC;
             obj.records = obj.DEFAULT_EMPTY_STRUCT;
             obj.mTimer = ExactTimer;
             obj.stopFlag = true; % It is stopped (not running) by default
             
             obj.averages = 1;   % This Experiment has no averaging over repeats
+            obj.shouldAutosave = false;
         end
         
         function sendEventReset(obj)
@@ -149,6 +148,8 @@ classdef SpcmCounter < Experiment
         end
         function perform(obj) %#ok<MANU> 
         end
+        function normalizedData(obj)%#ok<MANU>
+        end
         function wrapUp(obj) %#ok<MANU>
         end
     end
@@ -157,7 +158,7 @@ classdef SpcmCounter < Experiment
 	methods (Static)
         function init
             try
-                obj = getExpByName(SpcmCounter.EXP_NAME);
+                obj = getObjByName(SpcmCounter.NAME);
                 obj.pause;
             catch
                 % There was no such object, so we create one

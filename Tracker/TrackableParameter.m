@@ -6,7 +6,7 @@ classdef TrackableParameter < ExpParameter
         function obj = TrackableParameter(name, type, valueOptional, trackedName)
             obj@ExpParameter(name, type, valueOptional);
             if exist('trackedName', 'var')
-                obj.EXP_NAME = trackedName;
+                obj.expName = trackedName;
             end
         end
     end

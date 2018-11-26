@@ -33,8 +33,9 @@ classdef (Abstract) Trackable < Experiment
     
     %%
     methods
-        function obj = Trackable
-            obj@Experiment;
+        function obj = Trackable(name)
+            obj@Experiment(name);
+            obj.mCategory = Savable.CATEGORY_TRACKER;
             obj.isRunningContinuously = obj.DEFAULT_CONTINUOUS_TRACKING;
             obj.timer = ExactTimer();
         end

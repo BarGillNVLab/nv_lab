@@ -10,8 +10,10 @@ classdef ExpEcho < Experiment
         MAX_TAU_LENGTH = 1000;
         MIN_TAU = 1e-3;   % in \mus (== 1 ns)
         MAX_TAU = 1e3;    % in \mus (== 1 ms)
-        
-        EXP_NAME = 'Echo';
+    end
+    
+    properties (Constant)
+        NAME = 'Echo';
     end
     
     properties
@@ -36,7 +38,7 @@ classdef ExpEcho < Experiment
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     methods
         function obj = ExpEcho(FG)
-            obj@Experiment;
+            obj@Experiment(ExpEcho.NAME);
             
             % First, get a frequency generator
             if nargin == 0; FG = []; end
@@ -52,9 +54,9 @@ classdef ExpEcho < Experiment
             obj.detectionDuration = [0.25, 5];      % detection windows, in \mus
             obj.laserInitializationDuration = 20;   % laser initialization in pulsed experiments in \mus (??)
             
-            obj.mCurrentXAxisParam = ExpParamDoubleVector('Time', [], StringHelper.MICROSEC, obj.EXP_NAME);
-            obj.signalParam = ExpResultDoubleVector('FL', [], 'normalised', obj.EXP_NAME);
-            obj.signalParam2 = ExpResultDoubleVector('FL', [], 'normalised', obj.EXP_NAME);
+            obj.mCurrentXAxisParam = ExpParamDoubleVector('Time', [], StringHelper.MICROSEC, obj.NAME);
+            obj.signalParam = ExpResultDoubleVector('FL', [], 'normalised', obj.NAME);
+            obj.signalParam2 = ExpResultDoubleVector('FL', [], 'normalised', obj.NAME);
         end
     end
     
@@ -231,7 +233,7 @@ classdef ExpEcho < Experiment
                         obj.signal(:, t, obj.currIter) = sig;
                         
                         if obj.isTracking
-                            tracker.compareReference(sig(2), Tracker.REFERENCE_TYPE_KCPS, TrackablePosition.EXP_NAME);
+                            tracker.compareReference(sig(2), Tracker.REFERENCE_TYPE_KCPS, TrackablePosition.NAME);
                         end
                         success = true;     % Since we got till here
                         break;
@@ -291,7 +293,7 @@ classdef ExpEcho < Experiment
         function dataParam = normalizedData(obj)
             persistent dat
             if isempty(dat)
-                dat = ExpParamDoubleVector('FL', [], 'normalized', obj.EXP_NAME);
+                dat = ExpParamDoubleVector('FL', [], 'normalized', obj.NAME);
             end
             signal = obj.signalParam.value;
             background = obj.signalParam2.value;

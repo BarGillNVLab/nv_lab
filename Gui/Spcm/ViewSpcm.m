@@ -32,7 +32,7 @@ classdef ViewSpcm < ViewVBox & EventListener
         function obj = ViewSpcm(parent, controller, varargin)
             padding = 5;
             obj@ViewVBox(parent, controller, padding);
-            obj@EventListener(Experiment.NAME);
+            obj@EventListener(SpcmCounter.NAME);
             
             obj.wrap = obj.DEFAULT_WRAP_VALUE;
 
@@ -141,13 +141,13 @@ classdef ViewSpcm < ViewVBox & EventListener
         
         function refresh(obj)
             % Just uicontrols, not axes
-            if Experiment.current(SpcmCounter.EXP_NAME)
-                spcmCount = getObjByName(Experiment.NAME);
+            try
+                spcmCount = getObjByName(SpcmCounter.NAME);
                 obj.edtIntegrationTime.String = spcmCount.integrationTimeMillisec;
                 
                 obj.btnStartStop.isRunning = spcmCount.isRunning;
                 
-            else
+            catch
                 % The counter is unavailable
                 obj.btnStartStop.isRunning = false;
             end
@@ -156,13 +156,14 @@ classdef ViewSpcm < ViewVBox & EventListener
         function update(obj)
             % Axes AND uicontrols
             
-            if ~Experiment.current(SpcmCounter.EXP_NAME)
+            try
+                counter = getObjByName(SpcmCounter.NAME);
+            catch
                 return
             end
             
             %%% Plot
             % Get plot data
-            counter = getObjByName(SpcmCounter.NAME);
             if obj.isUsingWrap
                 [time, kcps, std] = counter.getRecords(obj.wrap);
             else
@@ -214,9 +215,9 @@ classdef ViewSpcm < ViewVBox & EventListener
     
     methods (Static)
         function spcmCounter = getCounter
-            if Experiment.current(SpcmCounter.EXP_NAME)
-                spcmCounter = getObjByName(Experiment.NAME);
-            else
+            try
+                spcmCounter = getObjByName(SpcmCounter.NAME);
+            catch
                 spcmCounter = SpcmCounter;
             end
         end
@@ -227,16 +228,8 @@ classdef ViewSpcm < ViewVBox & EventListener
         % When events happens, this function jumps.
         % event is the event sent from the EventSender
         function onEvent(obj, event)
-            % We're listening to all experiments, but only care if the
-            % experiment is an SPCM counter.
-            if ~Experiment.current(SpcmCounter.EXP_NAME)
-                return
-            end
-            
             spcmCounter = event.creator;
             if isfield(event.extraInfo, spcmCounter.EVENT_DATA_UPDATED)   % event = update
-                % todo: this should be a method, say obj.update(spcm),
-                % which can be called also when changing wrap mode
                 obj.update;
             else
                 obj.refresh;

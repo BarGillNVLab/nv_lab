@@ -33,12 +33,10 @@ classdef GuiControllerExperimentPlot < GuiController
         function onClose(obj)
             % Callback. Things to run when need to close the GUI.
             
-            % If the counter is running, we want to turn it off
-            if Experiment.current(SpcmCounter.EXP_NAME)
-                exp = getObjByName(Experiment.NAME);
-                if exp.isRunning
-                    EventStation.anonymousWarning('The window closed, but %s is still running', obj.expName);
-                end
+            % If the experiment is running, we want to inform the user
+            exp = getObjByName(obj.expName);
+            if exp.isRunning
+                EventStation.anonymousWarning('The window closed, but %s is still running', obj.expName);
             end
         end
     end

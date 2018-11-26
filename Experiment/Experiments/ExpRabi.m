@@ -1,7 +1,7 @@
 classdef ExpRabi < Experiment
     % EXPRABI Rabi Experiment
     
-        properties (Constant, Hidden)
+    properties (Constant, Hidden)
         MAX_FREQ = 5e3;   % in MHz (== 5GHz)
         
         MIN_AMPL = -60;   % in dBm
@@ -10,8 +10,10 @@ classdef ExpRabi < Experiment
         MAX_TAU_LENGTH = 1000;
         MIN_TAU = 1e-3;   % in \mus (== 1 ns)
         MAX_TAU = 10;     % in \mus
-        
-        EXP_NAME = 'Rabi';
+    end
+    
+    properties (Constant)
+        NAME = 'Rabi';
     end
     
     properties
@@ -29,7 +31,7 @@ classdef ExpRabi < Experiment
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     methods
         function obj = ExpRabi(FG)
-            obj@Experiment();
+            obj@Experiment(ExpRabi.NAME);
             
             % First, get a frequency generator
             if nargin == 0; FG = []; end
@@ -47,8 +49,8 @@ classdef ExpRabi < Experiment
             obj.detectionDuration = [0.25, 5]; % detection windows, in \mus
             obj.laserInitializationDuration = 10; % laser initialization in pulsed experiments
             
-            obj.mCurrentXAxisParam = ExpParamDoubleVector('Time', [], StringHelper.MICROSEC, obj.EXP_NAME);
-            obj.signalParam = ExpResultDoubleVector('FL', [], 'normalised', obj.EXP_NAME);
+            obj.mCurrentXAxisParam = ExpParamDoubleVector('Time', [], StringHelper.MICROSEC, obj.NAME);
+            obj.signalParam = ExpResultDoubleVector('FL', [], 'normalised', obj.NAME);
         end
     end
     
@@ -208,7 +210,7 @@ classdef ExpRabi < Experiment
                         obj.signal(:, t, obj.currIter) = sig;
                         
                         if obj.isTracking
-                            tracker.compareReference(sig(2), Tracker.REFERENCE_TYPE_KCPS, TrackablePosition.EXP_NAME);
+                            tracker.compareReference(sig(2), Tracker.REFERENCE_TYPE_KCPS, TrackablePosition.NAME);
                         end
                         success = true;
                         break;

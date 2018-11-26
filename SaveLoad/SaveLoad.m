@@ -318,8 +318,9 @@ classdef SaveLoad < Savable & EventSender
             if strcmp(obj.mCategory, Savable.CATEGORY_IMAGE)
                 namePrefix = Savable.CATEGORY_IMAGE;
             else
-                exp = getObjByName(Experiment.NAME);
-                namePrefix = exp.EXP_NAME;
+                % The prefix will be the name of the current (running)
+                % Experiment
+                namePrefix = Experiment.current;
             end
             
             obj.mLoadedFileName = sprintf('%s_%s.mat', namePrefix, structToSave.(Savable.PROPERTY_TIMESTAMP_END));
@@ -792,9 +793,9 @@ classdef SaveLoad < Savable & EventSender
     
     %% overriden from Savable
     methods (Access = protected)
-        function outStruct = saveStateAsStruct(obj, mCategory, ~)
+        function outStruct = saveStateAsStruct(obj, category, ~)
             % saves the state as struct.
-            if strcmp(mCategory, obj.mCategory)
+            if strcmp(category, obj.mCategory)
                 outStruct = struct('mNotes', obj.mNotes);
             else
                 outStruct = NaN;

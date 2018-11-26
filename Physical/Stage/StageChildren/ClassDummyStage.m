@@ -503,16 +503,21 @@ classdef (Sealed) ClassDummyStage  < ClassStage
             % Halts all stage movements.
             warningMsg = 'Stage was manually stopped!';
             
+            % (Maybe) stop StageScanner
             scanner = getObjByName(StageScanner.NAME);
             if strcmp(scanner.mStageName, obj.name) && scanner.mCurrentlyScanning
                 scanner.mCurrentlyScanning = false;
                 obj.sendWarning(warningMsg);
-            elseif Experiment.current(TrackablePosition.EXP_NAME)
-                exp = getObjByName(Experiment.NAME);
+            end
+            
+            % (Maybe) stop TrackablePosition
+            try
+                exp = getObjByName(TrackablePosition.NAME);
                 if exp.isRunning
                     exp.isRunning = false;
                     obj.sendWarning(warningMsg);
                 end
+            catch
             end
         end
         

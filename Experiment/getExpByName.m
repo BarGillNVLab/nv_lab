@@ -1,19 +1,26 @@
 function expObj = getExpByName(searchedName)
-%GETEXPBYNAME Returns the experiment object, if its name is the same as
-%EXP_NAME, otherwise... (for now, throws exception/error)
+%GETEXPBYNAME Returns an experiment object, whose name is the same as
+%searchedName, if such might exist
 
-msgNoExp = 'No experiment is currently running!';
-msgNotCurrent = '"%s" is not the current experiment! Running now %s';
+msgNoExp = 'No experiment exists that is called ''%s''!';
+msgNotCurrent = '"%s" is not a current experiment! Running it now.';
 
-currentExp = getObjByName(Experiment.NAME);
-if isempty(currentExp.EXP_NAME)
-    ME = MException(Experiment.EXCEPTION_ID_NO_EXPERIMENT, msgNoExp);
-    throw(ME);
-elseif strcmp(currentExp.EXP_NAME, searchedName)
-    expObj = currentExp;
-else
-    ME = MException(Experiment.EXCEPTION_ID_NOT_CURRENT, msgNotCurrent, searchedName, currentExp.EXP_NAME);
-    throw(ME);
+try
+    expObj = getObjByName(searchedName);
+catch
+    % We look for the experiment, in order to create it
+    [expNamesCell, expClassNamesCell] = Experiment.getExperimentNames();
+    ind = strcmp(obj.expName, expNamesCell); % index of obj.expName in list
+    
+    if isempty(ind)
+        ME = MException(Experiment.EXCEPTION_ID_NO_EXPERIMENT, msgNoExp, searchedName);
+        throw(ME);
+    else
+        warning(Experiment.EXCEPTION_ID_NOT_CURRENT, msgNotCurrent, searchedName); % todo: maybe it is unnecessary
+        % (We use @str2func which is superior to @eval, when possible)
+        className = str2func(expClassNamesCell{ind}); % function handle for the class
+        expObj = className();
+    end 
 end
 
 end

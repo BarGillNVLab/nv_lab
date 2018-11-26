@@ -19,7 +19,7 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
             padding = 15;
             spacing = 15;
             obj@ViewVBox(parent, controller, padding, spacing);
-            obj@EventListener(Experiment.NAME);
+            obj@EventListener(expName);
             obj.expName = expName;
             
             fig = obj.component;    % for brevity
@@ -64,13 +64,21 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
         
         %%% Callbacks %%%
         function btnStopCallback(obj, ~, ~)
-            exp = obj.getExperiment;
-            exp.pause;
-            obj.refresh;
+            try
+                exp = getObjByName(obj.expName);
+                exp.pause;
+                obj.refresh;
+            catch
+                EventStation.anonymousWarning('There was no Experiment to stop!')
+            end
         end
         
         function btnStartCallback(obj, ~, ~)
-            exp = obj.getExperiment;
+            try
+                exp = getObjByName(obj.expName);
+            catch
+                
+            end
             exp.run;
             obj.refresh;
         end
@@ -84,7 +92,7 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
         %%% Plotting %%%
         function plot(obj)
             % Check whether we have anything to plot
-            exp = obj.getExperiment;
+            exp = getObjByName(obj.expName);
             if obj.isPlotNormalized
                 data = exp.normalizedData().value;
             else
@@ -146,7 +154,7 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
         end
         
         function refresh(obj)
-            exp = obj.getExperiment;
+            exp = getObjByName(obj.expName);
             if exp.pauseFlag
                 obj.btnStartStop.startString = 'Resume';
             else
@@ -159,9 +167,9 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
     
     methods
         function exp = getExperiment(obj)
-            if Experiment.current(obj.expName)
-                exp = getObjByName(Experiment.NAME);
-            else
+            try
+                exp = getObjByName(obj.expName);
+            catch
                 [expNamesCell, expClassNamesCell] = Experiment.getExperimentNames();
                 ind = strcmp(obj.expName, expNamesCell); % index of obj.expName in list
                 
@@ -177,14 +185,10 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
         % When events happen, this function jumps.
         % event is the event sent from the EventSender
         function onEvent(obj, event)
-            % We're listening to all experiments, but only care if the
-            % experiment is "ours".
-            if strcmp(event.creator.EXP_NAME, obj.expName)
-                obj.refresh;
-                if isfield(event.extraInfo, Experiment.EVENT_DATA_UPDATED) ...
-                        || isfield(event.extraInfo, Experiment.EVENT_EXP_RESUMED)
-                    obj.plot
-                end
+            obj.refresh;
+            if isfield(event.extraInfo, Experiment.EVENT_DATA_UPDATED) ...
+                    || isfield(event.extraInfo, Experiment.EVENT_EXP_RESUMED)
+                obj.plot
             end
         end
     end

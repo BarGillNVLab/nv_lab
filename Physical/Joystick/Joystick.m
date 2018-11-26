@@ -1,6 +1,5 @@
 classdef Joystick < BaseObject
-    %JOYSTICK Summary of this class goes here
-    %   Detailed explanation goes here
+    %JOYSTICK Class for represnting physical joystick
     
     properties (Constant)
         NAME = 'joystick';

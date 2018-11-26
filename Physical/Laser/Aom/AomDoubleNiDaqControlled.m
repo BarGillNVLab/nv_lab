@@ -55,14 +55,14 @@ classdef AomDoubleNiDaqControlled < LaserPartAbstract
             % "off"
             switch newChannel
                 case {1, '1', 'one'}
-                    trueforOneFalseForTwo = true;
+                    falseforOneTrueForTwo = false;
                 case {2, '2', 'two'}
-                    trueforOneFalseForTwo = false;
+                    falseforOneTrueForTwo = true;
             end
-            obj.swapSwitch.isEnabled = trueforOneFalseForTwo;
+            obj.swapSwitch.isEnabled = falseforOneTrueForTwo;
         end
         function channel = get.activeChannel(obj)
-            channel = BooleanHelper.ifTrueElse(obj.swapSwitch.isEnabled, 1, 2);
+            channel = BooleanHelper.ifTrueElse(obj.swapSwitch.isEnabled, 2, 1);
         end
         
         function mValues = get.values(obj)

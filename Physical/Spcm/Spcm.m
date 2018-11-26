@@ -110,7 +110,7 @@ classdef (Abstract) Spcm < EventSender
             end
             
             % Create switch for 'detector'
-            switchStruct = spcmTypeStruct.xSwitch;
+            switchStruct = spcmTypeStruct.Switch;
             SwitchPgControlled.create(switchStruct.switchChannelName, switchStruct);
             
             % Add to object map

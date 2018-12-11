@@ -1,7 +1,17 @@
 classdef P < PH   
-    % P class (P means Pulse) combines a duration (ticks) and an output state.
-    % the JSON string sent to the pulse streamer is calculated as soon as
-    % a pulse is generated
+    % P class (P means Pulse) combines a duration (ticks) and an output
+    % state. 
+    % 
+    % THIS CLASS IS DEPRECATED!
+    % Further use of P and PH classes is
+    % discouraged as they will be removed in the future.
+    %
+    % INSTEAD, USE: "PSSequenceBuilder" to create sequences.
+    %
+    % For compatibility with your existing code, we provide conversion 
+    % function "convert_PPH_to_PSSequence.m". 
+    % Use it to convert an array of P/PH objects to PSSequence object.
+    % For example see: "Example2_QuickStart_migration.m"
     %
     % usage:
     % PH(100,[0,1],0,1)
@@ -20,11 +30,10 @@ classdef P < PH
             if nargin < 4
                 analog1 = 0;
             end
-            mask = uint8(0);
-            for c = digchan
-                assert((0 <= c) && (c < 8))
-                mask = bitset(mask, c+1);
-            end
+                        
+            assert(all(ismember(digchan,0:7)));
+            mask = uint8(sum(pow2(unique(digchan))));
+            
             obj = obj@PH(ticks, mask, analog0, analog1);
         end
     end

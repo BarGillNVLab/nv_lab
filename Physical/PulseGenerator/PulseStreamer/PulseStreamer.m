@@ -2,241 +2,241 @@ classdef PulseStreamer < handle
     % PulseStreamer is a wrapper class to communicate with the JSON-RPC
     % interface of the Pulse Streamer
     properties (Constant)
-        version = 0.5;      % current version of the Pulse Streamer matlab driver
+        class_ver = '1.0';      % current version of the Pulse Streamer MATLAB driver
     end
     
     properties (SetAccess = private, GetAccess = public)
-        ipAddress           % ip address of the Pulse Streamer
-        sequenceStartMode   % method to start the sequence (PSStart enumeration)
-        triggerEdge         % trigger edge type for external start (PSTriggerEdge enumeration)
-        callbackFinished    % callback function called when the stream of the Pulse Streamer has finished
+        ipAddress               % IP address of the Pulse Streamer
+        fwVersion               % version of the Pulse Streamer firmware
+        triggerStart = PSTriggerStart.Immediate        % defines how sequence is triggered (PSTriggerStart enumeration)
+        triggerMode = PSTriggerMode.Normal         % controls how many time uploaded sequence can be retriggered (PSTrigger enumeration)
+        hasFinishedCallbackFcn     % callback function called when the stream of the Pulse Streamer has finished
+        analogChannels = 0:1;    % List of valid analog channels for the connected Pulse Streamer
+        digitalChannels = 0:7;   % List of valid analog channels for the connected Pulse Streamer
     end
     
     properties (Access = private)
-        pollTimer           % poll timer to detect the start of the sequence
-        finishedTimer       % triggers the external callback function
-        wasRunning          % variable which stores the last state of the Pulse Streamer to detect the end of the sequences
-        sequenceDuration    % length of the sequence in ns including multiple runs
-        finishedFlag        % store internally whether the end of the sequence was reached
-        nRuns               % store internally the number of runs
-        initialOutputState  % store internally the initial state
-        underflowOutputState% store internally the underflow state
-        debugDepth          % maximum number of requests recorded
-        debugFilename       % filename the requests will be recorded to
-        debugBuffer         % buffer for stored requests
+        maxLevelDuration = 4294967295; % Maximum duration of a level (uint32). Longer durations will be split.
+        maxPulseCount = 2e6;    % maximum number of pulses
+        analogScale = 32767;    % Scaling factor that converts physical value to ADC value
+        
+        pollTimer               % poll timer to detect when the sequence has finished
+        sequenceDuration        % length of the sequence in ns including multiple runs
+        nRuns                   % store internally the number of runs
+        finalOutput             % store internally final output value
+        isDummy = false;        % True when object was initialized as "dummy" by providing empty IP address string.
     end
     
     methods
         % constructor
         function obj = PulseStreamer(ipAddress)
             % ipAdress: hostname or ip address of the pulse streamer (e.g.
-            % 'PulseStreamer' or '192.168.178.20')
-            obj.debugDepth = 0;
+            % 'pulsestreamer' or '192.168.178.20')
+            % You can specify empty string as IP address for offline sequence design.
+            
             obj.ipAddress = ipAddress;
+            
+            if isempty(obj.ipAddress)
+                warning('off','backtrace');
+                warning('No IP address provided. PulseStreamer object is initialized as dummy. Use only for offline sequence design.')
+                warning('off','backtrace');
+                obj.fwVersion = 'dummy';
+                obj.isDummy = true;
+                return;
+            end
+            
             try
-                obj.isRunning();
+                fwver = obj.getFirmwareVersion();
             catch e
                 showChars = min(150, length(e.message));
                 error(['Could not connect to Pulse Streamer at "' ipAddress '". ' e.message(1:showChars) ' (...)'])
             end
+            
+            if isempty(fwver)
+                error('This class requires Pulse Streamer firmware version >=1.0');
+            end
+            
+            obj.fwVersion = fwver;
+            
         end
         
         %%%%%%%%%%%%%%%%%%%% wrapped JSON-RPC methods %%%%%%%%%%%%%%%%%%%%%%%%%%%
+        
+        function reset(obj)
+           % resets the Pulse Streamer device
+           obj.stopTimer();
+           obj.RPCall('reset');
+        end
+        
         function constant(obj, outputState)
             % set a constant output at the Pulse Streamer outputs
             if ~isa(outputState, 'OutputState')
                 error('Invalid parameter: outputState must be an OutputState object!');
             end
             obj.stopTimer();
-            obj.httpRequest(PulseStreamer.getJsonRpcRequest('constant', outputState.getJsonString()));
-            obj.finishedFlag = true;
+            outstate_json = obj.output_state_to_json(outputState);
+            obj.RPCall('constant', outstate_json);
         end
-        
-        function rearm(obj)
-            % reinitialize the most recent sequence uploaded and rearm
-            % WARNING - METHOD NOT TESTET YET
-            if (obj.sequenceDuration <= 0)
-                error('No valid sequence on the device. cannot rearm!')
-            end
-            if ~isa(obj.initialOutputState,'OutputState') || ~isa(obj.underflowOutputState,'OutputState')
-                error('Invalid parameter: initialState, and underflowState must be a OutputState object!');
-            end
-            if ~isa(obj.sequenceStartMode,'PSStart')
-                error('Invalid parameter: startType must be a PSStart enumeration!');
-            end
-            if ~(obj.sequenceStartMode == PSStart.Hardware)
-                error('Rearm is only supported for hardware trigger!');
-            end
-            obj.stopTimer();
-            obj.wasRunning = false;
-            obj.finishedFlag = false;
-            obj.httpRequest(PulseStreamer.getJsonRpcRequest('stream', obj.initialOutputState.getJsonString(), obj.underflowOutputState.getJsonString(), num2str(obj.sequenceStartMode)));
-            %if ~isempty(obj.callbackFinished) && nRuns > 0
-            % this needs to change again if the hasFinished comes from the
-            % FPGA itself
-            %%% the callback timer is only started if a callback function
-            %%% is set by the user and as long the sequence has no infinite runs
-            if ~isempty(obj.callbackFinished) && (obj.nRuns > 0)
-                obj.pollTimer = timer;
-                obj.pollTimer.TimerFcn = @obj.callbackInternalTimer;
-                obj.pollTimer.Period = 0.1; %s
-                obj.pollTimer.ExecutionMode = 'fixedSpacing';
-
-                start(obj.pollTimer);
-            end
-        end
-        
-        function timing = stream(obj, sequence, nRuns, initialState, finalState, underflowState, startType)
-            % sends the sequence to the Pulse Streamer
-            %  sequence:       PulseMessage object or cell array of PulseMessages
-            %                  or PulseSequence or cell array of PulseSequences
-            %  initalState:    OutputState object which defines the output
-            %                  before the sequence starts
+    
+        function timing = stream(obj, sequence, nRuns, finalState)
+            % STREAM sends the sequence to the Pulse Streamer
+            %  sequence:       PSSequence object.
+            %  nRuns:          Number of times to repeat the sequence.
+            %                  Infinite repetitions if nRuns<0.
             %  finalState:     OutputState object which defines the output
             %                  after the sequence has ended
-            %  underflowState: OutputState object which defines the output
-            %                  if an data underflow inside the pulse
-            %                  streamer happens
-            %  startType:      PSStart enueration which defines how the
-            %                  sequence is started
+            
+            if ~isa(sequence, 'PSSequence')
+                error('Invalid parameter: sequence must be a PSSequence object!');
+            end
+            if ~exist('nRuns', 'var')
+                nRuns = -1;
+            end
+            if ~exist('finalState', 'var')
+                finalState = OutputState.Zero();
+            elseif ~isa(finalState,'OutputState')
+                error('Invalid parameter: finalState must be an OutputState object!');
+            end
+            
+            if sequence.isEmpty()
+                % Do nothing when sequence is empty
+                fprintf('Sequence is empty. Nothing to stream\n');
+                return;
+            end
             
             tStart = tic;
-            if ~isa(sequence, 'PH')
-                error('Invalid parameter: sequence must be a P or PH object or an array of P or PH objects!');                
-            end                
-            if ~isa(initialState,'OutputState') || ~isa(finalState,'OutputState') || ~isa(underflowState,'OutputState')
-                error('Invalid parameter: initialState, finalState and underflowState must be a OutputState object!');
-            end
-            if ~isa(startType,'PSStart')
-                error('Invalid parameter: startType must be a PSStart enumeration!');
-            end
             obj.stopTimer();
-            obj.wasRunning = false;
+            
+            % rescale sequence data as the first processing step
+            seq = obj.sequence_rescale_data(sequence);
+%             seq = obj.sequence_cleanup(seq);
+            seq = obj.sequence_split_long(seq);
+            
+            nPulses = numel(seq.ticks);
+            if nPulses > obj.maxPulseCount
+                error('Maximum number of pulses within one run exceeded!  pulses: %0.0f max: %0.0f', nPulses, obj.maxPulseCount);
+            end
+            
             timing.ready = toc(tStart);
-            encodedSequence = horzcat('"',sequence.json,'"');                
+            
+            encodedSeq = obj.sequence_encode(seq);
+            
             timing.encoded = toc(tStart);
-            obj.finishedFlag = false;
-            numberOfPulses = (length(encodedSequence)-2) / 12;
-            if numberOfPulses > 1000000
-                error(['Maximum number of pulses within one run exceeded!  pulses: ' num2str(numberOfPulses) '  max: 1000000']);
-            end
-            json = PulseStreamer.getJsonRpcRequestStream(encodedSequence, nRuns, initialState.getJsonString(), finalState.getJsonString(), underflowState.getJsonString(), startType);
-            timing.json = toc(tStart);
-            obj.httpRequest(json);
-            timing.http = toc(tStart);
-            obj.sequenceStartMode = startType;
-            obj.initialOutputState = initialState;
-            obj.underflowOutputState = underflowState;
+            
+            obj.streamEncodedSequence(encodedSeq, nRuns, finalState);
+            
+            timing.transmitted = toc(tStart); 
+ 
+        end
+        
+        function streamEncodedSequence(obj, encodedSeqStr, nRuns, finalState)
+            % This is low-level function that sends encoded sequence data
+            
             obj.nRuns = nRuns;
-            obj.sequenceDuration = P.duration(sequence) * nRuns;
-            timing.sum = toc(tStart);
-            %if ~isempty(obj.callbackFinished) && nRuns > 0
-            % this needs to change again if the hasFinished comes from the
-            % FPGA itself
-            %%% the callback timer is only started if a callback function
-            %%% is set by the user and as long the sequence has no infinite runs
-            if ~isempty(obj.callbackFinished) && (nRuns > 0)
-                obj.pollTimer = timer;
-                obj.pollTimer.TimerFcn = @obj.callbackInternalTimer;
-                obj.pollTimer.Period = 0.1; %s
-                obj.pollTimer.ExecutionMode = 'fixedSpacing';
-
-                start(obj.pollTimer);
+            finstate_json = obj.output_state_to_json(finalState);
+            obj.RPCall('stream', ['"', encodedSeqStr, '"'], nRuns, finstate_json); 
+            
+            if (nRuns > 0) && isa(obj.hasFinishedCallbackFcn, 'function_handle')
+                % the callback timer is only started if a callback function
+                % is set by the user and as long the sequence has no infinite runs
+                obj.callbackTimerStart();
             end
+        end
+        
+        function TF = rearm(obj)
+            % Rearm Pulse Streamer
+            ret = obj.RPCall('rearm');
+            TF = jsonToBool(ret);
         end
         
         function startNow(obj)
             % starts the sequence if the sequence was uploaded with the
             % PSStart.Software option
-            obj.httpRequest(PulseStreamer.getJsonRpcRequest('startNow'));
+            obj.RPCall('startNow');
         end
         
-        function setTrigger(obj, triggerEdge)
-            % set the trigger edge if the sequence was uploaded with the
-            % PSStart.Hardware option
-            if ~isa(triggerEdge,'PSTriggerEdge')
-                error('Invalid parameter for setTrigger. Use PSTriggerEdge enumeration.');
+        function forceFinal(obj)
+            % Interrupts the sequence and sets the final state. This
+            % method does not modify the output state if the sequence has 
+            % already finished and the Pulse Streamer was in the final 
+            % state. This method also releases the hardware resources of  
+            % the Pulse Streamer and, therefore, allows for faster upload
+            % sequence during next call of "stream" method.
+            
+            obj.RPCall('forceFinal');
+        end  
+        
+        function setTrigger(obj, triggerStart, triggerMode)
+            %SETTRIGGER: Defines how the uploaded sequence is triggered.
+            
+            if ~isa(triggerStart,'PSTriggerStart')
+                error('Invalid type of triggerStart. Use PSTriggerEdge enumeration.');
             end
-            obj.httpRequest(PulseStreamer.getJsonRpcRequest('setTrigger', triggerEdge));
-            obj.triggerEdge = triggerEdge;
+            if exist('triggerMode', 'var')
+                if ~isa(triggerMode, 'PSTriggerMode')
+                    error('Invalid type of triggerMode. Use PSTriggerMode enumeration.');
+                end
+            else
+                triggerMode = PSTriggerMode.Normal;
+            end
+            obj.RPCall('setTrigger', triggerStart, triggerMode);
+            obj.triggerStart = triggerStart;
+            obj.triggerMode = triggerMode;
         end
         
-        function running = isRunning(obj)
-            % check whether the Pulse Streamer is giving out streaming output
-            ret = obj.httpRequest(PulseStreamer.getJsonRpcRequest('isRunning'));
-            running = PulseStreamer.jsonToBool(ret);
+        function TF = isStreaming(obj)
+            % check whether the Pulse Streamer is currently outputting a sequence
+            ret = obj.RPCall('isStreaming');
+            TF = jsonToBool(ret);
         end
         
-        function sequence = hasSequence(obj)
-            % check whether a sequence was uploaded
-            ret = obj.httpRequest(PulseStreamer.getJsonRpcRequest('hasSequence'));
-            sequence = PulseStreamer.jsonToBool(ret);
+        function TF = hasSequence(obj)
+            % check whether a sequence was uploaded to 
+            ret = obj.RPCall('hasSequence');
+            TF = jsonToBool(ret);
         end
         
-        function finished = hasFinished(obj)
+        function TF = hasFinished(obj)
             % check whether all sequences are finished
-            finished = obj.finishedFlag;
-            return
-            %ret = obj.httpRequest(PulseStreamer.getJsonRpcRequest('hasFinished'));
-            %finished = PulseStreamer.jsonToBool(ret);
+            ret = obj.RPCall('hasFinished');
+            TF = jsonToBool(ret);
         end
         
-        function [underflow, underflowDigital, underflowAnalog] = getUnderflows(obj)
-            % check whether an underflow in the Pulse Streamer occured
-            % the underflow can happen indpendetly for digital or analog
-            % outputs
-            ret = obj.httpRequest(PulseStreamer.getJsonRpcRequest('getUnderflow'));
-            underflows = PulseStreamer.jsonToUInt32(ret);
-            underflow = underflows ~= 0;
-            underflowDigital = underflows == 1 || underflows == 3;
-            underflowAnalog = underflows == 2 || underflows == 3;
-            if underflows > 3
-                error('undefined return value');
+        function selectClock(obj, clockSource)
+            % Select Clock source type
+            if ~isa(clockSource,'PSClockSource')
+                error('Invalid type of clockSource. Use PSClockSource enumeration.');
             end
+            obj.RPCall('selectClock', clockSource);
         end
         
-        function value = getDebugRegister(obj)
-            ret = obj.httpRequest(PulseStreamer.getJsonRpcRequest('getDebugRegister'));
-            value = PulseStreamer.jsonToUInt32(ret);
+        function serial_str = getSerial(obj, serialID)
+            % Request serial number
+            if ~exist('serialID', 'var')
+                serialID = PSSerial.Serial;
+            end
+            if ~isa(serialID, 'PSSerial')
+                error('Invalid type of serialID. Use PSSerial enumeration.');
+            end
+            ret = obj.RPCall('getSerial', serialID);
+            response = jsonToStruct(ret);
+            serial_str = response.result;
         end
         
-        function setDebugRegister(obj, value, mask)
-            obj.httpRequest(PulseStreamer.getJsonRpcRequest('setDebugRegister', value, mask));
+        function fw_ver = getFirmwareVersion(obj)
+            % Request firmware version
+            ret = obj.RPCall('getFirmwareVersion');
+            response = jsonToStruct(ret);
+            fw_ver = response.result;
         end
-        
-        %function reset(obj)
-        %    error('not implemented yet');
-        %    % resets the Pulse Streamer device
-        %    obj.stopTimer();
-        %    obj.httpRequest(PulseStreamer.getJsonRpcRequest('reset'));
-        %end
-        
-        %function idn = idn(obj)
-        %    error('not implemented yet');
-        %    % get MAC address and serial number from the Pulse Streamer
-        %    obj.httpRequest(PulseStreamer.getJsonRpcRequest('idn'));
-        %end
         
         function status(obj)
             % displays the current status of the Pulse Streamer
-            tab = char(9);
-            display(['running:', tab, PulseStreamer.boolToYesNo(isRunning(obj))]);
-            display(['sequence:', tab, PulseStreamer.boolToYesNo(hasSequence(obj))]);
-            [~, underflowDigital, underflowAnalog] = getUnderflows(obj);
-            display(['underflow d:', PulseStreamer.boolToYesNo(underflowDigital)]);
-            display(['underflow a:', PulseStreamer.boolToYesNo(underflowAnalog)]);
-            display(['debug:', tab, tab, num2str(getDebugRegister(obj))]);
+            fprintf('hasSequence:\t %s\n', boolToYesNo(obj.hasSequence));
+            fprintf('isStreaming:\t %s\n', boolToYesNo(obj.isStreaming));
+            fprintf('hasFinished:\t %s\n', boolToYesNo(obj.hasFinished));
         end
         
-        %%%%%%%% debugging methods %%%%%%%%%%%%%%%%%%%%%
-        function enableDebugRecorder(obj, recordedRequests, filename)
-            warning(['Recording the pulse streamer communication to file: ', filename]);
-            obj.debugDepth = recordedRequests;            
-            obj.debugFilename = filename;
-            obj.debugBuffer.counter = 0;
-            obj.debugBuffer.data = cell(1,recordedRequests);
-        end
-
         %%%%%%%% callback function and event handling %%%%%%%%%%%%%%%%%%%%%
         function setCallbackFinished(obj, func)
             % sets the callback function to detect when the Pulse Streamer
@@ -245,223 +245,366 @@ classdef PulseStreamer < handle
             % e.g. fun: @myCallbackFunction
             %
             % the signature of the callback function must be
-            % callbackFunction( ~,~, pulseStreamer)
+            % callbackFunction(pulseStreamer)
             
             % check whether the parameter is valid
             if ~isa(func,'function_handle')
                 error('Callback function must be a function handle');
             end
             
-            if ~(exist(func2str(func)) == 2)
+            if exist(func2str(func)) == 0
                 error(['Callback function not found. ' func2str(func)]);
             end
-            obj.callbackFinished = func;
+            obj.hasFinishedCallbackFcn = func;
         end
     end
     
-    methods (Access = private)        
-        function callbackInternalTimer(obj, ~, ~)
+    
+    methods
+       % Overriden methods. 
+       function delete(obj)
+           % class destructor
+           % Stop and delete timer on object deletion.
+           % This method exists only in handle classes, 
+           % i.e. ones subclassed from "handle" superclass
+           
+           % delete(h) deletes a handle object, but does not clear the
+           % handle variable from the workspace. The handle variable is
+           % not valid once the handle object has been deleted.
+           %
+           % https://uk.mathworks.com/help/matlab/matlab_oop/handle-class-destructors.html
+           %
+           % To be a valid class destructor, the delete method:
+           %   *  Must define one, scalar input argument, which is an object of the class.
+           %   *  Must not define output arguments
+           %   *  Cannot be Sealed, Static, or Abstract
+           % In addition, the delete method should not:
+           %   *  Throw errors, even if the object is invalid.
+           %   *  Create new handles to the object being destroyed
+           %   *  Call methods or access properties of subclasses
+           
+           tmr = obj.pollTimer;
+           if isa(tmr, 'timer')
+               if tmr.isvalid
+                   stop(tmr);
+               end
+               delete(tmr);
+           end
+           obj.pollTimer = [];
+          
+           % Defining a delete method in a handle subclass
+           % does not override the handle class delete method.
+           % No need to call delete@handle(obj) ourselves!!!
+       end
+    end
+    
+
+    methods (Access = private)
+%     methods (Access = protected) % Uncomment this and comment previous for debug only
+
+        function seq_out = sequence_cleanup(obj, seq_in)
+            %SEQUENCE_CLEANUP removes pulses with zero duration and joins
+            %pulses of the same state
+            
+            % remove zero duration levels
+            nz_idxs = ~(uint32(seq_in.ticks) == 0);
+            nz_idxs(end) = true; % last one always included
+            ticks = seq_in.ticks(nz_idxs);
+            digi = seq_in.digi(nz_idxs);
+            ao0 = seq_in.ao0(nz_idxs);
+            ao1 = seq_in.ao1(nz_idxs);
+            
+            % find equal pairs, first element must always exist
+            neq_digi = [true; logical(diff(digi))];
+            neq_ao0 =  [true; logical(diff(ao0))];
+            neq_ao1 =  [true; logical(diff(ao1))];
+            neqmsk = neq_digi | neq_ao0 | neq_ao1; % repeated state => false
+            
+            N = sum(double(neqmsk)); % number of states without repeated ones
+            
+            seq_out.ticks = zeros(1,N); % preallocate
+            
+            % just copy nonrepeated states
+            seq_out.digi = digi(neqmsk); 
+            seq_out.ao0 = ao0(neqmsk);
+            seq_out.ao1 = ao1(neqmsk);
+            
+            jj=0;
+            for ii=1:numel(ticks)
+                if neqmsk(ii)
+                    jj = jj + 1;
+                    seq_out.ticks(jj) = ticks(ii);
+                else
+                    seq_out.ticks(jj) = seq_out.ticks(jj) + ticks(ii);
+                end
+            end
+        end
+        
+        function seq_out = sequence_split_long(obj, seq_in)
+            % split long state durations that exceed maximum duration
+            % 
+
+            if all(seq_in.ticks < obj.maxLevelDuration)
+                seq_out.ticks = seq_in.ticks;
+                seq_out.digi = seq_in.digi;
+                seq_out.ao0 = seq_in.ao0;
+                seq_out.ao1 = seq_in.ao1;
+            else
+                t_max = obj.maxLevelDuration;
+                N = ceil((seq_in.ticks+1) / t_max); % +1 is needed to handle cases with ticks=0.
+                M = sum(N);
+                ticks = zeros(1,M);
+                idxs = zeros(1,M);
+                jj = 1;
+                t = seq_in.ticks;
+                for ii = 1:numel(N)
+                    newN=N(ii); % original pulse is represented by this number of pulses
+                    idx = jj + (1:newN)-1; % indexes of array elements corresponding to current pulse parts
+                    ticks(idx) = t_max; % replace with t_max
+                    ticks(idx(end)) = t(ii) - t_max*(newN-1); % last level is the difference
+                    idxs(idx) = ii; % build list of indices of elements to duplicate
+                    jj = jj + newN;
+                end
+                % compose new states from original arrays
+                seq_out.ticks = ticks;
+                seq_out.digi = seq_in.digi(idxs);
+                seq_out.ao0 = seq_in.ao0(idxs);
+                seq_out.ao1 = seq_in.ao1(idxs);
+            end
+        end
+        
+        function seq_out = sequence_rescale_data(obj, seq_in)
+           % Convert sequence data to hardware values.
+           % Input shall be a class or structure with fields accessible
+           % with dot notation. 
+           % Required fields: ['ticks', 'digi', 'ao0', 'ao1'] 
+           % This function produces structure with same field names.
+           seq_out.ticks = seq_in.ticks;
+           seq_out.digi = seq_in.digi;
+           seq_out.ao0 = round(seq_in.ao0 .* obj.analogScale);
+           seq_out.ao1 = round(seq_in.ao1 .* obj.analogScale);
+        end
+        
+        function seq_encoded = sequence_encode(obj, seq_in)
+            %SEQUENCE_ENCODE: Convert the sequence into the binary format with base64 encoding.
+            % seq can either be a PSSequence or a structure of arrays with
+            % fields as:
+            %       seq_in = struct('ticks',[], 'digi',[], 'ao0',[], 'ao1',[]);
+            
+            try
+                error(javachk('jvm'));
+                
+                % Use Java function to encode base64.
+                % this is the fastest algorithm
+                seq_encoded = encode64_jvm(uint32(seq_in.ticks), uint8(seq_in.digi), int16(seq_in.ao0), int16(seq_in.ao1));
+            catch ME
+                % if java based base64 encoding fails then fallback to pure
+                % MATLAB implementation
+                if strcmp(ME.identifier, 'MATLAB:javachk:thisFeatureNotAvailable')
+                    warning('JVM is not available. Using pure MATLAB base64 encoder. Performance may be reduced.')
+                    seq_encoded = encode64_matlab(uint32(seq_in.ticks), uint8(seq_in.digi), int16(seq_in.ao0), int16(seq_in.ao1));
+                else
+                    rethrow(ME)
+                end
+            end
+        end
+        
+        function out_str = output_state_to_json(obj, outputState)
+           % Encodes OutputState object into JSON representation
+           
+           % Rescale to hardware values
+           state = obj.sequence_rescale_data(outputState);
+           % convert to JSON string
+           out_str = sprintf('[0,%d,%d,%d]', state.digi, state.ao0, state.ao1);
+        end
+        
+        function callbackTimerStart(obj)
+            % Start timer that polls hasFinished state and executes
+            % callback function is such was defined
+            
+            % Before starting make sure previous timer don't exist
+            obj.stopTimer();
+            
+            obj.pollTimer = timer;
+            obj.pollTimer.TimerFcn = @obj.callbackTimerPollFcn;
+            obj.pollTimer.ErrorFcn = @(mt,evt) delete(mt); % if error occurs in timer it will delete itself
+            obj.pollTimer.Period = 0.1; %s
+            obj.pollTimer.ExecutionMode = 'fixedSpacing';
+            
+            start(obj.pollTimer);
+        end
+        
+        function callbackTimerPollFcn(obj, ~, ~)
             % Internal callback to check the status of the Pulse Streamer
             % and handling the external callback function.
             % The Pulse Streamer is polled only if the external callback function
-            % is set by the user.
-            %if ~isempty(obj.callbackFinished)
-            % detect that the sequence is running
-            % wasRunning == false && isRunning == true
-            if ~obj.wasRunning
-                if obj.isRunning()
-                    obj.wasRunning = true;
-                    % stop the poll timer
+            % was set by the user.
+
+            try
+                if obj.hasFinished()
                     obj.stopTimer();
-                    % we start a new timer with the known sequence
-                    % duration
-                    % minimum period according to matlab documentation is 0.001s
-                    % and we should round up, this is why we add 0.0005
-                    delay = round(max(0.001, double(obj.sequenceDuration) / 1e9 + 0.0005),3);
-                    obj.finishedTimer = timer;
-                    obj.finishedTimer.TimerFcn = @obj.callbackInternalFinished;
-                    obj.finishedTimer.StartDelay = delay; %s
-                    obj.finishedTimer.ExecutionMode = 'singleShot';
-                    start(obj.finishedTimer);
+                    obj.hasFinishedCallbackFcn(obj);
                 end
-            end
-            %end
-            % this is the code if we implement it in the hardware
-            % hasFinished = obj.hasFinished();
-            % if hasFinished
-            %    obj.callbackFinished();
-            %    stop(obj.pollTimer);
-            %    delete(obj.pollTimer);
-            % end
-        end
-        
-        function callbackInternalFinished(obj, ~, ~)
-            % internal callback function which is called when the sequence
-            % has ended
-            obj.finishedFlag = true;
-            if ~isempty(obj.callbackFinished)
-                obj.callbackFinished(obj);
+            catch ME
+                % cleanup the timer on error
+                obj.stopTimer();
+                rethrow(ME);
             end
         end
         
         function stopTimer(obj)
-            %checks whether the timer is still alive and stops it
-            if ~isempty(obj.pollTimer)
-                stop(obj.pollTimer)
+            %Stops and deletes timer object
+            
+            if isa(obj.pollTimer, 'timer')
+                if obj.pollTimer.isvalid
+                    stop(obj.pollTimer);
+                end
                 delete(obj.pollTimer)
-                obj.pollTimer = [];
             end
-            if ~isempty(obj.finishedTimer)
-                stop(obj.finishedTimer)
-                delete(obj.finishedTimer)
-                obj.finishedTimer = [];
-            end
+            obj.pollTimer = [];
         end
-        %%%%%%%%%%%%%%%%%%%% internal methods  %%%%%%%%%%%%%%%%%%%%%%%%%%%
-        function ret = httpRequest(obj, req)
-            if obj.debugDepth > 0
-                buffer = obj.debugBuffer;
-                buffer.counter = buffer.counter + 1;
-                data = circshift(buffer.data,1);
-                data{1} = {now, req};
-                buffer.data = data;
-                obj.debugBuffer = buffer;
-                save(obj.debugFilename, 'buffer')
+        
+        function response = RPCall(obj, method, varargin)
+            % Make JSON-RPC call and wait for response
+            % method:   name of the RPC call method
+            % varagin:  arbitary number of arguments (string or numeric)
+            request = obj.makeJsonRpcRequestString(method, varargin{:});
+
+            response = obj.httpRequest(request);
+            
+            if contains(response, 'error', 'IgnoreCase',true)
+                resp = jsonToStruct(response);
+                e = resp.error;
+                error('\tERROR code: %d, MESSAGE: %s, DATA: %s', e.code, e.message, e.data);
             end
+        end  
+
+        function ret = httpRequest(obj, req)
+            % Send HTTP request and return response
             % http handling
-            url = strcat('http://',obj.ipAddress,':8050/json-rpc');
+            
+            if obj.isDummy
+                warning('off','backtrace');
+                warning('PulseStreamer object initialized as "dummy". Communication with hardware is disabled!');
+                warning('on','backtrace');
+                ret = '{"jsonrpc":"2.0","id":1,"result":"0"}';
+                return;
+            end
+            
+            url = sprintf('http://%s:8050/json-rpc', obj.ipAddress);
             % set the timeout to 3s
             ret = urlread2(url, 'POST', req, []);
         end
-    end
-    
-    methods (Static, Access = public)
-        function jsonString = getJsonRpcRequest(method, varargin)
-            % create a JSON-RPC call
+
+        function jsonString = makeJsonRpcRequestString(obj, method, varargin)
+            % create a JSON-RPC string
             % method:   name of the RPC call method
             % varagin:  arbitary number of arguments (string or numeric)
-            if nargin == 1
-                s = strcat('{"jsonrpc":"2.0","id":"1","method":"',method,'"}');
+            if nargin == 2
+                s = sprintf('{"jsonrpc":"2.0","id":"1","method":"%s"}', method); % sprintf() is much faster than strcat()
             else
-                s = strcat('{"jsonrpc":"2.0","id":"1","method":"',method,'","params":[');
+                paramstr = '';
                 for i = 1:length(varargin)
                     p = varargin{i};
                     if isnumeric(p)
-                        p = num2str(p);
+                        paramstr = sprintf('%s%d,',paramstr,p);
+                    elseif ischar(p)
+                        paramstr = sprintf('%s%s,',paramstr,p);
+                    else
+                        error('Unsupported parameter type.')
                     end
-                    s = strcat(s, p, ',');
                 end
-                s = strcat(s(1:end-1),']}');
+                s = sprintf('{"jsonrpc":"2.0","id":"1","method":"%s","params":[%s]}',method, paramstr(1:end-1));
             end
             jsonString = s;
         end
-
-        function jsonString = getJsonRpcRequestStream(encodedSequence, nRuns, initialState, finalState, underflowState, startType)
-            % create a JSON-RPC call - optimized for stream
-            jsonString = strcat('{"jsonrpc":"2.0","id":"1","method":"stream","params":[', encodedSequence, ',', num2str(nRuns), ',', initialState, ',', finalState, ',', underflowState, ',', num2str(startType), ']}');
-        end
-        
-        function stru = jsonToStruct(string)
-            % converts the returned string from an JSON-RPC call to
-            % a struct
-            stru = parse_json(string);
-            stru = stru{1};
-        end
-        
-        function bool = jsonToBool(string)
-            % converts the returned string from an JSON-RPC call to
-            % a boolean value
-            stru = PulseStreamer.jsonToStruct(string);
-            if stru.result == 0
-                bool = false;
-            elseif stru.result == 1
-                bool = true;
-            else
-                error(['return value is not a boolean (0 or 1) but ' num2str(stru.result)]);
-            end
-        end
-        
-        function value = jsonToUInt32(string)
-            % extracts the returned value from an JSON-RPC call and
-            % converts it into a uint32
-            stru = PulseStreamer.jsonToStruct(string);
-            value = uint32(stru.result);
-        end
-        
-        function c = replace(c,ins,idx)
-            c = [c(1:idx-1) ins c(idx+1:end)];
-        end
-        
-        function seqs = split(seq)
-            seqs = cell(1,ceil(seq.ticks / 2000000));
-            for i=1:length(seqs)-1
-                seqs{i} = seq.clone();
-                seqs{i}.ticks = uint64(2000000);
-            end
-            seqs{end} = seq.clone();
-            seqs{end}.ticks = mod(seq.ticks, 2000000);
-        end
-        
-        function encodedSequence = encodeSequence(seqs)
-            % Convert the sequence into the binary format required.
-            % Naitive java is used to do the base64 encoding.
-            % seq can either be a PulseMessage or a cell array of
-            % PulseMessages
-            
-            error(javachk('jvm'));
-
-            % split pulses > 2s
-            if isa(seqs, 'cell')
-                i = 1;
-                while true
-                    if seqs{i}.ticks > 2000000
-                        seqs = PulseStreamer.replace(seqs, PulseStreamer.split(seqs{i}), i);
-                    end
-                    i = i + 1;
-                    if i > length(seqs)
-                        break;
-                    end
-                end
-            else
-                if seqs.ticks(seqs.ticks > 2000000) 
-                    seqs = PulseStreamer.split(seqs);
-                end
-            end
-
-            n_pulses = length(seqs);
-            bufferSize = n_pulses*9;
-            
-            byteBuffer = java.nio.ByteBuffer.allocate(bufferSize);
-
-            for i = 1:n_pulses
-                if ~(isa(seqs, 'cell'))
-                    seq = seqs;
-                else
-                    seq = seqs{i};
-                end
-                ticks = uint32(seq.ticks);
-                digi = seq.digi;
-                ao0 = seq.ao0;
-                ao1 = seq.ao1;
-                byteBuffer.putInt(ticks);
-                byteBuffer.put(java.lang.Byte(digi).byteValue());
-                byteBuffer.putShort(ao0);
-                byteBuffer.putShort(ao1);                
-            end
-            encodedSequence = transpose(char(org.apache.commons.codec.binary.Base64.encodeBase64(byteBuffer.array(), 0)));
-        end
-        
-        %%%%%%%%%%%%%%%%%%%%%%% string handling %%%%%%%%%%%%%%%%%%%%%%%%%%
-        function str = boolToYesNo(bool)
-            % converts a boolean value into a 'Yes' or 'No' string
-            if bool == 0
-                str = 'no';
-            elseif bool == 1
-                str = 'yes';
-            else
-                error('not a boolean value');
-            end
-        end
     end
+end
+
+
+%%%%%%%%%%%%%%%%%%%%%%% string handling %%%%%%%%%%%%%%%%%%%%%%%%%%
+function str = boolToYesNo(bool)
+    % converts a boolean value into a 'Yes' or 'No' string
+    if bool == 0
+        str = 'no';
+    elseif bool == 1
+        str = 'yes';
+    else
+        error('not a boolean value');
+    end
+end
+
+function stru = jsonToStruct(string)
+    % converts the returned string from an JSON-RPC call 
+    % to a struct
+    stru = parse_json(string);
+    stru = stru{1};
+end
+
+function bool = jsonToBool(string)
+    % converts the returned string from an JSON-RPC call to
+    % a boolean value
+    stru = jsonToStruct(string);
+    if stru.result == 0
+        bool = false;
+    elseif stru.result == 1
+        bool = true;
+    else
+        error(['return value is not a boolean (0 or 1) but ' num2str(stru.result)]);
+    end
+end
+
+function value = jsonToUInt32(string)
+    % extracts the returned value from an JSON-RPC call and
+    % converts it into a uint32
+    stru = jsonToStruct(string);
+    value = uint32(stru.result);
+end
+
+function enc = encode64_jvm(tick,digi,ao0,ao1)
+    % Encode sequence data to base64 string using Java function
+
+    N = numel(tick);
+    % Cast each value into individual bytes. Reshape the result so the columns
+    % represent the pulse and rows represent individual bytes for these
+    % values
+    tick_bytes = reshape(typecast(swapbytes(uint32(tick(:))), 'int8'), 4,N);
+    digi_bytes = reshape(typecast(swapbytes(uint8(digi(:))), 'int8'), 1,N);
+    ao0_bytes =  reshape(typecast(swapbytes(int16(ao0(:))), 'int8'), 2,N);
+    ao1_bytes =  reshape(typecast(swapbytes(int16(ao1(:))), 'int8'), 2,N);
+
+    % combine byte arrays along byte dimension to get [9,N] array
+    bytes = [tick_bytes; digi_bytes; ao0_bytes; ao1_bytes]; 
+    % reshape byte arrays such that the corect byte sequence (along
+    % columns) so the bytes are 
+    % [b11,b21,b31,...,b91, b12,b22,b32,...,b92, ..., b1N,...,b9N]
+    bytes = reshape(bytes, 1, 9*N); 
+    % encode into base64 string
+    enc = transpose(char(org.apache.commons.codec.binary.Base64.encodeBase64(bytes, 0)));
+end
+
+function enc = encode64_matlab(tick,digi,ao0,ao1)
+    % Encode sequence data to base64 string using MATLAB function
+    % Used as fallback when JVM is not available.
+
+    N = numel(tick);
+    % Cast each value into individual bytes. Reshape the result so the columns
+    % represent the pulse and rows represent individual bytes for these
+    % values
+    tick_bytes = reshape(typecast(swapbytes(uint32(tick(:))), 'uint8'), 4,N);
+    digi_bytes = reshape(typecast(swapbytes(uint8(digi(:))), 'uint8'), 1,N);
+    ao0_bytes =  reshape(typecast(swapbytes(int16(ao0(:))), 'uint8'), 2,N);
+    ao1_bytes =  reshape(typecast(swapbytes(int16(ao1(:))), 'uint8'), 2,N);
+    
+    % combine byte arrays along byte dimension to get [9,N] array
+    bytes = [tick_bytes; digi_bytes; ao0_bytes; ao1_bytes];
+    
+    % reshape byte arrays such that the corect byte sequence (along
+    % columns) so the bytes are 
+    % [b11,b21,b31,...,b91, b12,b22,b32,...,b92, ..., b1N,...,b9N]
+    bytes = reshape(bytes, 1, 9*N);
+    
+    % encode into base64 string
+    enc = matlab.net.base64encode(bytes);
 end
 

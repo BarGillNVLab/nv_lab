@@ -1,18 +1,9 @@
 classdef PH < handle
     % PH class (PH means Pulse, Hex input) combines a duration (ticks) and
     % an output state.
+    % the JSON string sent to the pulse streamer is calculated as soon as
+    % a pulse is generated
     %
-    % THIS CLASS IS DEPRECATED!
-    % Further use of P and PH classes is
-    % discouraged as they will be removed in the future.
-    %
-    % INSTEAD, USE: "PSSequenceBuilder" to create sequences.
-    %
-    % For compatibility with your existing code, we provide conversion 
-    % function "convert_PPH_to_PSSequence.m". 
-    % Use it to convert an array of P/PH objects to PSSequence object.
-    % For example see: "Example2_QuickStart_migration.m"
-    % 
     % usage:
     % PH(100,3,0,1)
     % defines a pulse of length 100ns
@@ -20,10 +11,11 @@ classdef PH < handle
     % analog channel 0: 0 V
     % analog channel 1: 1 V
     properties
-        ticks
-        digital;
-        analog0
-        analog1
+        ticks@uint64
+        digital@uint8
+        analog0@int16
+        analog1@int16
+        json
         locked
         initialize
     end    
@@ -42,27 +34,29 @@ classdef PH < handle
                 error('digchan must be a single value (bitmask)');
             end
             obj.initialize = true;
-            obj.ticks = ticks;
+            obj.ticks = uint64(ticks);
             assert((0 <= digchan) && (digchan < 256))
             assert((-1 <= analog0) && (analog0 <= 1))
             assert((-1 <= analog1) && (analog1 <= 1))
-            obj.digital = digchan;
-            obj.analog0 = analog0;
-            obj.analog1 = analog1;
+            obj.digital = uint8(digchan);
+            obj.analog0 = int16(analog0*32767);
+            obj.analog1 = int16(analog1*32767);
             obj.locked = false;
             obj.initialize = false;
+            obj.generateJSON();
         end
-        
         function generateJSON(obj)
-            warning('This method is defunct. JSON conversion is now done in the Pulse Streamer object');
+            if ~obj.initialize
+                obj.json = encodePulse(obj);
+            end
         end
-        
         function set.ticks(obj,val)
             if obj.locked
                 error('Property is not mutable due to the use of + or * before.');
             end
             if obj.initialize || obj.ticks ~= val
                 obj.ticks = val;
+                obj.generateJSON();
             end
         end
         function set.digital(obj,val)
@@ -71,6 +65,7 @@ classdef PH < handle
             end
             if obj.initialize || obj.digital ~= val
                 obj.digital = val;
+                obj.generateJSON();
             end
         end
         function set.analog0(obj,val)
@@ -79,6 +74,7 @@ classdef PH < handle
             end
             if obj.initialize || obj.analog0 ~= val
                 obj.analog0 = val;
+                obj.generateJSON();
             end
         end
         function set.analog1(obj,val)
@@ -87,31 +83,27 @@ classdef PH < handle
             end
             if obj.initialize || obj.analog1 ~= val
                 obj.analog1 = val;
+                obj.generateJSON();
             end
         end
-        
         function p = plus(p1,p2)
             p = [p1 p2];
         end
-        
         function pout = not(p)
             pout = P(p.ticks, [], -(p.analog0), -(p.analog1));
             pout.digital = bitcmp(p.digital);
         end
-        
         function p = times(p,times)
             p = mtimes(p, times);
         end
-        
         function lock(obj)
             arrayfun(@(x) x.lock_internal(), obj);
         end
-        
         function lock_internal(obj)
             obj.locked = true;
         end
         function clonedPulse = clone(obj)
-            clonedPulse = P(obj.ticks, [], obj.analog0, obj.analog1);
+            clonedPulse = P(obj.ticks, '', obj.analog0, obj.analog1);
             clonedPulse.digital = obj.digital;
         end
         function unlockedPulse = unlock(obj)
@@ -208,7 +200,7 @@ classdef PH < handle
                 end
                 % there is no constructor with the channelMask - so use an empty
                 % channel list first and then overwrite it
-                final(iTick) = P(allTicks(iTick), [], a0, a1);
+                final(iTick) = P(allTicks(iTick), '', a0, a1);
                 final(iTick).digital = channels;
             end
         end

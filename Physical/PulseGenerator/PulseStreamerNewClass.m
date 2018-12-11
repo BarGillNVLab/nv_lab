@@ -40,8 +40,12 @@ classdef (Sealed) PulseStreamerNewClass < PulseGenerator
             obj.On(channels);
         end
         
-        function off(obj)
-            obj.Off;
+        function off(obj, channels)
+            if ~exist('channels', 'var')
+                obj.Off([]);
+            else
+                obj.Off(channels);
+            end
         end
         
         function run(obj)
@@ -93,7 +97,8 @@ classdef (Sealed) PulseStreamerNewClass < PulseGenerator
                 newSequence = P(p.duration * 1e3, onChannels, 0, 0);
                 sequences = sequences + newSequence;
             end
-            obj.ps.stream(sequences, obj.repeats, finalOutputState);
+            seq_new = convert_PPH_to_PSSequence(sequences); % In the future, need to use the new builder functions
+            obj.ps.stream(seq_new, obj.repeats, finalOutputState);
         end
     end
     
@@ -165,7 +170,7 @@ classdef (Sealed) PulseStreamerNewClass < PulseGenerator
         function obj = getInstance(struct)
             % Returns a singelton instance.
             try
-                obj = getObjByName(PulseGenerator.NAME_PULSE_STREAMER);
+                obj = getObjByName(PulseGenerator.NAME);
             catch
                 % None exists, so we create a new one
                 missingField = FactoryHelper.usualChecks(struct, PulseStreamerNewClass.NEEDED_FIELDS);

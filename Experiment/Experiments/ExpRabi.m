@@ -113,9 +113,9 @@ classdef ExpRabi < Experiment
             kc = 1e3;     % kilocounts
             musec = 1e-6;   % microseconds
             
-            spcm.startGatedCount;
+            spcm.startExperimentCount;
             pg.run;
-            s = spcm.readGated;
+            s = spcm.readFromExperiment;
             s = reshape(s, 2, length(s)/2);
             sig = mean(s,2).';
             sig = sig./(obj.detectionDuration*musec)/kc; %kcounts per second
@@ -175,7 +175,7 @@ classdef ExpRabi < Experiment
             obj.timeout = 15 * numScans * seqTime;       % some multiple of the actual duration
             spcm = getObjByName(Spcm.NAME);
             spcm.setSPCMEnable(true);
-            spcm.prepareGatedCount(numScans, obj.timeout);
+            spcm.prepareExperimentCount(numScans, obj.timeout);
             
             obj.changeFlag = false;     % All devices have been set, according to the ExpParams
             
@@ -219,7 +219,7 @@ classdef ExpRabi < Experiment
                         fprintf('Experiment failed at trial %d, attempting again.\n', trial);
                         try
                             % Maybe we need to manually clear the resources
-                            spcm.stopGatedCount;
+                            spcm.stopExperimentCount;
                         catch
                             % But maybe we don't, and that's perfectly ok.
                         end

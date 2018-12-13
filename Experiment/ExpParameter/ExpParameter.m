@@ -2,9 +2,9 @@ classdef (Abstract) ExpParameter < HiddenMethodsHandle & PropertiesDisplaySorted
     %EXPPARAMETER objects of type experiment-parameter
     %   ep = EXPPARAMETER(name) creates an empty parameter
     %
-    %   ep = EXPPARAMETER(name, value) creates a parameter with VALUE
+    %   ep = EXPPARAMETER(name,value) creates a parameter with VALUE
     %
-    %   ep = EXPPARAMETER(___, expName) creates a parameter which is
+    %   ep = EXPPARAMETER(___,expName) creates a parameter which is
     %   assigned to an experiment named expName
     %
     %   An experiment parameter can have a name, supported value-types and the actual

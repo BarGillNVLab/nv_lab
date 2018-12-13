@@ -44,20 +44,17 @@ classdef (Abstract) Spcm < EventSender
         % Complete the task of reading the spcm from a stage
         
         
-        %%% Gated %%%
-        prepareGatedCount(obj)
+        %%% Experiment (by PulseGenerator) %%%
+        prepareExperimentCount(obj)
         % Prepare to read spcm count from opening the spcm window  
         
-        startGatedCount(obj)
+        startExperimentCount(obj)
         % Actually start the process
         
-        stopGatedCount(obj)
-        % Release resources (such as NiDaq)
-        
-        vectorOfKcps = readGated(obj)
+        vectorOfKcps = readFromExperiment(obj)
         % Read vector of signals from the spcm
         
-        clearGatedRead(obj)
+        clearExperimentRead(obj)
         % Complete the task of reading the spcm 
         
         

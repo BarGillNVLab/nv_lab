@@ -166,12 +166,12 @@ classdef ExpESR < Experiment
         end
         
         function sig = readAndShape(~, spcm, pg)
-            spcm.startGatedCount;
+            spcm.startExperimentCount;
             pg.run;
-            s = spcm.readGated;
+            s = spcm.readFromExperiment;
             s = reshape(s,2,length(s)/2);
             sig = sum(s,2);
-            spcm.stopGatedCount;
+            spcm.stopExperimentCount;
         end
     end
     
@@ -238,7 +238,7 @@ classdef ExpESR < Experiment
             obj.timeout = 10 * numScans * seqTime;       % some multiple of the actual duration
             spcm = getObjByName(Spcm.NAME);
             spcm.setSPCMEnable(true);
-            spcm.prepareGatedCount(numScans, obj.timeout);
+            spcm.prepareExperimentCount(numScans, obj.timeout);
             
             obj.changeFlag = false;     % All devices have been set, according to the ExpParams
             
@@ -315,7 +315,9 @@ classdef ExpESR < Experiment
                 obj.signalParam.value = mean(S1./S2, 2);
             end
             
-            if ~isSingleMeasurement
+            if isSingleMeasurement
+                obj.signalParam2.value = [];
+            else
                 S3 = squeeze(obj.signal(3, :, 1:obj.currIter));
                 S4 = squeeze(obj.signal(4, :, 1:obj.currIter));
                 

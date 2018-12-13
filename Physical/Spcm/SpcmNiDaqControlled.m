@@ -19,10 +19,10 @@ classdef SpcmNiDaqControlled < Spcm & NiDaqControlled
         fastScan
         scanningStageName
         
-        % For gated read
-        nGatedCounts
-        gatedTimeoutTime
-        counterGatedTask
+        % For Experiment
+        nExpCounts
+        expTimeoutTime
+        counterExpTask
         
         % Name
         niDaqGateChannelName
@@ -36,16 +36,19 @@ classdef SpcmNiDaqControlled < Spcm & NiDaqControlled
     
     
     methods
-        function obj = SpcmNiDaqControlled(name, niDaqGateChannel, niDaqCountsChannel, channelMinValue, channelMaxValue)
+        function obj = SpcmNiDaqControlled(name, niDaqGateChannel, niDaqCountsChannel, niDaqPgChannel, ...
+                channelMinValue, channelMaxValue)
             % Contructor, creates the object and registers the channels in
             % the DAQ.
             obj@Spcm(name);
             niDaqGateChannelName = sprintf('%s_gate', name);
-            niDaqCountChannelName= sprintf('%s_channel', name);
-            obj@NiDaqControlled({niDaqGateChannelName, niDaqCountChannelName}, ...
-                {niDaqGateChannel, niDaqCountsChannel}, channelMinValue, channelMaxValue);
+            niDaqCountChannelName = sprintf('%s_channel', name);
+            niDaqPgChannelName = sprintf('%s_PG_channel', name);
+            obj@NiDaqControlled({niDaqGateChannelName, niDaqCountChannelName, niDaqPgChannelName}, ...
+                {niDaqGateChannel, niDaqCountsChannel, niDaqPgChannel}, channelMinValue, channelMaxValue);
             obj.niDaqGateChannelName = niDaqGateChannelName;
             obj.niDaqCountChannelName = niDaqCountChannelName;
+            obj.niDaqPgChannelName = niDaqPgChannelName;
             
             daq = getObjByName(NiDaq.NAME);
             obj.isEnabled = daq.readDigital(obj.niDaqGateChannelName);
@@ -137,13 +140,6 @@ classdef SpcmNiDaqControlled < Spcm & NiDaqControlled
             daq.startTask(obj.counterScanTimeTask);
         end
         
-        function stopScanCount(obj)
-            % Stops at the end of reading line
-            daq = getObjByName(NiDaq.NAME);
-            daq.stopTask(obj.counterScanSPCMTask);
-            daq.stopTask(obj.counterScanTimeTask);
-        end
-        
         function vectorOfKcps = readFromScan(obj)
             % Read by scan. Reads a single line.
             if obj.nScanCounts <= 0
@@ -182,42 +178,36 @@ classdef SpcmNiDaqControlled < Spcm & NiDaqControlled
     %%% End (By stage) %%%%
         
         
-    %%% By gate %%%
-        function prepareGatedCount(obj, nReads, timeout)
+    %%% By PulseGenerator (Experiment) %%%
+        function prepareExperimentCount(obj, nReads, timeout)
             % Prepare to read spcm count from opening the spcm window
             if ~ValidationHelper.isValuePositiveInteger(nReads)
                 obj.sendError(sprintf('Can''t prepare for reading %d times, only positive integers allowed! Igonring.', nReads));
             end
-            obj.nGatedCounts = nReads;
-            obj.gatedTimeoutTime = timeout;
+            obj.nExpCounts = nReads;
+            obj.expTimeoutTime = timeout;
             
             daq = getObjByName(NiDaq.NAME);
             daq.writeDigital(obj.niDaqGateChannelName, true); % Turn on gate
             task = daq.CreateDAQPulseWidthMeas(nReads, ...
-                obj.niDaqCountChannelName, obj.niDaqGateChannelName); % Set pulse-width measurement
+                obj.niDaqCountChannelName, obj.niDaqPgChannelName); % Set pulse-width measurement
             
-            obj.counterGatedTask = task;
+            obj.counterExpTask = task;
         end
         
-        function startGatedCount(obj)
+        function startExperimentCount(obj)
             % Actually start the process
             daq = getObjByName(NiDaq.NAME);
-            daq.startTask(obj.counterGatedTask);
+            daq.startTask(obj.counterExpTask);
         end
         
-        function stopGatedCount(obj)
-            % Release resources
-            daq = getObjByName(NiDaq.NAME);
-            daq.stopTask(obj.counterGatedTask);
-        end
-        
-        function counts = readGated(obj)
+        function counts = readFromExperiment(obj)
             % Read vector of signals from the spcm
-            if obj.nGatedCounts <= 0
+            if obj.nExpCounts <= 0
                 obj.sendError('Can''t read from SPCM without calling ''prepare()''!');
             end
             daq = getObjByName(NiDaq.NAME);
-            counts = double(daq.ReadDAQCounter(obj.counterGatedTask, obj.nGatedCounts, obj.gatedTimeoutTime));
+            counts = double(daq.ReadDAQCounter(obj.counterExpTask, obj.nExpCounts, obj.expTimeoutTime));
             
             % Error handling
             if any(isnan(counts))
@@ -229,16 +219,32 @@ classdef SpcmNiDaqControlled < Spcm & NiDaqControlled
             end
         end
         
-        function clearGatedRead(obj)
+        function clearExperimentRead(obj)
             % Complete the task of reading the spcm
-            if obj.nGatedCounts <= 0
+            if obj.nExpCounts <= 0
                 obj.sendError('Can''t clear without calling ''prepare()''! ');
             end
-            obj.nGatedCounts = 0;
+            obj.nExpCounts = 0;
             daq = getObjByName(NiDaq.NAME);
-            daq.endTask(obj.counterGatedTask);
+            daq.endTask(obj.counterExpTask);
         end
-    %%% End (by gate) %%%
+    %%% End (by PulseGenerator) %%%
+    end
+    
+        
+    % SPCM protected methods
+    methods (Access = protected)
+        function prepareCountByStageInternal(obj, niDaq)
+            % Creates the measurment in the DAQ according to the parameters
+            % in the object.
+            if obj.fastScan
+                obj.counterScanSPCMTask = niDaq.CreateDAQEdgeCountingMeas(obj.nScanCounts, obj.niDaqCountChannelName, obj.scanningStageName, 0);
+                obj.counterScanTimeTask = niDaq.CreateDAQEdgeCountingMeas(obj.nScanCounts, niDaq.CHANNEL_100MHZ, obj.scanningStageName, 1);
+            else
+                obj.counterScanSPCMTask = niDaq.CreateDAQPulseWidthMeas(obj.nScanCounts, obj.niDaqCountChannelName, obj.scanningStageName, 0);
+                obj.counterScanTimeTask = niDaq.CreateDAQPulseWidthMeas(obj.nScanCounts, niDaq.CHANNEL_100MHZ, obj.scanningStageName, 1);
+            end
+        end
     end
     
     %%%
@@ -278,19 +284,5 @@ classdef SpcmNiDaqControlled < Spcm & NiDaqControlled
             spcmObj = SpcmNiDaqControlled(spcmName, gate, counts, minVal, maxVal);
         end
     end
-    
-    
-    methods (Access = protected)
-        function prepareCountByStageInternal(obj, niDaq)
-            % Creates the measurment in the DAQ according to the parameters
-            % in the object.
-            if obj.fastScan
-                obj.counterScanSPCMTask = niDaq.CreateDAQEdgeCountingMeas(obj.nScanCounts, obj.niDaqCountChannelName, obj.scanningStageName, 0);
-                obj.counterScanTimeTask = niDaq.CreateDAQEdgeCountingMeas(obj.nScanCounts, niDaq.CHANNEL_100MHZ, obj.scanningStageName, 1);
-            else
-                obj.counterScanSPCMTask = niDaq.CreateDAQPulseWidthMeas(obj.nScanCounts, obj.niDaqCountChannelName, obj.scanningStageName, 0);
-                obj.counterScanTimeTask = niDaq.CreateDAQPulseWidthMeas(obj.nScanCounts, niDaq.CHANNEL_100MHZ, obj.scanningStageName, 1);
-            end
-        end
-    end
+
 end

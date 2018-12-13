@@ -8,7 +8,7 @@ classdef SpcmDummy < Spcm
         isEnabled           % logical
         integrationTime     % double (in seconds). Time over which photons are counted
         calledScanStart     % logical. Used for checking that the user actually called startScanCount() before calling readFromScan()
-        calledGatedStart	% logical. Used for checking that the user actually called startGatedCount() before calling readGated()
+        calledExperimentStart	% logical. Used for checking that the user actually called startExperimentCount() before calling readFromExperiment()
     end
     
     properties (Constant)
@@ -24,7 +24,7 @@ classdef SpcmDummy < Spcm
             obj.isEnabled = false;
             obj.integrationTime = 0;
             obj.calledScanStart = false;
-            obj.calledGatedStart = false;
+            obj.calledExperimentStart = false;
         end
         
     %%% From time %%%
@@ -92,8 +92,8 @@ classdef SpcmDummy < Spcm
     %%% End (from stage) %%%
         
         
-    %%% From gated %%%
-        function prepareGatedCount(obj, nReads, timeout)
+    %%% From PulseGenerator %%%
+        function prepareExperimentCount(obj, nReads, timeout)
             % Prepare to read spcm count from opening the spcm window
             if ~ValidationHelper.isValuePositiveInteger(nReads)
                 obj.sendError(sprintf('Can''t prepare for reading %d times, only positive integers allowed! Igonring.', nReads));
@@ -102,17 +102,17 @@ classdef SpcmDummy < Spcm
             obj.integrationTime = timeout / (15 * nReads);  % 15 is a fudge factor. Can be reduced, if we need longer scans
         end
         
-        function startGatedCount(obj)
+        function startExperimentCount(obj)
             % Actually start the process
-            obj.calledGatedStart = true;
+            obj.calledExperimentStart = true;
         end
         
-        function stopGatedCount(obj)
+        function stopExperimentCount(obj)
             % Release resources
-            obj.calledGatedStart = false;
+            obj.calledExperimentStart = false;
         end
         
-        function vectorOfKcps = readGated(obj)
+        function vectorOfKcps = readFromExperiment(obj)
             % Read vector of signals from the spcm
             if ~obj.isEnabled
                 obj.sendError('Can''t readFromScan() without calling ''setSPCMEnabled()''!');
@@ -122,7 +122,7 @@ classdef SpcmDummy < Spcm
                 obj.sendError('Can''t readFromScan() without calling ''prepareCountByStage()''!  ');
             end
             
-            if ~obj.calledGatedStart
+            if ~obj.calledExperimentStart
                 obj.sendError('Can''t readFromScan() without calling startScanCount()!');
             end
             
@@ -130,12 +130,12 @@ classdef SpcmDummy < Spcm
             vectorOfKcps = randi([0 obj.MAX_RANDOM_READ], 1, obj.timesToRead);
         end
         
-        function clearGatedRead(obj)
+        function clearExperimentRead(obj)
             % Complete the task of reading the spcm
             obj.integrationTime = 0;
         end
         
-    %%% End (from gated) %%%
+    %%% End (from PulseGenerator) %%%
         
         function setSPCMEnable(obj, newBooleanValue)
             obj.isEnabled = newBooleanValue;

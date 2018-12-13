@@ -41,8 +41,7 @@ classdef (Abstract) ViewTrackable <  ViewVBox & EventListener
             spacing = 10;
             lineHeight = 20;
             obj@ViewVBox(parent, controller, padding, spacing);
-            expNames = Experiment.getExperimentNames;
-            obj@EventListener(expNames);
+            obj@EventListener();
             
             hboxMain = uix.HBox('Parent', obj.component, ...
                 'Spacing', 20, 'Padding', 5);

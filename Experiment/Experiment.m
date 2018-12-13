@@ -183,6 +183,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
                         return
                     end
                 catch err
+                    obj.currIter = obj.currIter - 1; % This iteration did not succeed
                     err2warning(err)
                     break
                 end
@@ -315,7 +316,12 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
         
         function outStruct = saveResultsToStruct(obj)
             outStruct.signalParam = obj.signalParam;
-            outStruct.signalParam2 = obj.signalParam2;
+            
+            % Maybe we have double measurement
+            sig2 = obj.signalParam2;
+            if ~isempty(sig2.value)
+                outStruct.signalParam2 = sig2;
+            end
         end
     end
     
@@ -354,6 +360,12 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             persistent eName
             
             if exist('newExperimentName', 'var')
+                if isa(newExperimentName, 'Experiment')
+                    newExperimentName = newExperimentName.name;
+                else
+                    assert(ischar(newExperimentName))
+                end
+                
                 eName = newExperimentName;
             elseif isempty(eName)
                 eName = '';
@@ -398,7 +410,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
         end
         
         function expName = current()
-            % Public access to private static property
+            % Public getter to private static property
             expName = Experiment.getSetCurrentExp();
         end
     end
@@ -408,24 +420,25 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
         function save(obj, path)
             % Saves the experiment.
             % Three use cases - 
-            % 1. no input argument: saves the file in the default folder,
-            %    under a default name (e.g. 'Echo_20180917_113506.mat')
-            % 2. one argument - full path: saves the file as the path
+            % 1. no input argument (except obj): saves the file in the
+            %    default folder, under a default name (e.g.
+            %    'Echo_20180917_113506.mat')
+            % 2. one extra argument - full path: saves the file as the path
             %    requested.
-            % 3. one argument - folder name: saves the file at the
+            % 3. one extra argument - folder name: saves the file at the
             %    specified folder, with the default name.
             
             
             % In order to save the Experiment which invoked this method, we
             % need to set it as The Current Experiment
-            Experiment.getSetCurrentExp(obj)
+            Experiment.getSetCurrentExp(obj.NAME);
             
             sl = SaveLoad.getInstance(Savable.CATEGORY_EXPERIMENTS);
             switch nargin
-                case 0
+                case 1
                     % Use case 1
                     sl.save;
-                case 1
+                case 2
                     filename = PathHelper.getFileNameFromFullPathFile(path);
                     if isempty(filename)
                         % Use case 3

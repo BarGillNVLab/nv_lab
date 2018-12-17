@@ -1,16 +1,30 @@
 classdef JsonInfoReader
-    %JSONINFOREADER Reads the main JsonInfo setup-file
+    %JSONINFOREADER Reads a JsonInfo setup-file.
+    % The configuration of the setup is encoded as a .json file.
+    % Multiple setup-files might exist, either for backup or for different
+    % configurations of the same setup; the current operating configuration
+    % is referenced to in a json file @ C:\lab\setupInfoLocation.json
     
     properties (Constant)
-        JSON_DIR = 'C:\\lab\\'
-        JSON_FILENAME = 'setupInfo.json'
+        JSON_LOCATION_DIR = 'C:\\lab\\'
+        JSON_LOCATION_FILENAME = 'setupInfoLocation.json'
     end
     
     methods (Static)
         function jsonStruct = getJson()
-            %%%% Get the json %%%%
-            path = [JsonInfoReader.JSON_DIR JsonInfoReader.JSON_FILENAME];
-            jsonTxt = fileread(path);
+            %%%% Get the location for the json %%%%
+            locationPath = [JsonInfoReader.JSON_LOCATION_DIR, JsonInfoReader.JSON_LOCATION_FILENAME];
+            jsonLocationTxt = fileread(locationPath);
+            jsonLocationStruct = jsondecode(jsonLocationTxt);
+            if ~isfield(jsonLocationStruct, 'dir') || ~isfield(jsonLocationStruct, 'fileName')
+                error(['"%s" must contain two fields: "dir" and "fileName", ', ...
+                    'leading to the json of the system.'], ...
+                    locationPath)
+            end
+            jsonLocation = [jsonLocationStruct.dir, jsonLocationStruct.fileName];
+            
+            % Create json struct
+            jsonTxt = fileread(jsonLocation);
             jsonStruct = jsondecode(jsonTxt);
             
             %%%% Add extra fields %%%%

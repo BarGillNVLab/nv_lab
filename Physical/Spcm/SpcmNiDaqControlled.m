@@ -24,13 +24,14 @@ classdef SpcmNiDaqControlled < Spcm & NiDaqControlled
         expTimeoutTime
         counterExpTask
         
-        % Name
+        % Channel Names
         niDaqGateChannelName
         niDaqCountChannelName
+        niDaqPgChannelName
     end
     
     properties (Constant, Hidden)
-        NEEDED_FIELDS = [Spcm.SPCM_NEEDED_FIELDS, {'nidaq_channel_gate', 'nidaq_channel_counts'}];
+        NEEDED_FIELDS = [Spcm.SPCM_NEEDED_FIELDS, {'nidaq_channel_gate', 'nidaq_channel_counts', 'nidaq_channel_pg'}];
         OPTIONAL_FIELDS = {'nidaq_channel_min_val', 'nidaq_channel_max_val'};
     end
     
@@ -81,16 +82,15 @@ classdef SpcmNiDaqControlled < Spcm & NiDaqControlled
             % single point which is the kcps and also the standard error.
             
             % Actual reading from device
-            niDaq = getObjByName(NiDaq.NAME);
             try
-                countsSPCM = double(niDaq.ReadDAQCounter(obj.counterTimeTask, obj.nTimeCounts, obj.counterIntegrationTime));
+                countsSPCM = obj.readEdgeCounting(obj.counterTimeTask, obj.nTimeCounts, obj.counterIntegrationTime);
             catch err
                 msg = err.message;
                 expression = '-200279'; % "The application is not able to keep up with the hardware acquisition."
                 if contains(msg, expression)
                     % There was NiDaq reset, we can now safely resume
                     err2warning(err);
-                    countsSPCM = double(niDaq.ReadDAQCounter(obj.counterTimeTask, obj.nTimeCounts, obj.counterIntegrationTime));
+                    countsSPCM = obj.readEdgeCounting(obj.counterTimeTask, obj.nTimeCounts, obj.counterIntegrationTime);
                     % ^ This *should* work. If it doesn't, there might be a
                     % bigger problem, and we want to let the user know
                     % about it.
@@ -98,7 +98,6 @@ classdef SpcmNiDaqControlled < Spcm & NiDaqControlled
             end
             
             % Data processing
-            countsSPCM = niDaq.countDiff(countsSPCM);
             kiloCounts = countsSPCM/1000;
             meanTime = obj.counterIntegrationTime/obj.nTimeCounts; % mean time for each reading
             kcps = mean(kiloCounts/meanTime);
@@ -145,12 +144,13 @@ classdef SpcmNiDaqControlled < Spcm & NiDaqControlled
             if obj.nScanCounts <= 0
                 obj.sendError('Can''t read from SPCM without calling ''prepare()''! ');
             end
-            daq = getObjByName(NiDaq.NAME);
-            countsSPCM = double(daq.ReadDAQCounter(obj.counterScanSPCMTask, obj.nScanCounts, obj.scanTimeoutTime));
-            countsTime = double(daq.ReadDAQCounter(obj.counterScanTimeTask, obj.nScanCounts, obj.scanTimeoutTime));
+            
             if obj.fastScan
-                countsSPCM = daq.countDiff(countsSPCM);
-                countsTime = daq.countDiff(countsTime);
+                countsSPCM = obj.readEdgeCounting(obj.counterScanSPCMTask, obj.nScanCounts, obj.scanTimeoutTime);
+                countsTime = obj.readEdgeCounting(obj.counterScanTimeTask, obj.nScanCounts, obj.scanTimeoutTime);
+            else
+                countsSPCM = obj.readPulseWidthCounting(obj.counterScanSPCMTask, obj.nScanCounts, obj.scanTimeoutTime);
+                countsTime = obj.readPulseWidthCounting(obj.counterScanTimeTask, obj.nScanCounts, obj.scanTimeoutTime);
             end
             
             kiloCounts = countsSPCM/1000;
@@ -188,7 +188,7 @@ classdef SpcmNiDaqControlled < Spcm & NiDaqControlled
             obj.expTimeoutTime = timeout;
             
             daq = getObjByName(NiDaq.NAME);
-            daq.writeDigital(obj.niDaqGateChannelName, true); % Turn on gate
+%             daq.writeDigital(obj.niDaqGateChannelName, true); % Turn on gate
             task = daq.CreateDAQPulseWidthMeas(nReads, ...
                 obj.niDaqCountChannelName, obj.niDaqPgChannelName); % Set pulse-width measurement
             
@@ -206,8 +206,8 @@ classdef SpcmNiDaqControlled < Spcm & NiDaqControlled
             if obj.nExpCounts <= 0
                 obj.sendError('Can''t read from SPCM without calling ''prepare()''!');
             end
-            daq = getObjByName(NiDaq.NAME);
-            counts = double(daq.ReadDAQCounter(obj.counterExpTask, obj.nExpCounts, obj.expTimeoutTime));
+            
+            counts = readPulseWidthCounting(obj.counterExpTask, obj.nExpCounts, obj.expTimeoutTime);
             
             % Error handling
             if any(isnan(counts))
@@ -247,6 +247,24 @@ classdef SpcmNiDaqControlled < Spcm & NiDaqControlled
         end
     end
     
+    methods (Static, Access = protected)
+        function counts = readEdgeCounting(daqTask, nCounts, timeout)
+            niDaq = getObjByName(NiDaq.NAME);
+            counts = double(niDaq.ReadDAQCounter(daqTask, nCounts, timeout));
+            counts = niDaq.countDiff(counts);
+        end
+        
+        function counts = readPulseWidthCounting(daqTask, nCounts, timeout)
+            % This is used for pseudo pulse-width counting. We actually use
+            % edge counting with a pause trigger. This means that we need to
+            % add a 0 in the beginning of the read vector, and then caculate
+            % the difference between pairs of readings.
+            niDaq = getObjByName(NiDaq.NAME);
+            counts = double(niDaq.ReadDAQCounter(daqTask, nCounts, timeout));
+            counts = niDaq.countDiff([0 counts]);
+        end
+    end
+    
     %%%
     methods % DAQ function
         function onNiDaqReset(obj, niDaq)
@@ -278,10 +296,11 @@ classdef SpcmNiDaqControlled < Spcm & NiDaqControlled
             
             counts = spcmStruct.nidaq_channel_counts;
             gate = spcmStruct.nidaq_channel_gate;
+            pg = spcmStruct.nidaq_channel_pg;
             minVal = spcmStruct.nidaq_channel_min_val;
             maxVal = spcmStruct.nidaq_channel_max_val;
             
-            spcmObj = SpcmNiDaqControlled(spcmName, gate, counts, minVal, maxVal);
+            spcmObj = SpcmNiDaqControlled(spcmName, gate, counts, pg, minVal, maxVal);
         end
     end
 

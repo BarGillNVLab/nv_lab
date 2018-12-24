@@ -427,33 +427,38 @@ classdef NiDaq < EventSender
             % For counting photons by time: (SPCM, NiDaq.CHANNEL_100kHZ)
             % For counting photons by gating Pulse: (SPCM, PulseGenerator)
             % ctrNumber can be 0 or 1. If not specified, then it is 0.
+            
+            % Getting input variables for DAQ functions
             if ~exist('ctrNumberOpt', 'var')
                 ctrNumberOpt = 0;
             end
             device = sprintf('/%s/Ctr%d', obj.deviceName, ctrNumberOpt);
+            edgesChannel = obj.getChannelFromIndex(obj.getIndexFromChannelOrName(edgesChannelName));
+            edgesChannelFullName = sprintf('/%s/%s', obj.deviceName, edgesChannel);
+            countChannel = obj.getChannelFromIndex(obj.getIndexFromChannelOrName(countChannelName));
+            countChannelFullName = sprintf('/%s/%s', obj.deviceName, countChannel);
             
             edgeRising = daq.ni.NIDAQmx.DAQmx_Val_Rising;
-            edgeFalling = daq.ni.NIDAQmx.DAQmx_Val_Falling;
             sampleMode = daq.ni.NIDAQmx.DAQmx_Val_ContSamps;    % Continuous
             countDirection = daq.ni.NIDAQmx.DAQmx_Val_CountUp;  % Up
             
-            task = obj.createTask();
-            
-            status = DAQmxCreateCICountEdgesChan(task, device, '', edgeRising, 0, countDirection);
-            obj.checkError(status);
-            
-            edgesChannel = obj.getChannelFromIndex(obj.getIndexFromChannelOrName(edgesChannelName));
             switch edgesChannelName
                 case obj.CHANNEL_100kHZ
                     sampleRate = 100e3;
                 otherwise
                     sampleRate = 1e6;
             end
-            status = DAQmxCfgSampClkTiming(task, sprintf('/%s/%s', obj.deviceName, edgesChannel), sampleRate, edgeFalling, sampleMode, nCounts);
+            
+            % Creating task
+            task = obj.createTask();
+
+            status = DAQmxCreateCICountEdgesChan(task, device, '', edgeRising, 0, countDirection);
             obj.checkError(status);
             
-            countChannel = obj.getChannelFromIndex(obj.getIndexFromChannelOrName(countChannelName));
-            status = DAQmxSet(task, 'CI.CountEdgesTerm', device, sprintf('/%s/%s', obj.deviceName, countChannel));
+            status = DAQmxCfgSampClkTiming(task, edgesChannelFullName, sampleRate, edgeRising, sampleMode, nCounts);
+            obj.checkError(status);
+            
+            status = DAQmxSet(task, 'CI.CountEdgesTerm', device, countChannelFullName);
             obj.checkError(status);
         end
         
@@ -465,32 +470,50 @@ classdef NiDaq < EventSender
             % For counting photons by time: (SPCM, NiDaq.CHANNEL_100kHZ)
             % For counting photons by gating Pulse: (SPCM, PulseGenerator)
             % ctrNumber can be 0 or 1. If not specified, then it is 0.
+            
+            % Due to a bug in the NiDaq (specifically, with series X), we
+            % actually need to implement this as edge counting with a pause
+            % trigger:
+            
+            % Getting input variables for DAQ functions
             if ~exist('ctrNumberOpt', 'var')
                 ctrNumberOpt = 0;
             end
             device = sprintf('/%s/Ctr%d', obj.deviceName, ctrNumberOpt);
+            edgesChannel = obj.getChannelFromIndex(obj.getIndexFromChannelOrName(pulseWidthChannelName));
+            edgesChannelFullName = sprintf('/%s/%s', obj.deviceName, edgesChannel);
+            countChannel = obj.getChannelFromIndex(obj.getIndexFromChannelOrName(countChannelName));
+            countChannelFullName = sprintf('/%s/%s', obj.deviceName, countChannel);
             
-            edgeType = daq.ni.NIDAQmx.DAQmx_Val_Rising;         % Rising
-            sampleMode = daq.ni.NIDAQmx.DAQmx_Val_FiniteSamps;  % Finite
-            daqUnits = daq.ni.NIDAQmx.DAQmx_Val_Seconds;        % Seconds
+            edgeRising = daq.ni.NIDAQmx.DAQmx_Val_Rising;
+            edgeFalling = daq.ni.NIDAQmx.DAQmx_Val_Falling;
+            sampleMode = daq.ni.NIDAQmx.DAQmx_Val_ContSamps;         % Continuous
+            countDirection = daq.ni.NIDAQmx.DAQmx_Val_CountUp;       % Up
+            pauseTriggerType = daq.ni.NIDAQmx.DAQmx_Val_DigLvl;      % Digital
+            pauseTriggerDigitalLevel = daq.ni.NIDAQmx.DAQmx_Val_Low; % Low
             
+            sampleRate = 1e6;
+            
+            
+            % Creating task
             task = obj.createTask();
             
-            status = DAQmxCreateCIPulseWidthChan(task, device, '', 0.000000100, 18.38860750, daqUnits, edgeType, '');
+            status = DAQmxCreateCICountEdgesChan(task, device, '', edgeRising, 0, countDirection);
             obj.checkError(status);
             
-            status = DAQmxCfgImplicitTiming(task, sampleMode , nCounts);
+            status = DAQmxCfgSampClkTiming(task, edgesChannelFullName, sampleRate, edgeFalling , sampleMode, nCounts);
             obj.checkError(status);
             
-            countChannelName = obj.getChannelFromIndex(obj.getIndexFromChannelOrName(countChannelName));
-            status = DAQmxSet(task, 'CI.CtrTimebaseSrc', device, sprintf('/%s/%s', obj.deviceName, countChannelName));
+            status = DAQmxSet(task, 'CI.CountEdgesTerm', device, countChannelFullName);
             obj.checkError(status);
             
-            widthChannel = obj.getChannelFromIndex(obj.getIndexFromChannelOrName(pulseWidthChannelName));
-            status = DAQmxSet(task, 'CI.PulseWidthTerm', device, sprintf('/%s/%s', obj.deviceName, widthChannel));
+            status = DAQmxSet(task, 'PauseTrigType', device, pauseTriggerType);
             obj.checkError(status);
-                       
-            status = DAQmxSet(task, 'CI.DupCountPrevent', device, 1);
+            
+            status = DAQmxSet(task, 'DigLvlPauseTrigSrc', device, edgesChannelFullName);
+            obj.checkError(status);
+            
+            status = DAQmxSet(task, 'DigLvlPauseTrigWhen', device, pauseTriggerDigitalLevel);
             obj.checkError(status);
         end
         

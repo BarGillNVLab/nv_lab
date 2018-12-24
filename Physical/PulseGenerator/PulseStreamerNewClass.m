@@ -93,7 +93,7 @@ classdef (Sealed) PulseStreamerNewClass < PulseGenerator
             sequences = [];
             for i = 1:numberOfSequences
                 p = obj.sequence.pulses(i);
-                onChannels = obj.name2index(p.onChannels);
+                onChannels = obj.channelName2Address(p.getOnChannels);
                 newSequence = P(p.duration * 1e3, onChannels, 0, 0);
                 sequences = sequences + newSequence;
             end

@@ -54,6 +54,9 @@ classdef (Abstract) Spcm < EventSender
         vectorOfKcps = readFromExperiment(obj)
         % Read vector of signals from the spcm
         
+        stopExperimentCount(obj)
+        % Stop reading (to clear memory)
+        
         clearExperimentRead(obj)
         % Complete the task of reading the spcm 
         

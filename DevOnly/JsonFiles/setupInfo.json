@@ -9,8 +9,8 @@
     "pulseGenerator": {
         "type": "dummy",
         "dummy": true,
-        "__futureLibPathName": "[NV Lab]\\Control code\\Pb_DLL\\",
         "libPathName": "C:\\SpinCore\\SpinAPI\\dll\\",
+        "__futureLibPathName": "[NV Lab]\\Control code\\Pb_DLL\\",
         "__comment_libPathName": "the term [NV Lab] will be replaced with C:\\Users\\[USERNAME]\\Google Drive\\work\\NV Lab",
         "channelNames":  ["detector", "blueLaser", "redLaser", "greenLaser"],
         "channelValues": [0,          7,           3,          5]

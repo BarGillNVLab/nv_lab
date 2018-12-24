@@ -219,6 +219,12 @@ classdef SpcmNiDaqControlled < Spcm & NiDaqControlled
             end
         end
         
+        function stopExperimentCount(obj)
+           % Stop reading (to clear memory)
+           daq = getObjByName(NiDaq.NAME);
+           daq.stopTask(obj.counterExpTask);
+        end
+        
         function clearExperimentRead(obj)
             % Complete the task of reading the spcm
             if obj.nExpCounts <= 0

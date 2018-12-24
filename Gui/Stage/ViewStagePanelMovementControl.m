@@ -270,7 +270,7 @@ classdef ViewStagePanelMovementControl < GuiComponent & EventListener
         
         function cbxJoystickCallback(obj)
             % Enables or disable the joystick according to the GUI settings.
-            % While the joystick is on, updates the location every ~200ms.
+            % While the joystick is on, updates the location every ~300ms.
             stage = getObjByName(obj.stageName);
             stageScanner = getObjByName(StageScanner.NAME);
             jstick = getObjByName(Joystick.NAME);
@@ -281,9 +281,10 @@ classdef ViewStagePanelMovementControl < GuiComponent & EventListener
                     && stageScanner.mCurrentlyScanning
                 stageScanner.stopScan;
             end
-            obj.checkMovementEnabled;
-            
             jstick.isEnabled = isEnabled;
+            
+            obj.checkMovementEnabled;
+            % Once we have this ^ we can safely turn on joystick control
             stage.JoystickControl(isEnabled);
             
 

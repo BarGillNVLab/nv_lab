@@ -568,6 +568,13 @@ classdef NiDaq < EventSender
             obj.checkError(status)
         end
         
+        function stopTask(obj, task)
+            if obj.dummyMode; return; end
+            
+            status = DAQmxStopTask(task);
+            obj.checkError(status)
+        end
+        
         function endTask(obj, task)
             if obj.dummyMode; return; end
             
@@ -603,11 +610,6 @@ classdef NiDaq < EventSender
         function task = createTask(obj)
             [status, ~, task] = DAQmxCreateTask([]);
             obj.checkError(status);
-        end
-        
-        function stopTask(obj, task)
-            status = DAQmxStopTask(task);
-            obj.checkError(status)
         end
         
         function clearTask(obj, task)

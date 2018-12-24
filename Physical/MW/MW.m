@@ -2,7 +2,8 @@ classdef MW
     %MWGATE 
     
     properties (Constant)
-        NEEDED_FIELDS = {'MW', 'I', 'Q'};
+        NEEDED_FIELDS = {'MW'};
+        OPTIONAL_FIELDS = {'I', 'Q'};
     end
     
     methods (Static)
@@ -14,6 +15,10 @@ classdef MW
                 EventStation.anonymousError(...
                     'Can''t initialize Microwave - needed field "%s" was not found in initialization struct!', ...
                     missingField);
+            end
+            if isnan(FactoryHelper.usualChecks(struct, MW.OPTIONAL_FIELDS))
+                % usualChecks() returning nan means these fileds exist
+                nFields = [nFields, MW.OPTIONAL_FIELDS];
             end
             
             for j = 1:length(nFields)

@@ -22,9 +22,18 @@ classdef SaveLoadCatExp < SaveLoad & EventListener
             % There are two kinds of relevant events: when an Experiment
             % (re)starts and when there are new results (so we can save
             % backup).
+            
             if isfield(event.extraInfo, Experiment.EVENT_PARAM_CHANGED)
                 obj.saveParamsToLocalStruct;
                 
+            elseif isa(event.creator, 'SpcmCounter')
+                % The SPCM counter updates so frequently, we want to treat
+                % it seperately, and save backup only when we pause the
+                % Counter
+                if isfield(event.extraInfo, Experiment.EVENT_EXP_PAUSED)
+                    obj.saveResultsToLocalStruct();
+                    obj.saveBackup;
+                end
             elseif isfield(event.extraInfo, Experiment.EVENT_DATA_UPDATED)
                 obj.saveResultsToLocalStruct();
                 obj.saveBackup;

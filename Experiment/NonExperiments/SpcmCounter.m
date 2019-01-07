@@ -148,7 +148,7 @@ classdef SpcmCounter < Experiment
         end
         function perform(obj) %#ok<MANU> 
         end
-        function normalizedData(obj)%#ok<MANU>
+        function alternateSignal(obj)%#ok<MANU>
         end
         function wrapUp(obj) %#ok<MANU>
         end

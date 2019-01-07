@@ -4,13 +4,14 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
     properties (Access = private)
         expName
         nDim = 1;   % data is 1D 99% of the time. Can be overridden
-        isPlotNormalized = false;
+        isPlotAlternate = false;
         
         vAxes
         progressbarAverages
         btnStartStop
-        radioNormalized
-        radioUnnormalized
+        radioNormalDisplay
+        radioAlterDisplay
+        btnEmergencyStop
     end
     
     methods
@@ -19,8 +20,9 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
             padding = 15;
             spacing = 15;
             obj@ViewVBox(parent, controller, padding, spacing);
-            obj@EventListener(expName);
+            obj@EventListener({expName, SaveLoadCatExp.NAME});
             obj.expName = expName;
+            exp = getObjByName(expName);
             
             fig = obj.component;    % for brevity
             obj.vAxes = axes('Parent', fig, ...
@@ -33,7 +35,7 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
             obj.btnStartStop = ButtonStartStop(hboxControls, 'Start', 'Pause');
                 obj.btnStartStop.startCallback = @obj.btnStartCallback;
                 obj.btnStartStop.stopCallback  = @obj.btnStopCallback;
-            bgNormalize = uibuttongroup(...
+            bgDisplayType = uibuttongroup(...
                 'Parent', hboxControls, ...
                 'Title', 'Display Mode', ...
                 'SelectionChangedFcn',@obj.callbackRadioSelection);
@@ -41,19 +43,23 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
                     rbWidth = 150;
                     padding = 10;
 
-                    obj.radioUnnormalized = uicontrol(obj.PROP_RADIO{:}, 'Parent', bgNormalize, ...
-                        'String', 'Unnormalized', ...
+                    obj.radioNormalDisplay = uicontrol(obj.PROP_RADIO{:}, 'Parent', bgDisplayType, ...
+                        'String', exp.displayType1, ...
                         'Position', [padding, 2*padding+rbHeight, rbWidth, rbHeight], ...  % [fromLeft, fromBottom, width, height]
-                        'UserData', false ... == not normalized
+                        'UserData', false ... usually, == not normalized
                         );
-                    obj.radioNormalized = uicontrol(obj.PROP_RADIO{:}, 'Parent', bgNormalize, ...
-                        'String', 'Normalized', ...
+                    obj.radioAlterDisplay = uicontrol(obj.PROP_RADIO{:}, 'Parent', bgDisplayType, ...
+                        'String', exp.displayType2, ...
                         'Position', [padding, padding, rbWidth, rbHeight], ...  % [fromLeft, fromBottom, width, height]
-                        'UserData', true ... == normalized
+                        'UserData', true ... usually, == normalized
                         );
             hboxControls.Widths = [-1, 200];
+            obj.btnEmergencyStop = uicontrol(obj.PROP_BUTTON_BIG_RED{:}, ...
+                'Parent', fig, ...
+                'String', 'Halt Experiment', ...
+                'Callback', @obj.btnEmergencyStopCallback);
                 
-            fig.Heights = [-1, 40, 80];
+            fig.Heights = [-1, 40, 80, 40];
             
             obj.height = 500;
             obj.width = 700;
@@ -84,17 +90,22 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
         end
         
         function callbackRadioSelection(obj, ~, event)
-            obj.isPlotNormalized = event.NewValue.UserData;
+            obj.isPlotAlternate = event.NewValue.UserData;
             obj.plot;
             drawnow
+        end
+        
+        function btnEmergencyStopCallback(obj, ~, ~)
+            exp = getObjByName(obj.expName);
+            exp.emergencyStop;
         end
         
         %%% Plotting %%%
         function plot(obj)
             % Check whether we have anything to plot
             exp = getObjByName(obj.expName);
-            if obj.isPlotNormalized
-                data = exp.normalizedData().value;
+            if obj.isPlotAlternate
+                data = exp.alternateSignal().value;
             else
                 data = exp.signalParam.value;
             end
@@ -133,15 +144,17 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
             if isa(exp.signalParam2, 'ExpParameter') && ~isempty(exp.signalParam2.value) ...
                 % If there is more than one Y axis parameter, we want to
                 % plot it above the first one,
-                if ~obj.isPlotNormalized
-                    % unless We are in normalized mode.
+                if ~obj.isPlotAlternate
+                    % unless We are in alternative display mode.
                     data = exp.signalParam2.value;
                     AxesHelper.add(obj.vAxes, data, firstAxisVector)
                 end
-                obj.radioNormalized.Enable = 'on';
+                obj.radioAlterDisplay.Enable = BooleanHelper.boolToOnOff(~isempty(exp.alternateSignal));
+                    % ^ We can switch to the alternate display mode only if
+                    % there is anything to show there.
             else
-                % We can't normalize, since there is only one signal
-                obj.radioNormalized.Enable = 'off';
+                % We can't show an alternate display, since there is only one signal
+                obj.radioAlterDisplay.Enable = 'off';
             end
             
             
@@ -155,7 +168,7 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
         
         function refresh(obj)
             exp = getObjByName(obj.expName);
-            if exp.pauseFlag
+            if ~exp.restartFlag
                 obj.btnStartStop.startString = 'Resume';
             else
                 obj.btnStartStop.startString = 'Start';
@@ -163,6 +176,29 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
             obj.btnStartStop.isRunning = ~exp.stopFlag;
         end
         
+        function savePlottingImage(obj, folder, filename)
+            % TEMPORARY (!!!) function, to save the plot from an experiment
+            % as .png and .fig files
+            
+            figureInvis = figure('Visible', 'off');
+            copyobj(obj.vAxes, figureInvis);
+            
+            filename = PathHelper.removeDotSuffix(filename);
+            fullpath = PathHelper.joinToFullPath(folder, filename);
+            
+            %%% Save image (.png)
+            fullPathImage = [fullpath '.' ImageScanResult.IMAGE_FILE_SUFFIX];
+            saveas(figureInvis, fullPathImage);
+            
+            %%% Save figure (.fig)
+            % The figure is saved as invisible, but we set its creation
+            % function to set it as visible
+            set(figureInvis, 'CreateFcn', 'set(gcbo, ''Visible'', ''on'')'); % No other methods of specifying the function seemed to work...
+            savefig(figureInvis, fullpath)
+            
+            %%% close the figure
+            close(figureInvis);
+        end
     end
     
     methods
@@ -185,6 +221,15 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
         % When events happen, this function jumps.
         % event is the event sent from the EventSender
         function onEvent(obj, event)
+            if strcmp(event.creator.name, SaveLoadCatExp.NAME) ...
+                    && isfield(event.extraInfo, SaveLoad.EVENT_SAVE_SUCCESS_LOCAL_TO_FILE) ...
+                    
+                folder = event.extraInfo.(SaveLoad.EVENT_FOLDER);
+                filename = event.extraInfo.(SaveLoad.EVENT_FILENAME);
+                obj.savePlottingImage(folder, filename);
+                return
+            end
+            
             obj.refresh;
             if isfield(event.extraInfo, Experiment.EVENT_DATA_UPDATED) ...
                     || isfield(event.extraInfo, Experiment.EVENT_EXP_RESUMED)

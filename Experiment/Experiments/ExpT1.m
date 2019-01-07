@@ -286,7 +286,9 @@ classdef ExpT1 < Experiment
             spcm.setSPCMEnable(false);
         end
         
-        function dataParam = normalizedData(obj)
+        function dataParam = alternateSignal(obj)
+            % Returns alternate view ("normalized") of the data, as an
+            % ExpParam, if possible. If not, it returns an empty variable.
             persistent dat
             if isempty(dat)
                 dat = ExpParamDoubleVector('FL', [], 'normalized', obj.NAME);

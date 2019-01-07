@@ -10,7 +10,7 @@ try
 catch
     % We look for the experiment, in order to create it
     [expNamesCell, expClassNamesCell] = Experiment.getExperimentNames();
-    ind = strcmp(obj.expName, expNamesCell); % index of obj.expName in list
+    ind = strcmp(searchedName, expNamesCell); % index of searchedName in list
     
     if isempty(ind)
         ME = MException(Experiment.EXCEPTION_ID_NO_EXPERIMENT, msgNoExp, searchedName);

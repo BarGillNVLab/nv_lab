@@ -43,17 +43,21 @@ classdef ExpESR < Experiment
             obj.averages = 10;
             obj.isTracking = true;   % Initialize tracking
             obj.trackThreshhold = 0.7;
-            obj.shouldAutosave = false;
+            obj.shouldAutosave = true;
             
             obj.frequency = obj.ZERO_FIELD_SPLITTING + (-100 : 1 : 100);     %in MHz
             obj.amplitude = -10;        % dBm
             obj.mode = 'CW';            % Can only be 'CW' for now.
             obj.nChannels = 1;          % two channels can be added....
-
+            
+            obj.getDelays();
             obj.detectionDuration = 500;
             
             obj.mirrorSweepAround = []; % Use this for a single frequency range
             obj.freqMirrored = obj.mirrorFrequency;
+            
+            obj.displayType1 = 'Normalized';
+            obj.displayType2 = '-';
             
             obj.mCurrentXAxisParam = ExpParamDoubleVector('Frequency', [], 'MHz', obj.NAME);
             obj.signalParam = ExpResultDoubleVector('FL', [], 'normalised', obj.NAME);
@@ -274,6 +278,8 @@ classdef ExpESR < Experiment
             
             % Run - Go over all frequencies, in random order
             for k = 1:len
+                obj.checkEmergencyStop()
+                
                 if isempty(obj.mirrorSweepAround)
                     i = f1(k);
                     
@@ -336,22 +342,10 @@ classdef ExpESR < Experiment
             
         end
         
-        function dataParam = normalizedData(obj)
-            persistent dat
-            if isempty(dat)
-                dat = ExpParamDoubleVector('FL', [], 'normalized', obj.NAME);
-            end
-            signal = obj.signalParam.value;
-            background = obj.signalParam2.value;
-            
-            if isempty(background)
-                dat.value = [];
-                obj.sendError('Cannot normalize data without double measurement!')
-            else
-                dat.value = signal - background;
-            end
-            
-            dataParam = dat;
+        function dataParam = alternateSignal(obj) %#ok<MANU>
+            % Returns alternate view ("normalized") of the data, as an
+            % ExpParam, if possible. If not, it returns an empty variable.
+            dataParam = [];
         end
     end
     

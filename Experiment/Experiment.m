@@ -28,11 +28,11 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
     end
     
     properties (Access = protected)
-        laserOnDelay = 0.1;  %in us
-        laserOffDelay = 0.1; %in us
-        mwOnDelay = 0.1;     %in us
-        mwOffDelay = 0.1;    %in us
-        detectionDuration   % detection windows, in \mus
+        laserOnDelay        %in us
+        laserOffDelay       %in us
+        mwOnDelay           %in us
+        mwOffDelay          %in us
+        detectionDuration   % detection windows, in us
     end
     
     properties (SetAccess = protected)
@@ -43,8 +43,15 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
     
     properties (SetAccess = {?Trackable, ?SpcmCounter})
         stopFlag = true;
-        pauseFlag = false;	% false -> new signal will be acquired. true --> signal will be required.
+        emergencyStopFlag = false;  % if true, we stop the experiment as soon as possible
+        restartFlag = true;	% if true, then starting now the experiment will delete old data
         pausedAverage = false; 
+    end
+    
+    properties (SetAccess = protected) % to be used by ViewExperimentPlot
+        % Default values, may be overridden by subclasses
+        displayType1 = 'Unnormalized';
+        displayType2 = 'Normalized';
     end
     
     properties (Constant)
@@ -82,7 +89,12 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             
             obj.mCategory = Savable.CATEGORY_EXPERIMENTS; % will be overridden in Trackable
             
-            addBaseObject(obj)
+            % If we explicitly called the constructor, and did not get it
+            % by its name, the old Experiment of this kind will be deleted
+            oldObjOrNan = replaceBaseObject(obj);
+            if isa(oldObjOrNan, 'Experiment')
+                fprintf('Creating a new %s Experiment. All of its parameters were reset to default.\n', name)
+            end
         end
         
         function cellOfStrings = getAllExpParameterProperties(obj)
@@ -152,19 +164,27 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             % This Experiment is running and is therefore the current one.
             obj.getSetCurrentExp(obj.NAME);
             
-            if ~obj.pauseFlag
+            if obj.restartFlag
                 % Preparing
                 clear(obj);
                 % ^ If we have a previous Experiment that ran, it is time to delete the results, before they interfere with the current ones
                 prepare(obj)
                 obj.sendEventParamChanged;  % That happenned at preperation
-                obj.pauseFlag = true;   % If we pause now, it will already be the middle of an experiment, and we can resume it.
+                obj.restartFlag = false;    % If we pause now, it will already be the middle of an experiment, and we want to be able to resume it.
+
+                tracker = getObjByName(Tracker.NAME);
+                trackablePos = tracker.getTrackable(TrackablePosition.NAME);
+                if trackablePos.isHistoryEmpty ...
+                        && QuestionUserYesNo('Restart tracking?', 'Do you want to restart tracking?')
+                    trackablePos.resetTrack
+                end
             end
             
             % Starting
             GuiControllerExperimentPlot(obj.name).start;
             
             obj.stopFlag = false;
+            obj.emergencyStopFlag = false;  % In case we stopped the experiment abruptly
             sendEventExpResumed(obj);
             
             first = obj.currIter + 1;	% If we paused and did not restart, this is not 1
@@ -189,7 +209,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
                 end
             end
             
-            obj.pauseFlag = false;
+%             obj.restartFlag = true;
             obj.pause;
             sendEventExpPaused(obj);
         end
@@ -198,15 +218,27 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             obj.stopFlag = true;
         end
         
+        function emergencyStop(obj)
+            obj.emergencyStopFlag = true;
+            obj.pause;
+        end
+        
+        function checkEmergencyStop(obj)
+            drawnow     % Oddly, this causes us to change the value of obj.emergencyStopFlag RIGHT NOW, and not wait for the queue
+            if obj.emergencyStopFlag
+                obj.sendError('Experiment emergency stop!')
+            end
+        end
+        
         function restart(obj)
-            obj.pauseFlag = false;
+            obj.restartFlag = true;
             obj.run;
         end
         
         function clear(obj)
             obj.mCurrentXAxisParam.value = [];
             obj.signalParam.value = [];
-            obj.signalParam.value = [];
+            obj.signalParam2.value = [];
             obj.currIter = 0;
         end
     end
@@ -221,9 +253,9 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
         
         wrapUp(obj)
         
-        normalizedData(obj)
-        % Returns ExpParams of the results from the experiment, after
-        % normalization.
+        alternateSignal(obj)
+        % Returns alternate view ("normalized") of the data, as an
+        % ExpParam, if possible. If not, it returns an empty variable.
     end
     
     
@@ -327,11 +359,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
     
     %% Helper functions
     methods
-        function initialize(obj, numScans)
-            spcm = getObjByName(Spcm.NAME);
-            spcm.prepareReadByTime;
-            spcm.setGatedCounting('', numScans);
-            
+        function getDelays(obj)
             if isempty(obj.laserOnDelay) || isempty(obj.laserOffDelay)
                 laser = getObjByName(LaserGate.GREEN_LASER_NAME);
                 obj.laserOnDelay = laser.onDelay;

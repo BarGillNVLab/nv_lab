@@ -55,7 +55,7 @@ classdef TrackablePosition < Trackable % & StageScanner
                 assert(stage.isScannable)
             else
                 stage = JsonInfoReader.getDefaultObject('stages');
-                obj.mStageName = stage.NAME;
+                obj.mStageName = stage.name;
                 
                 % Obselete code, might be useful in the future:
 %                 stages = ClassStage.getScannableStages;
@@ -129,8 +129,8 @@ classdef TrackablePosition < Trackable % & StageScanner
 
         end
         
-        function normalizedData(obj)
-            obj.sendError('Position tracking does not support normaliztion!')
+        function dataParam = alternateSignal(obj) %#ok<MANU>
+            dataParam = [];
         end
         
         function wrapUp(obj) %#ok<MANU>

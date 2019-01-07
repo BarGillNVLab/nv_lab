@@ -51,6 +51,7 @@ classdef ExpEcho < Experiment
             obj.trackThreshhold = 0.7;
             obj.shouldAutosave = true;
             
+            obj.getDelays();
             obj.detectionDuration = [0.25, 5];      % detection windows, in \mus
             obj.laserInitializationDuration = 20;   % laser initialization in pulsed experiments in \mus (??)
             
@@ -218,6 +219,8 @@ classdef ExpEcho < Experiment
             for t = randperm(length(obj.tau))
                 success = false;
                 for trial = 1 : 5
+                    obj.checkEmergencyStop
+                    
                     try
                         seq.change('tau', 'duration', obj.tau(t));
                         if obj.constantTime
@@ -290,7 +293,9 @@ classdef ExpEcho < Experiment
             spcm.setSPCMEnable(false);
         end
         
-        function dataParam = normalizedData(obj)
+        function dataParam = alternateSignal(obj)
+            % Returns alternate view ("normalized") of the data, as an
+            % ExpParam, if possible. If not, it returns an empty variable.
             persistent dat
             if isempty(dat)
                 dat = ExpParamDoubleVector('FL', [], 'normalized', obj.NAME);

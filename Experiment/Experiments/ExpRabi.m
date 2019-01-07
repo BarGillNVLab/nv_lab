@@ -41,11 +41,13 @@ classdef ExpRabi < Experiment
             obj.averages = 500;
             obj.isTracking = 1; %initialize tracking
             obj.trackThreshhold = 0.7;
-            obj.shouldAutosave = false;
+            obj.shouldAutosave = true;
             
             obj.frequency = 3029; %in MHz
             obj.amplitude = -10; % in dBm
             obj.tau = 0.002:0.002:0.5; % in us
+            
+            obj.getDelays();
             obj.detectionDuration = [0.25, 5]; % detection windows, in \mus
             obj.laserInitializationDuration = 10; % laser initialization in pulsed experiments
             
@@ -199,6 +201,8 @@ classdef ExpRabi < Experiment
             
             for t = randperm(length(obj.tau))
                 success = false;
+                obj.checkEmergencyStop
+                
                 for trial = 1 : 5
                     try
                         seq.change('MW', 'duration', obj.tau(t));
@@ -251,8 +255,10 @@ classdef ExpRabi < Experiment
             spcm.setSPCMEnable(false);
         end
         
-        function normalizedData(obj)
-            obj.sendError('Rabi experiment does not support normaliztion!')
+        function dataParam = alternateSignal(obj) %#ok<MANU>
+            % Returns alternate view ("normalized") of the data, as an
+            % ExpParam, if possible. If not, it returns an empty variable.
+            dataParam = [];
         end
     end
     

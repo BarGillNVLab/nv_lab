@@ -38,7 +38,7 @@ classdef SaveLoadCatExp < SaveLoad & EventListener
                 obj.saveResultsToLocalStruct();
                 obj.saveBackup;
             elseif isfield(event.extraInfo, Experiment.EVENT_EXP_PAUSED) ...
-                    && event.creator.shouldAutosave()
+                    && event.creator.shouldAutosave
                 obj.autoSave;
             end
         end

@@ -93,6 +93,10 @@ classdef (Abstract) Trackable < Experiment
             end
         end
         
+        function tf = isHistoryEmpty(obj)
+            tf = isempty(obj.mHistory);
+        end
+        
     end
     
     methods % Setters

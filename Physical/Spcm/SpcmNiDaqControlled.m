@@ -207,7 +207,7 @@ classdef SpcmNiDaqControlled < Spcm & NiDaqControlled
                 obj.sendError('Can''t read from SPCM without calling ''prepare()''!');
             end
             
-            counts = readPulseWidthCounting(obj.counterExpTask, obj.nExpCounts, obj.expTimeoutTime);
+            counts = obj.readPulseWidthCounting(obj.counterExpTask, obj.nExpCounts, obj.expTimeoutTime);
             
             % Error handling
             if any(isnan(counts))

@@ -28,6 +28,7 @@
     },
     "stages": [
         {
+            "default": true,
             "name": "stage fine",
             "type": "Dummy",
             "axes": "xyz",

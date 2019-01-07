@@ -119,11 +119,15 @@ classdef NiDaq < EventSender
                 channelAlreadyInIndexes = find(contains(...
                     takenIndices, newChannel));
                 if ~isempty(channelAlreadyInIndexes)
-                    errorTemplate = 'Can''t assign channel "%s" to "%s", as it has already been taken by "%s"!';
                     channelIndex = channelAlreadyInIndexes(1);
                     channelCapturedName = obj.getChannelNameFromIndex(channelIndex);
-                    errorMsg = sprintf(errorTemplate, newChannel, newChannelName, channelCapturedName);
-                    obj.sendError(errorMsg);
+                    if ~strcmp(newChannel, channelCapturedName)
+                        % Maybe we are just trying to register again the
+                        % same channel, and that is just fine
+                        errorTemplate = 'Can''t assign channel "%s" to "%s", as it has already been taken by "%s"!';
+                        errorMsg = sprintf(errorTemplate, newChannel, newChannelName, channelCapturedName);
+                        obj.sendError(errorMsg);
+                    end
                 end
             end
             

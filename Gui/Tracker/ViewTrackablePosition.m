@@ -177,7 +177,7 @@ classdef ViewTrackablePosition < ViewTrackable
             end
             
             p_1 = pos(1, :);
-            dp = diff([p_1;pos]);
+            dp = pos - p_1;
             plot(obj.vAxes1, xAx, dp); % plots each column (x,y,z) against the time
             drawnow;
             axesLetters = num2cell(obj.stageAxes);     % Odd, but this usefully turns 'xyz' into {'x', 'y', 'z'}

@@ -13,7 +13,7 @@ classdef Tracker < EventSender & EventListener & Savable
     properties (Access = private)
         mLocalStruct = struct;
         
-        kcpsReference = 0;  % Initialize as 0
+        kcpsReference = [];  % Initialize as 0
     end
     
     properties
@@ -47,12 +47,16 @@ classdef Tracker < EventSender & EventListener & Savable
                     EventStation.anonymousError('This Shouldn''t have happenned!')
             end
             
-            if obj.isDifferenceAboveThreshhold(reference, newValue, threshhold)
+            if isempty(reference)
+                obj.kcpsReference = newValue;
+                fprintf('Setting tracker reference as %.2f\n', newValue);
+            elseif obj.isDifferenceAboveThreshhold(newValue, reference, threshhold)
+                obj.kcpsReference = newValue;
+                fprintf('Tracking reference jumped, setting value to %.2f\n', newValue);
+            elseif obj.isDifferenceAboveThreshhold(reference, newValue, threshhold)
+                fprintf('Starting tracking, current counts are %.2f, reference is %.2f\n', newValue, reference);
                 trackable = obj.getTrackable(trackableName);
                 trackable.startTrack;
-                
-                mainExp = getObjByName(Experiment.ON_HOLD_EXPERIMENT);
-                mainExp.robAndPausePrevious;        % Take back control
             end
         end
     end
@@ -142,6 +146,17 @@ classdef Tracker < EventSender & EventListener & Savable
                 trackable = event.creator;
                 trackableName = trackable.name;     % trackable.name (lowercase) == 'trackableX', where X is the tracked property
                 obj.mLocalStruct.(trackableName) = trackable.convertHistoryToStructToSave;
+                
+                % Update relevant reference value (kcps, etc.)
+                switch trackableName
+                    case TrackablePosition.NAME
+                        endRecord = trackable.mHistory{end};
+                        newValue = endRecord.value;
+                        obj.kcpsReference = newValue;
+                        fprintf('Tracking ended, setting tracker reference as %.2f\n', newValue);
+                    otherwise
+                        disp('This should not have happenned')
+                end
                 obj.sendEventTrackerFinished;
             end
         end

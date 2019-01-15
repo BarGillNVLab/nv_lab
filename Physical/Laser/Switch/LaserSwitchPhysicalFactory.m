@@ -4,7 +4,8 @@ classdef LaserSwitchPhysicalFactory
     
     properties (Constant)
         NEEDED_FIELDS = {'switchChannelName'}
-        OPTIONAL_FIELDS = {'delay', 'isEnabled'}
+        OPTIONAL_FIELD_IS_ENABLED = {'isEnabled'}
+        OPTIONAL_FIELDS_DELAY = {'onDelay', 'offDelay'}
     end
     
     methods (Static)
@@ -32,7 +33,7 @@ classdef LaserSwitchPhysicalFactory
                         struct.classname, name);
             end
             % check for optional field "isEnabled" and set it correctly
-            if isnan(FactoryHelper.usualChecks(struct, {LaserSwitchPhysicalFactory.OPTIONAL_FIELDS{2}}))
+            if isnan(FactoryHelper.usualChecks(struct, LaserSwitchPhysicalFactory.OPTIONAL_FIELD_IS_ENABLED))
                 % usualChecks() returning nan means everything ok
                 switchPhysicalPart.isEnabled = struct.isEnabled;
             end

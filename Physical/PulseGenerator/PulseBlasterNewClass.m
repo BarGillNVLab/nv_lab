@@ -117,7 +117,7 @@ classdef (Sealed) PulseBlasterNewClass < PulseGenerator
         end
         
         function validateSequence(obj)
-            if isempty(obj.sequencePrivate)
+            if isempty(obj.sequence)
                 error('Upload sequence')
             end
             
@@ -183,10 +183,19 @@ classdef (Sealed) PulseBlasterNewClass < PulseGenerator
             %end
             
             %PBevents=sum(diag(2.^(0:size(events,1)-1))*(events~=0),1); % convert events to logics
-
-            PBevents=(2.^(obj.channelValuesPrivate))*logical(obj.sequencePrivate); % convert events to logics
-            duration = (obj.duration'*1e3);
-            PB=[PBevents',duration]; %conver duration in ns to \mus
+            
+            % Converting sequence to machine-readable format
+            pulses = obj.sequence.pulses;
+            len = length(pulses);
+            pulsesBinary = zeros(len, 1);
+            for k = 1:len
+                channelNames = pulses(k).getOnChannels;
+                channels = obj.channelName2Address(channelNames); % converts from a cell of names to channel numbers
+                pulsesBinary(k) = sum(2.^channels);
+            end
+            
+            duration = (obj.duration'*1e3); %convert duration in ns to \mus
+            PB = [pulsesBinary, duration]; 
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %% This was taken as is...
             

@@ -236,6 +236,22 @@ classdef (Abstract) PulseGenerator < EventSender
                 end
             end
         end
+    end
+       
+    methods % Should be protected, but isn't for now, because of how delays are implemented
+        function [onDelay, offDelay] = channelName2Delays(obj, name)
+            % Name must be single char array ("string")
+            index = find(strcmp(name, obj.channelNames)); % Should return the index of the channel in obj.channels
+            if isempty(index)
+                obj.sendWarning('Could not find requested channel!');
+                onDelay = -1;
+                offDelay = -1;
+            else
+                chan = obj.channels(index);
+                onDelay = chan.onDelay;
+                offDelay = chan.offDelay;
+            end
+        end
         
     end
     

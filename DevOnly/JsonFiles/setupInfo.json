@@ -82,7 +82,9 @@
             "switch": {
                 "classname": "pulseBlaster",
                 "switchChannel": 5,
-                "switchChannelName": "greenLaser"
+                "switchChannelName": "greenLaser",
+                "onDelay": 0.1,
+                "offDelay": 0.1
             }
         }
 	],
@@ -100,7 +102,9 @@
         "MW" : {
             "classname" : "pulseBlaster",
             "switchChannel" : 2,
-            "switchChannelName" : "MW"
+            "switchChannelName" : "MW",
+            "onDelay": 0.1,
+            "offDelay": 0.1
         },
         "I" : {
             "classname" : "pulseBlaster",

@@ -50,11 +50,12 @@ classdef SwitchPgControlled < EventSender & EventListener
     
     methods (Static)
         function switchPhysicalPart = create(partName, struct)
-            % Maybe we need a global delay of the signal, due to
+            % Maybe we need a global delays of the signal, due to
             % finite speed of signal
-            if isnan(FactoryHelper.usualChecks(struct, {LaserSwitchPhysicalFactory.OPTIONAL_FIELDS{1}}))
-                % usualChecks() returning nan means everything ok
-                switchChannel = Channel.Digital(struct.switchChannelName, struct.switchChannel, struct.delay);
+            if isnan(FactoryHelper.usualChecks(struct, LaserSwitchPhysicalFactory.OPTIONAL_FIELDS_DELAY))
+                % usualChecks() returning nan means everything's ok
+                switchChannel = Channel.Digital(struct.switchChannelName, struct.switchChannel, ...
+                    struct.onDelay, struct.offDelay);
             else
                 % No delay requested
                 switchChannel = Channel.Digital(struct.switchChannelName, struct.switchChannel);

@@ -171,12 +171,14 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
                 prepare(obj)
                 obj.sendEventParamChanged;  % That happenned at preperation
                 obj.restartFlag = false;    % If we pause now, it will already be the middle of an experiment, and we want to be able to resume it.
-
-                tracker = getObjByName(Tracker.NAME);
-                trackablePos = tracker.getTrackable(TrackablePosition.NAME);
-                if trackablePos.isHistoryEmpty ...
-                        && QuestionUserYesNo('Restart tracking?', 'Do you want to restart tracking?')
-                    trackablePos.resetTrack
+                
+                if obj.isTracking
+                    tracker = getObjByName(Tracker.NAME);
+                    trackablePos = tracker.getTrackable(TrackablePosition.NAME);
+                    if ~trackablePos.isHistoryEmpty ...
+                            && QuestionUserYesNo('Restart tracking?', 'Do you want to restart tracking?')
+                        trackablePos.resetTrack
+                    end
                 end
             end
             
@@ -351,7 +353,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             
             % Maybe we have double measurement
             sig2 = obj.signalParam2;
-            if ~isempty(sig2.value)
+            if ~isempty(sig2) && ~isempty(sig2.value)
                 outStruct.signalParam2 = sig2;
             end
         end
@@ -360,16 +362,14 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
     %% Helper functions
     methods
         function getDelays(obj)
+            pg = getObjByName(PulseGenerator.NAME);
+            
             if isempty(obj.laserOnDelay) || isempty(obj.laserOffDelay)
-                laser = getObjByName(LaserGate.GREEN_LASER_NAME);
-                obj.laserOnDelay = laser.onDelay;
-                obj.laserOffDelay = laser.offDelay;
+                [obj.laserOnDelay, obj.laserOffDelay] = pg.channelName2Delays('greenLaser');
             end
             
             if isempty(obj.mwOnDelay) || isempty(obj.mwOffDelay)
-                mw = JsonInfoReader.getDefaultObject('frequencyGenerator');
-                obj.mwOnDelay = mw.onDelay;
-                obj.mwOffDelay = mw.offDelay;
+                [obj.mwOnDelay, obj.mwOffDelay] = pg.channelName2Delays('MW');
             end
         end
         

@@ -25,8 +25,13 @@ classdef (Sealed) PulseStreamerNewClass < PulseGenerator
         end
         
         function Initialize(obj, ip, debugPath) % doesn't need to be an input, and definitly not in the json (and it is now turned off)
-            obj.ps = PulseStreamer(ip);
-%             obj.ps.enableDebugRecorder(1000, debugPath);
+            % Normal mode
+%             obj.ps = PulseStreamer(ip);
+
+            % Debug mode
+            obj.ps = debug.PulseStreamer_RPCLogger(ip);
+            obj.ps.enableLog(100, 'C:\Users\OWNER\Google Drive\NV Lab\Control code\prod\PSdebug.mat');
+            
             obj.initSequence;
             obj.trigger = PSTriggerStart.HardwareRising; % can be 'Immediate', 'Software', 'HardwareRising', 'HardwareFalling' or 'HardwareBoth'.
             obj.automaticRearm = PSTriggerMode.Single; % can be 'Normal' or 'Single'.

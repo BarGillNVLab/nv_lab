@@ -248,8 +248,7 @@ classdef ExpRabi < Experiment
         function wrapUp(obj) %#ok<MANU>
             % Things that need to happen when the experiment is done; a
             % counterpart for obj.prepare.
-            % In the future, it will also analyze results and fit from it
-            % the coherence time.
+            % In the future, it will also analyze results.
             
             spcm = getObjByName(Spcm.NAME);
             spcm.setSPCMEnable(false);

@@ -123,7 +123,7 @@ classdef NiDaq < EventSender
                     channelCapturedName = obj.getChannelNameFromIndex(channelIndex);
                     if ~strcmp(newChannel, channelCapturedName)
                         % Maybe we are just trying to register again the
-                        % same channel, and that is just fine
+                        % same channel, and that is just fine. Otherwise,
                         errorTemplate = 'Can''t assign channel "%s" to "%s", as it has already been taken by "%s"!';
                         errorMsg = sprintf(errorTemplate, newChannel, newChannelName, channelCapturedName);
                         obj.sendError(errorMsg);

@@ -199,9 +199,9 @@ classdef ExpESR < Experiment
                         otherwise
                             obj.sendError('What should we do here?')
                     end
-                    % todo: 10 and 1 look like arbitrary magic numbers!
+                    % todo: 1 looks like an arbitrary magic number!
                     S.addPulse(P);
-                    S.addEvent(10,                       'greenLaser')
+                    S.addEvent(1,                        'greenLaser')
                     S.addEvent(obj.detectionDuration,    {'greenLaser','detector'})
                     S.addEvent(1,                        'greenLaser')
                 case 'pulsed'
@@ -218,7 +218,7 @@ classdef ExpESR < Experiment
                     S.addEvent(obj.piTime(1),            'MW')
                     if obj.nChannels > 1
                         S.addEvent(obj.mwOffDelay(1),    '');
-                        S.addEvent(obj.piTime(2),        'MW')              % not 'MW2'?
+                        S.addEvent(obj.piTime(2),        'MW2')
                     end
                     S.addEvent(obj.mwOffDelay(2),        '');
             end
@@ -339,7 +339,13 @@ classdef ExpESR < Experiment
         end
         
         function wrapUp(obj)
+            % Things that need to happen when the experiment is done; a
+            % counterpart for obj.prepare.
+            % In the future, it will also analyze results and fit from it
+            % the resonance frequency/ies
             
+            spcm = getObjByName(Spcm.NAME);
+            spcm.setSPCMEnable(false);
         end
         
         function dataParam = alternateSignal(obj) %#ok<MANU>

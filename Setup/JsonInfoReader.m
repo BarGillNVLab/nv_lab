@@ -71,25 +71,34 @@ classdef JsonInfoReader
             list = jsonStruct.(listName);
             isListACell = iscell(list);
             
-            % Initialize search
-            isDefault = false(size(list));    % initialize
+            len = length(list);
             
-            for i = 1:length(list)
-                % Get struct of current object
-                if isListACell
-                    currentStruct = list{i};
-                else
-                    currentStruct = list(i);
-                end
+            if len == 1
+                isDefault = 1;
+            else
+                % We have several items
                 
-                % Check whether this is THE default object
-                if isfield(currentStruct, defaultName)
-                    isDefault(i) = true;
+                % Initialize search
+                isDefault = false(size(list));    % initialize
+                
+                for i = 1:len
+                    % Get struct of current object
+                    if isListACell
+                        currentStruct = list{i};
+                    else
+                        currentStruct = list(i);
+                    end
+                    
+                    % Check whether this is THE default object
+                    if isfield(currentStruct, defaultName)
+                        isDefault(i) = true;
+                    end
                 end
             end
             
             % Find out if we have a winner
             nDefault = sum(isDefault);
+
             switch nDefault
                 case 0
                     EventStation.anonymousError('None of the %s is set to be %s! Aborting.', ...
@@ -109,7 +118,7 @@ classdef JsonInfoReader
                     
                     % And there it is:
                     object = objectCell{isDefault};
-                        
+                    
                 otherwise
                     EventStation.anonymousError('Too many %s were set as %s! Aborting.', ...
                         listName, defaultName)

@@ -218,7 +218,7 @@ classdef ExpEcho < Experiment
             %%% Run - Go over all tau's, in random order
             for t = randperm(length(obj.tau))
                 success = false;
-                for trial = 1 : 5
+                for trial = 1 : 2
                     obj.checkEmergencyStop
                     
                     try

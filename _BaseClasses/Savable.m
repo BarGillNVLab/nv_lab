@@ -137,6 +137,9 @@ classdef (Abstract) Savable < BaseObject
     
     methods (Static, Access = private)
         function addSavable(savableObject)
+            % Make sure there is no other object with the same name
+            Savable.removeSavable(savableObject)
+            % Add the new object
             allObjects = Savable.getAllSavableObjects();
             allObjects.cells{end + 1} = savableObject;
         end

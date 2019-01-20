@@ -37,10 +37,10 @@ classdef SaveLoad < Savable & EventSender
         EVENT_STATUS_LOCAL_STRUCT = 'localStruct_status';
         EVENT_LOCAL_STRUCT = 'localStruct';
         
-        PATH_DEFAULT_SAVE = sprintf('%sControl code\\%s\\_ManualSaves\\Setup %s\\', ...
-            PathHelper.getPathToNvLab(), PathHelper.SetupMode, JsonInfoReader.setupNumber);
-        PATH_DEFAULT_AUTO_SAVE = sprintf('%sControl code\\%s\\_AutoSave\\Setup %s\\', ...
-            PathHelper.getPathToNvLab(), PathHelper.SetupMode, JsonInfoReader.setupNumber);
+        PATH_DEFAULT_SAVE = sprintf('%sControl code\\Saves\\Setup %s\\_Manual\\', ...
+            PathHelper.getPathToNvLab(), JsonInfoReader.setupNumber);
+        PATH_DEFAULT_AUTO_SAVE = sprintf('%sControl code\\Saves\\Setup %s\\_AutoSave\\', ...
+            PathHelper.getPathToNvLab(), JsonInfoReader.setupNumber);
         PATH_SAVE_BACKUP = SaveLoad.PATH_DEFAULT_AUTO_SAVE;   % For now, keep it the same
         SAVE_FILE_SUFFIX = '.mat';
         

@@ -67,8 +67,8 @@ classdef Pulse < matlab.mixin.Copyable
             if ~isscalar(newDuration) || ~isnumeric(newDuration)
                 error('Duration must be a scalar numeric value!')
             end
-            if newDuration <= 0
-                error('Duration must be positive! Requested: %d', newDuration)
+            if newDuration < 0
+                error('Duration must not be negative! Requested: %d', newDuration)
             end
             obj.duration = newDuration;
         end

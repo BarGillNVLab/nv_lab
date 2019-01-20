@@ -201,9 +201,9 @@ classdef ExpESR < Experiment
                     end
                     % todo: 1 looks like an arbitrary magic number!
                     S.addPulse(P);
-                    S.addEvent(1,                        'greenLaser')
+                    S.addEvent(obj.laserOnDelay,         'greenLaser')
                     S.addEvent(obj.detectionDuration,    {'greenLaser','detector'})
-                    S.addEvent(1,                        'greenLaser')
+                    S.addEvent(obj.laserOffDelay,        'greenLaser')
                 case 'pulsed'
                     initDuration = obj.laserInitializationDuration-sum(obj.detectionDuration);
                     if length(obj.piTime) ~= obj.nChannels

@@ -30,7 +30,8 @@ classdef ViewStagePanelMovementControl < GuiComponent & EventListener
     
     methods
         function obj = ViewStagePanelMovementControl(parent, controller, stage)
-            namesToListenTo = {stage.name, StageScanner.NAME};
+            expNames = Experiment.getExperimentNames();
+            namesToListenTo = {stage.name, expNames{:}, StageScanner.NAME}; %#ok<CCAT>
             
             obj@GuiComponent(parent, controller);
             obj@EventListener(namesToListenTo);
@@ -349,22 +350,30 @@ classdef ViewStagePanelMovementControl < GuiComponent & EventListener
             % Enables or disables (Greys out) the movement control buttons.
             % Control can be either 'On' or 'Off'
             
+            isEnabled = true; % will be true if ANY of the checks gives true, and false otherwise
+
             % We want to enable movement only if
             %  * we're in closed loop
-            %  * stage scanner is not running
-            %  * joystick is off
-            % We first get all this information
             stage = getObjByName(obj.stageName);
             isLoopClosed = strcmp(stage.loopMode, 'Closed');
+            isEnabled = isEnabled && isLoopClosed;
+            %  * stage scanner is not running
             scanner = getObjByName(StageScanner.NAME);
+            isEnabled = isEnabled && ~scanner.mCurrentlyScanning;
+            %  * joystick is off
             if stage.hasJoystick
                 jstick = getObjByName(Joystick.NAME);
-                isEnabled = (isLoopClosed && ~scanner.mCurrentlyScanning ...
-                && ~jstick.isEnabled);
-            else 
-                isEnabled = (isLoopClosed && ~scanner.mCurrentlyScanning);
+                isEnabled = isEnabled && ~jstick.isEnabled;
+            end
+            %  * current Experiment is not running
+            try
+                exp = getObjByName(Experiment.current);
+                isEnabled = isEnabled && ~exp.isRunning;
+            catch % Perfectly fine
             end
             
+            
+            % Now we use it to set enabled as on/off
             onOffString = BooleanHelper.boolToOnOff(isEnabled);
             ax = ClassStage.getAxis(obj.stageAxes);
             for i = 1:length(ax)
@@ -389,7 +398,9 @@ classdef ViewStagePanelMovementControl < GuiComponent & EventListener
                 obj.refresh();
             elseif isfield(event.extraInfo, ClassStage.EVENT_STAGE_AVAILABLITY_CHANGED) ...
                     || isfield(event.extraInfo, StageScanner.EVENT_SCAN_STARTED) ...
-                    || isfield(event.extraInfo, StageScanner.EVENT_SCAN_FINISHED)
+                    || isfield(event.extraInfo, StageScanner.EVENT_SCAN_FINISHED) ...
+                    || isfield(event.extraInfo, Experiment.EVENT_EXP_PAUSED) ...
+                    || isfield(event.extraInfo, Experiment.EVENT_EXP_RESUMED)
                 obj.checkMovementEnabled;
             end
         end

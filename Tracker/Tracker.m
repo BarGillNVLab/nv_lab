@@ -43,18 +43,20 @@ classdef Tracker < EventSender & EventListener & Savable
                 case obj.REFERENCE_TYPE_KCPS
                     reference = obj.kcpsReference;
                     threshhold = obj.kcpsThreshholdFraction;
+                    refName = ' kcps';
                 otherwise
                     EventStation.anonymousError('This Shouldn''t have happenned!')
             end
             
             if isempty(reference)
                 obj.kcpsReference = newValue;
-                fprintf('Setting tracker reference as %.2f\n', newValue);
+                fprintf('Setting tracker reference as %.2f%s\n', newValue, refName);
             elseif obj.isDifferenceAboveThreshhold(newValue, reference, threshhold)
                 obj.kcpsReference = newValue;
-                fprintf('Tracking reference jumped, setting value to %.2f\n', newValue);
+                fprintf('Tracking reference jumped, setting value to %.2f%s\n', newValue);
             elseif obj.isDifferenceAboveThreshhold(reference, newValue, threshhold)
-                fprintf('Starting tracking, current counts are %.2f, reference is %.2f\n', newValue, reference);
+                fprintf('Starting tracking, current counts are %.2f%s, reference is %.2f%s\n', ...
+                    newValue, refName, reference, refName);
                 trackable = obj.getTrackable(trackableName);
                 trackable.startTrack;
             end
@@ -153,7 +155,7 @@ classdef Tracker < EventSender & EventListener & Savable
                         endRecord = trackable.mHistory{end};
                         newValue = endRecord.value;
                         obj.kcpsReference = newValue;
-                        fprintf('Tracking ended, setting tracker reference as %.2f\n', newValue);
+                        fprintf('Tracking ended, setting tracker reference as %.2f kcps\n', newValue);
                     otherwise
                         disp('This should not have happenned')
                 end

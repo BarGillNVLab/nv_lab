@@ -412,7 +412,7 @@ classdef StageScanner < EventSender & EventListener & Savable
             
             % for each in {x, y, z}, it could be one of:
             % the axisA vector, the axisB vector, or the axisC point
-            [x, y, z] = obj.getXYZfor2dScanChunk(axisAPixelsPerLine, axisBLinesPerScan, axisADirectionIndex, axisBDirectionIndex, axisCPoint0); %#ok<ASGLU>
+            [x, y, z] = obj.getXYZfor2dScanChunk(axisAPixelsPerLine, axisBLinesPerScan, axisADirectionIndex, axisBDirectionIndex, axisCPoint0); 
             nPixels = length(axisAPixelsPerLine);
             timeout = 2*nPixels*tPixel;
             
@@ -508,7 +508,7 @@ classdef StageScanner < EventSender & EventListener & Savable
             obj.mStageName = newStageName;
         end
         
-        function autosaveAfterScan(obj)
+        function autosaveAfterScan(obj) %#ok<MANU>
             saveLoad = SaveLoad.getInstance(Savable.CATEGORY_IMAGE);
             saveLoad.autoSave();
         end

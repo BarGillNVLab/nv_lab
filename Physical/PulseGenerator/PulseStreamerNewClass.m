@@ -8,7 +8,7 @@ classdef (Sealed) PulseStreamerNewClass < PulseGenerator
         
         AVAILABLE_ADDRESSES = 0:8;	% List of all available physical addresses.
                                     % Should be either vector of doubles or cell of char arrays
-        NEEDED_FIELDS = {'ipAddress', 'debugPath'}
+        NEEDED_FIELDS = {'ipAddress'}
     end
     
     properties (Access = private)
@@ -24,7 +24,7 @@ classdef (Sealed) PulseStreamerNewClass < PulseGenerator
             obj@PulseGenerator;
         end
         
-        function Initialize(obj, ip, debugPath) % doesn't need to be an input, and definitly not in the json (and it is now turned off)
+        function Initialize(obj, ip) % doesn't need to be an input, and definitly not in the json (and it is now turned off)
             % Normal mode
 %             obj.ps = PulseStreamer(ip);
 
@@ -185,8 +185,7 @@ classdef (Sealed) PulseStreamerNewClass < PulseGenerator
                 
                 obj = PulseStreamerNewClass();
                 ip = struct.ipAddress;
-                debugPath = struct.debugPath;
-                Initialize(obj, ip, debugPath)
+                Initialize(obj, ip)
                 
                 addBaseObject(obj);
             end

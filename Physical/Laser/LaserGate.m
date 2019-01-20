@@ -58,6 +58,11 @@ classdef LaserGate < Savable % Needs to be EventSender
             tf = isobject(obj.aom);
         end
         
+        function tf = isAomSwitchAvail(obj)
+            % Check if this laser gate can manipulate the AOM
+            tf = isobject(obj.aomSwitch);
+        end
+        
     end
     
     methods % setters and getters
@@ -77,17 +82,17 @@ classdef LaserGate < Savable % Needs to be EventSender
         
         function set.isOn(obj, newVal)
             tf = logical(newVal);
-            tfAom = obj.isAomAvail;
+            tfAomSwitch = obj.isAomSwitchAvail;
             tfSource = obj.isSourceAvail && obj.source.canSetEnabled;
             
             switch tf
                 case true
                     % We want everything on
-                    if tfAom; obj.aomSwitch.isEnabled = true; end
+                    if tfAomSwitch; obj.aomSwitch.isEnabled = true; end
                     if tfSource; obj.source.isEnabled = true; end
                 case false
                     % It might not be possible at all. If it is:
-                    if tfAom
+                    if tfAomSwitch
                         % Turn off only AOM, if possible
                         obj.aomSwitch.isEnabled = false;
                     elseif tfSource

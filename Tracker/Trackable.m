@@ -44,6 +44,7 @@ classdef (Abstract) Trackable < Experiment
         function sendEventTrackableExpEnded(obj)
             s = struct;
             s.(obj.EVENT_TRACKABLE_EXP_ENDED) = true;
+            s.(obj.EVENT_EXP_PAUSED) = true;
             s.text = obj.textOutput;
             obj.sendEvent(s);
         end

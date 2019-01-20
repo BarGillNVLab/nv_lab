@@ -53,7 +53,7 @@ classdef BaseObject < HiddenMethodsHandle & PropertiesDisplaySorted
         % But there's a class in dev\DevOnly\ ...
         function objectMap = allObjects
             persistent allObjectsMap
-            if isempty(allObjectsMap)
+            if isempty(allObjectsMap) || ~isvalid(allObjectsMap)
                 temp = containers.Map('UniformValues', false);
                 allObjectsMap = HandleWrapper(temp); 
             end

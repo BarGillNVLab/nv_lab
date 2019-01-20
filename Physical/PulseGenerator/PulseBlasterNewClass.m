@@ -188,13 +188,15 @@ classdef (Sealed) PulseBlasterNewClass < PulseGenerator
             pulses = obj.sequence.pulses;
             len = length(pulses);
             pulsesBinary = zeros(len, 1);
+            duration = zeros(len,1);
             for k = 1:len
                 channelNames = pulses(k).getOnChannels;
                 channels = obj.channelName2Address(channelNames); % converts from a cell of names to channel numbers
                 pulsesBinary(k) = sum(2.^channels);
+                duration(k) = pulses(k).duration;
             end
             
-            duration = (obj.duration'*1e3); %convert duration in ns to \mus
+            duration = duration * 1e3; %convert duration in ns to \mus
             PB = [pulsesBinary, duration]; 
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %% This was taken as is...

@@ -180,9 +180,19 @@ classdef ExpESR < Experiment
     end
     
     %% Overridden from Experiment
-    methods
+    methods (Access = protected)
+        function reset(obj)
+            % (Re)initialize signal matrix and inform user we are starting anew 
+            isSingleMeasurement = (isempty(obj.mirrorSweepAround) || obj.nChannels > 1);
+            n = BooleanHelper.ifTrueElse(isSingleMeasurement, 2, 4);
+            obj.signal = zeros(n, length(obj.frequency), obj.averages);
+            
+            nMeasPerRepeat = length(obj.frequency) * n / 2;      % Number of measurements/sequences in each repeat
+            obj.resetInternal(nMeasPerRepeat);
+        end
+        
         function prepare(obj)
-            % Initializtions before run
+            % Initialize devices (SPCM, PulseGenerator, etc.)
             
             % Sequence
             checkDetectionDuration(obj, obj.detectionDuration); % The mode might have changed; before running, we check
@@ -229,14 +239,6 @@ classdef ExpESR < Experiment
             pg.repeats = obj.repeats;
             seqTime = pg.sequence.duration * 1e-6; % Multiplication in 1e-6 is for converting usecs to secs.
             
-            % Initialize signal matrix
-            isSingleMeasurement = (isempty(obj.mirrorSweepAround) || obj.nChannels > 1);
-            n = BooleanHelper.ifTrueElse(isSingleMeasurement, 2, 4);
-            obj.signal = zeros(n, length(obj.frequency), obj.averages);
-            
-            % Set parameter, for saving
-            obj.mCurrentXAxisParam.value = obj.frequency;
-            
             % Initialize SPCM
             numScans = 2*obj.repeats;
             obj.timeout = 10 * numScans * seqTime;       % some multiple of the actual duration
@@ -244,12 +246,10 @@ classdef ExpESR < Experiment
             spcm.setSPCMEnable(true);
             spcm.prepareExperimentCount(numScans, obj.timeout);
             
-            obj.changeFlag = false;     % All devices have been set, according to the ExpParams
+            % Set parameter, for saving
+            obj.mCurrentXAxisParam.value = obj.frequency;
             
-            % Inform user
-            averageTime = obj.repeats * seqTime * length(obj.frequency) * n / 2;
-            fprintf('Starting %d averages with each average taking %.1f seconds, on average.\n', ...
-                obj.averages, averageTime);
+            obj.changeFlag = false;     % All devices have been set, according to the ExpParams
         end
         
         function perform(obj)

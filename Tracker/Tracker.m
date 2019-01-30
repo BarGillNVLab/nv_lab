@@ -7,7 +7,7 @@ classdef Tracker < EventSender & EventListener & Savable
 
         REFERENCE_TYPE_KCPS = 'kcpsReference'
         
-        THRESHHOLD_FRACTION = 0.01;  % Change is significant if dx/x > threshhold fraction (Default)
+        THRESHHOLD_FRACTION = 0.3;  % Change is significant if dx/x > threshhold fraction (Default)
     end
      
     properties (Access = private)
@@ -22,7 +22,7 @@ classdef Tracker < EventSender & EventListener & Savable
     
     methods
         function sendEventTrackerFinished(obj)
-            obj.sendEvent(struct(obj.EVENT_TRACKER_FINISHED,true));
+            obj.sendEvent(struct(obj.EVENT_TRACKER_FINISHED, true));
         end
         
         function obj = Tracker
@@ -53,12 +53,13 @@ classdef Tracker < EventSender & EventListener & Savable
                 fprintf('Setting tracker reference as %.2f%s\n', newValue, refName);
             elseif obj.isDifferenceAboveThreshhold(newValue, reference, threshhold)
                 obj.kcpsReference = newValue;
-                fprintf('Tracking reference jumped, setting value to %.2f%s\n', newValue);
+                fprintf('Tracking reference jumped, setting value to %.2f%s\n', newValue, refName);
             elseif obj.isDifferenceAboveThreshhold(reference, newValue, threshhold)
                 fprintf('Starting tracking, current counts are %.2f%s, reference is %.2f%s\n', ...
                     newValue, refName, reference, refName);
                 trackable = obj.getTrackable(trackableName);
                 trackable.startTrack;
+                obj.sendEventTrackerFinished;
             end
         end
     end
@@ -200,7 +201,7 @@ classdef Tracker < EventSender & EventListener & Savable
         end
         
         function tf = isDifferenceAboveThreshhold(maybeHigh, maybeLow, threshhold)
-            tf = (maybeHigh - maybeLow) > threshhold;
+            tf = (maybeHigh - maybeLow) > threshhold * maybeLow;
         end
     end
     

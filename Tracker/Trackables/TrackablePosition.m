@@ -73,11 +73,13 @@ classdef TrackablePosition < Trackable % & StageScanner
             obj.minimumStepSize = obj.MINIMUM_STEP_VECTOR(phAxes);
             obj.pixelTime = obj.PIXEL_TIME;
             obj.nMaxIterations = obj.NUM_MAX_ITERATIONS;
+            
+            obj.shouldAutosave = false;
         end
     end
     
     %% Overridden from Experiment
-    methods
+    methods (Access = protected)
         function prepare(obj)
             
             %%%% Initialize %%%%

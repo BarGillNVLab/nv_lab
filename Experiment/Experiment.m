@@ -2,6 +2,10 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
     %EXPERIMENT A generic experiment in the lab.
     % Abstract class for creating all other experiments.
     
+    properties (Abstract, Constant)
+        NAME
+    end
+    
     properties (SetAccess = protected)
         mCategory               % string. For loading (might change in subclasses)
        
@@ -77,6 +81,8 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
         function sendEventParamChanged(obj); obj.sendEvent(struct(obj.EVENT_PARAM_CHANGED, true)); end
         
         function obj = Experiment(name)
+            Setup.init();       % In case no one has done this before
+            
             obj@EventSender(name);
             obj@Savable(name);
             obj@EventListener({Tracker.NAME, StageScanner.NAME});
@@ -166,10 +172,9 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             
             if obj.restartFlag
                 % Preparing
-                clear(obj);
-                % ^ If we have a previous Experiment that ran, it is time to delete the results, before they interfere with the current ones
-                prepare(obj)
+                obj.prepare;
                 obj.sendEventParamChanged;  % That happenned at preperation
+                obj.reset;
                 obj.restartFlag = false;    % If we pause now, it will already be the middle of an experiment, and we want to be able to resume it.
                 
                 if obj.isTracking
@@ -237,18 +242,36 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             obj.run;
         end
         
-        function clear(obj)
-            obj.mCurrentXAxisParam.value = [];
+        function resetInternal(obj, nMeasPerRepeat)
+            % All Experiments need this.
+            %
+            % nMeasPerRepeat -  number of times the sequence runs at
+            %                   each repeat. Used to inform the user how
+            %                   long the experiment is going to take.
+            
             obj.signalParam.value = [];
             obj.signalParam2.value = [];
             obj.currIter = 0;
+            
+            % Inform user
+            pg = getObjByName(PulseGenerator.NAME);
+            seqTime = pg.sequence.duration * 1e-6; % Multiplication in 1e-6 is for converting usecs to secs.
+            
+            averageTime = obj.repeats * seqTime * nMeasPerRepeat;
+            fprintf('Starting %d averages with each average taking %.1f seconds, on average.\n', ...
+                obj.averages, averageTime);
         end
     end
     
     %% To be overridden
-    methods (Abstract)
+    methods (Abstract, Access = protected)
         % Specifics of each of the experiments
+        
+        reset(obj)
+        % (Re)initialize signal matrix and inform user we are starting anew
+        
         prepare(obj) 
+        % Initialize devices (SPCM, PulseGenerator, etc.)
         
         perform(obj)
         % Perform the main part of the experiment.
@@ -268,6 +291,9 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
         function onEvent(obj, event)
             if isfield(event.extraInfo, StageScanner.EVENT_SCAN_STARTED)
                 obj.pause;
+            elseif strcmp(obj.current, obj.NAME) ...
+                    && isfield(event.extraInfo, Tracker.EVENT_TRACKER_FINISHED)
+                obj.prepare;
             end
         end
     end

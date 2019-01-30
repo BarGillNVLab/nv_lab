@@ -73,7 +73,8 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
             try
                 exp = getObjByName(obj.expName);
                 exp.pause;
-                obj.refresh;
+                obj.btnStartStop.stopString = 'Pausing...';
+                obj.btnStartStop.isRunning = true;
             catch
                 EventStation.anonymousWarning('There was no Experiment to stop!')
             end
@@ -173,6 +174,8 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
             else
                 obj.btnStartStop.startString = 'Start';
             end
+            obj.btnStartStop.stopString = 'Pause';
+            
             obj.btnStartStop.isRunning = ~exp.stopFlag;
         end
         

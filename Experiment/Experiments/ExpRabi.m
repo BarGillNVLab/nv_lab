@@ -125,9 +125,17 @@ classdef ExpRabi < Experiment
     end
     
     %% Overridden from Experiment
-    methods
+    methods (Access = protected)
+        function reset(obj)
+            % (Re)initialize signal matrix and inform user we are starting anew
+            obj.signal = zeros(2, length(obj.tau), obj.averages);
+            
+            nMeasPerRepeat = length(obj.tau); % Number of measurements/sequences in each repeat
+            obj.resetInternal(nMeasPerRepeat);
+        end
+        
         function prepare(obj)
-            % Initializtions before run
+            % Initialize devices (SPCM, PulseGenerator, etc.)
             
             % Sequence
             %%% Useful parameters for what follows
@@ -165,9 +173,6 @@ classdef ExpRabi < Experiment
             fg = getObjByName(obj.freqGenName);
             fg.amplitude = obj.amplitude;
             fg.frequency = obj.frequency;
-            
-            % Initialize signal matrix
-            obj.signal = zeros(2, length(obj.tau), obj.averages);
 
             % Set parameter, for saving
             obj.mCurrentXAxisParam.value = obj.tau;
@@ -180,11 +185,6 @@ classdef ExpRabi < Experiment
             spcm.prepareExperimentCount(numScans, obj.timeout);
             
             obj.changeFlag = false;     % All devices have been set, according to the ExpParams
-            
-            % Inform user
-            averageTime = obj.repeats * seqTime * length(obj.tau);
-            fprintf('Starting %d averages with each average taking %.1f seconds, on average.\n', ...
-                obj.averages, averageTime);
         end
         
         function perform(obj)

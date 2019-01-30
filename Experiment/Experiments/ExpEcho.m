@@ -132,9 +132,18 @@ classdef ExpEcho < Experiment
     end
     
     %% Overridden from Experiment
-    methods
+    methods (Access = protected)
+        function reset(obj)
+            % (Re)initialize signal matrix and inform user we are starting anew
+            measurementlength = 1 + double(obj.doubleMeasurement);   % 1 is single, 2 is double
+            obj.signal = zeros(2 * measurementlength, length(obj.tau), obj.averages);
+            
+            nMeasPerRepeat = length(obj.tau) * (1+obj.doubleMeasurement); % Number of measurements/sequences in each repeat
+            obj.resetInternal(nMeasPerRepeat);
+        end
+        
         function prepare(obj)
-            % Initializtions before run
+            % Initialize devices (SPCM, PulseGenerator, etc.)
             
             checkDetectionDuration(obj, obj.detectionDuration); % The mode might have changed; before running, we check
                                                                 % obj.detectionDuration again.
@@ -179,10 +188,6 @@ classdef ExpEcho < Experiment
             fg.amplitude = obj.amplitude;
             fg.frequency = obj.frequency;
             
-            % Initialize signal matrix
-            measurementlength = 1 + double(obj.doubleMeasurement);   % 1 is single, 2 is double
-            obj.signal = zeros(2 * measurementlength, length(obj.tau), obj.averages);
-            
             % Set parameter, for saving
             obj.mCurrentXAxisParam.value = 2*obj.tau;
             
@@ -194,11 +199,6 @@ classdef ExpEcho < Experiment
             spcm.prepareExperimentCount(numScans, obj.timeout);
             
             obj.changeFlag = false;     % All devices have been set, according to the ExpParams
-            
-            % Inform user
-            averageTime = obj.repeats * seqTime * length(obj.tau) * (1+obj.doubleMeasurement);
-            fprintf('Starting %d averages with each average taking %.1f seconds, on average.\n', ...
-                obj.averages, averageTime);
         end
         
         function perform(obj)

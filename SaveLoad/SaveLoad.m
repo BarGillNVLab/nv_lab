@@ -398,6 +398,12 @@ classdef SaveLoad < Savable & EventSender
             % Saves the experiment results the local struct into a file
             % in the AUTOSAVE folder
             
+            if isnan(obj.mLoadedFileName)
+                % We don't have anything to save
+                warning('Nothing was saved!')
+                return
+            end
+            
             filename = obj.mLoadedFileName;
             fullPath = sprintf('%s%s', obj.PATH_DEFAULT_AUTO_SAVE, filename);
             

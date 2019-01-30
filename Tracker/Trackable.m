@@ -124,6 +124,14 @@ classdef (Abstract) Trackable < Experiment
        % value of each of obj.HISTORY_FIELDS), and add it to obj.mHistory
     end
     
+    %% Overridden from Experiment
+    methods (Access = protected)
+        function reset(obj)
+            % Here it has a specific name
+            obj.resetTrack(obj)
+        end
+    end
+    
 %     %% overridden from EventListener
 %     methods
 %         % When events happen, this function jumps.

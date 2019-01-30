@@ -38,7 +38,9 @@ classdef SpcmCounter < Experiment
             obj.averages = 1;   % This Experiment has no averaging over repeats
             obj.shouldAutosave = false;
         end
-        
+    end
+    
+    methods (Access = protected)
         function sendEventReset(obj)
             obj.sendEvent(struct(obj.EVENT_SPCM_COUNTER_RESET,true));
         end
@@ -142,7 +144,7 @@ classdef SpcmCounter < Experiment
         end
     end
         
-    methods
+    methods (Access = protected)
         % Functions that are abstract in superclass. Not relevant here.
         function prepare(obj) %#ok<MANU>
         end

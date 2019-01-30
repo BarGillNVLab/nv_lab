@@ -76,7 +76,11 @@ classdef ButtonStartStop < GuiComponent
                 error('New value for button must be convertible to true or false')
             end
             obj.isRunningPrivate = newVal;
-            if newVal
+            obj.refresh;
+        end
+        
+        function refresh(obj)
+            if obj.isRunningPrivate
                 % We want to be able to stop
                 obj.component.BackgroundColor = obj.COLOR_STOP;
                 obj.component.String = obj.stopString;

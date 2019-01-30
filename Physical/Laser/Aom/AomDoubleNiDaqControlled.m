@@ -32,18 +32,18 @@ classdef AomDoubleNiDaqControlled < LaserPartAbstract
             obj.swapSwitch = SwitchPgControlled.create(swapperName, pgChannelStruct);
             
             %%% Create channel 1
-            NameOne = sprintf('%s channel #1', laserName);
+            nameOne = sprintf('%s channel #1', laserName);
             % Append necessary data to channel struct
             channelOneStruct.minVal = minVal;
             channelOneStruct.maxVal = maxVal;
-            obj.aomOne = AomNiDaqControlled.create(NameOne, channelOneStruct);
+            obj.aomOne = AomNiDaqControlled.create(nameOne, channelOneStruct);
             
             %%% Create channel 2
-            NameTwo = sprintf('%s channel #2', laserName);
+            nameTwo = sprintf('%s channel #2', laserName);
             % Append necessary data to channel struct
             channelTwoStruct.minVal = minVal;
             channelTwoStruct.maxVal = maxVal;
-            obj.aomTwo = AomNiDaqControlled.create(NameTwo, channelTwoStruct);
+            obj.aomTwo = AomNiDaqControlled.create(nameTwo, channelTwoStruct);
         end     % constructor
     end
        

@@ -115,6 +115,11 @@
             "classname" : "pulseBlaster",
             "switchChannel" : 6,
             "switchChannelName" : "Q"
+        },
+        "IQ2" : {
+            "classname" : "niDaq",
+            "I2" : "ao2",
+            "Q2" : "ao3"
         }
     },
     "saveLoad": {

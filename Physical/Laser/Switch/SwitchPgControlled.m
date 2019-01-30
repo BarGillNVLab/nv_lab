@@ -18,10 +18,10 @@ classdef SwitchPgControlled < EventSender & EventListener
             PG = getObjByName(PulseGenerator.NAME);
             obj@EventSender(name);
             obj@EventListener(PG.NAME);
-            BaseObject.addObject(obj);  % so it can be reached by BaseObject.getByName()
             
-%             obj.channel = pgChannel;
-            assert(pgChannel.isDigital, 'Switch channels must be of type Digital!');
+            % If we try to create a switch and it already exists, replace it
+            replaceBaseObject(obj);  % so it can be reached by BaseObject.getByName()
+            
             PG.registerChannel(pgChannel);
             obj.channel = pgChannel.name;
             obj.isEnabled = false;

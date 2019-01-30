@@ -8,7 +8,7 @@ function oldObjOrNan = replaceBaseObject(newObj)
 %   "addBaseObj", so that they are (as far as I know) redundant
 
 % Find and remove previous object
-name = newObj.NAME;
+name = newObj.name;
 try
     baseObj = getObjByName(name);
     BaseObject.removeObject(baseObj);

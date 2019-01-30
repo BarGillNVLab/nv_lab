@@ -140,13 +140,6 @@ classdef (Abstract) PulseGenerator < EventSender
                 error('Object to be registered is not a channel! Ignoring.')
             end
             warnMsg = '';
-            % Physical addresses is available
-            address = [channels.address];       % Careful! if addresses is are char array, this might break!
-            occupiedAdd = obj.channelAddresses; % List of physical addresses already taken
-            addressValid = ismember(address, obj.AVAILABLE_ADDRESSES) && ~ismember(address, occupiedAdd);
-            if any(~addressValid)
-                warnMsg = [warnMsg, 'Some of the channels could not be registered in specified adresses.\n'];
-            end
             % Name is not yet taken
             name = {channels.name};
             occupiedName = obj.channelNames;        % list of channel names already taken
@@ -154,8 +147,29 @@ classdef (Abstract) PulseGenerator < EventSender
             if any(~nameValid)
                 warnMsg = [warnMsg, 'Some of the channels could not be registered, since their name already exists in the registrar.'];
             end
+            % Physical addresses is available
+            address = [channels.address];       % Careful! if channels.address is a char array, this might break!
+            addressValid = ismember(address, obj.AVAILABLE_ADDRESSES);
+            % & Not taken already
+            occupiedAdd = obj.channelAddresses; % List of physical addresses already taken
+            addressTaken = ismember(address, occupiedAdd);
+            if any(addressTaken)
+                % Maybe we are trying to register the same channel again,
+                % and that's fine
+                ind = find(addressTaken);
+                for k = 1:length(ind)
+                    pgInd = find(occupiedAdd == address(ind(k)));   % index of channel IN THE PG CHANNEL ARRAY
+                    if strcmp(name, occupiedName(pgInd)) %#ok<FNDSB>
+                        addressTaken(ind(k)) = false;
+                        nameValid(ind(k)) = true;
+                    end
+                end
+            end
+            if any(~addressValid || addressTaken)
+                warnMsg = [warnMsg, 'Some of the channels could not be registered in specified adresses.\n'];
+            end
             % Let user know what's going on
-            tf = addressValid && nameValid;
+            tf = nameValid && addressValid && ~addressTaken;
             if ~any(tf)
                 obj.sendError('No channel was registered.')
             elseif any(~tf)

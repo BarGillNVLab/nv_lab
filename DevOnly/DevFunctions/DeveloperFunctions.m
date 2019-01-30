@@ -18,13 +18,14 @@ classdef DeveloperFunctions
             % For debugging: remove all base objects, without "clear all"
             %                and clear Setup object, so that we can
             %                reinitiate the system
-            map = DeveloperFunctions.GetBaseObjectMap();
+            handle = BaseObject.allObjects;
+            map = handle.wrapped;
             k = map.keys;
             
             for i = 1:length(k)
                 delete(map(k{i}))
             end
-            delete(map)
+            delete(handle)
             delete(Setup.getInstance())
         end
     end

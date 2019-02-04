@@ -26,7 +26,6 @@ classdef FrequencyGeneratorSRS < FrequencyGenerator
             % parameter of the constructor.
             obj@FrequencyGenerator(name);
             obj.t = tcpip(address, port);
-            fopen(obj.t);
             
             obj.maxFreq = maxFrequency;
             
@@ -35,8 +34,20 @@ classdef FrequencyGeneratorSRS < FrequencyGenerator
     end
        
     methods
+        function connect(obj)
+            if strcmp(obj.t.Status, 'closed')
+                fopen(obj.t);
+            end
+        end
+
+        function disconnect(obj)
+            if strcmp(obj.t.Status, 'open')
+                fclose(obj.t);
+            end
+        end
+
         function delete(obj)
-            fclose(obj.t);
+            obj.disconnect;
             delete(obj.t)
         end
     end
@@ -71,17 +82,25 @@ classdef FrequencyGeneratorSRS < FrequencyGenerator
             addBaseObject(obj);
         end
         
-        function command = nameToCommandName(name)
-           switch lower(name)
+        function command = createCommand(what, value)
+           switch lower(what)
                case {'enableoutput', 'output', 'enabled', 'enable'}
-                   command = 'ENBR';
+                   name = 'ENBR';
                case {'frequency', 'freq'}
-                   command = 'FREQ';
+                   name = 'FREQ';
+                   if ~strcmp(value, '?') % convert sent values if needed
+                       value = value*1e6;
+                   end
                case {'amplitude', 'ampl', 'amp'}
-                   command = 'AMPR';
+                   name = 'AMPR';
                otherwise
-                   error('Unknown command type %s', name)
-           end         
+                   error('Unknown command type %s', what)
+           end
+           
+           if isnumeric(value)
+               value = num2str(value);
+           end
+           command = [name, value];
        end
     end
 

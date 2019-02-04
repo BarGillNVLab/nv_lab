@@ -13,7 +13,7 @@ classdef (Abstract) FrequencyGenerator < BaseObject
     %       varargout = sendCommand(obj, command, value)
     %       value = readOutput(obj)
     %       (Static) newFG = getInstance(struct)
-    %       (Static) command = nameToCommandName(name)
+    %       (Static) command = createCommand(what, value)
     % 3. call obj.initialize by the end of the constructor
     
     
@@ -52,9 +52,11 @@ classdef (Abstract) FrequencyGenerator < BaseObject
         end
         
         function initialize(obj)
+            obj.connect;
             obj.frequencyPrivate = obj.queryValue('frequency');
             obj.amplitudePrivate = obj.queryValue('amplitude');
             obj.outputPrivate    = obj.queryValue('enableOutput');
+            obj.disconnect;
         end
     end
     
@@ -124,18 +126,14 @@ classdef (Abstract) FrequencyGenerator < BaseObject
         
         
         function value = queryValue(obj, what)
-            command = [obj.nameToCommandName(what), '?'];
+            command = obj.createCommand(what, '?');
             sendCommand(obj, command);
             value = str2double(obj.readOutput);
         end
         
         function setValue(obj, what, value)
             % Can be overridden by children
-            if isnumeric(value)
-                value = num2str(value);
-            end
-            
-            command = [obj.nameToCommandName(what), value];
+            command = obj.createCommand(what, value);
             sendCommand(obj, command);
         end
     end
@@ -146,14 +144,20 @@ classdef (Abstract) FrequencyGenerator < BaseObject
         
         value = readOutput(obj)
         % Get value returned from object
+
+        connect(obj)
+        % Starts connection with FG (might be empty)
+
+        disconnect(obj)
+        % Closes connection with FG (might be empty)
     end
     
     methods (Abstract, Static)
         obj = getInstance(struct)
         % So that the constructor remains private
         
-        command = nameToCommandName(obj, name)
-        % Converts request type to a command that can be sent to Hardware.
+        command = createCommand(obj, what, value)
+        % Converts request type and value to a command that can be sent to Hardware.
     end
     
     %% Initializtion and Setup

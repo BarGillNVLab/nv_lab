@@ -33,6 +33,14 @@ classdef (Sealed) FrequencyGeneratorDummy < FrequencyGenerator
             % 0, as long as dummy is involved.
             value = '0';
         end
+        
+        function connect(obj)
+            % Nothing to do here
+        end
+        
+        function disconnect(obj)
+            % Nothing to do here
+        end
     end
     
     methods (Static)
@@ -51,17 +59,22 @@ classdef (Sealed) FrequencyGeneratorDummy < FrequencyGenerator
             
         end
         
-        function command = nameToCommandName(name)
-            switch lower(name)
+        function command = createCommand(what, value)
+            switch lower(what)
                case {'enableoutput', 'output', 'enabled', 'enable'}
-                   command = 'output';
+                   name = 'output';
                case {'frequency', 'freq'}
-                   command = 'frquency';
+                   name = 'frquency';
                case {'amplitude', 'ampl', 'amp'}
-                   command = 'amplitude';
+                   name = 'amplitude';
                otherwise
-                   error('Unknown command type: ''%s''',name)
-           end    
+                   error('Unknown command type: ''%s''',what)
+            end
+            
+            if isnumeric(value)
+                value = num2str(value);
+            end
+            command = sprintf('%s%s', name, value);
         end
     end
     

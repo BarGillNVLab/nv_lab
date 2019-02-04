@@ -25,33 +25,19 @@ classdef FrequencyGeneratorWindfreak < FrequencyGenerator & SerialControlled
     end
     
     methods
-        function varargout = sendCommand(obj, command, value)
+        function varargout = sendCommand(obj, what, value)
             % value - sent value or ?. units can also be added to value
             varargout={0};
             %%% set the command to be sent to the SRS
-            command=nameToCommandName(obj,command);
-            if ~strcmp(value,'?') % convert sent values if needed
-                switch command
-                    case 'f'
-                        value=num2str(str2double(value)/1e6);             %%% convert Hz to MHz (SynthHD uses MHz)
-                        %case 'W'
-                        %    value=num2str(obj.PowerdBtoSynthHD(str2double(value)));  %%% convert dbm to strange units of the SynthHD
-                end
-            end
+            command = createCommand(obj, what, value);
             
             fopen(obj.address);
             try
                 %fprintf(obj.address,C1r1);
-                fprintf(obj.address,[command, value]);
+                fprintf(obj.address, command);
                 % Get the output - if needed
-                if strcmp(value,'?')
+                if strcmp(value, '?')
                     varargout = {fscanf(obj.address,'%s')};
-                    switch command
-                        case 'f'
-                            varargout={num2str(str2double(varargout{1})*1e6)};  %%% convert MHz to Hz (SynthHD uses MHz)
-                        case 'a'
-                            varargout={num2str(obj.PowerSynthHDtodB(str2double(varargout{1})))}; %convert strange units of the SynthHD to dbm
-                    end
                 end
             catch err
                 fclose(obj.address);
@@ -105,19 +91,28 @@ classdef FrequencyGeneratorWindfreak < FrequencyGenerator & SerialControlled
             addBaseObject(obj);
         end
         
-        function command = nameToCommandName(name)
-            switch lower(name)
-                case {'channel','chan'}
-                    command = 'C';
-                case {'enableoutput','output','enable'}
-                    command='r';
-                case {'frequency','freq','f'}
-                    command='f';
-                case {'amplitude','ampl','a'}
-                    command='W';
+        function command = createCommand(what, value)
+            switch lower(what)
+                case {'channel', 'chan'}
+                    name = 'C';
+                case {'enableoutput', 'output', 'enable'}
+                    name='r';
+                case {'frequency', 'freq', 'f'}
+                    name='f';
+                    if ~strcmp(value, '?') % convert sent values if needed
+                        value = str2double(value)/1e6;             %%% convert Hz to MHz (SynthHD uses MHz)
+                    end
+                case {'amplitude', 'ampl', 'a'}
+                    name='W';
+                    %    value=num2str(obj.PowerdBtoSynthHD(str2double(value)));  %%% convert dbm to strange units of the SynthHD
                 otherwise
-                    error('Unknown command type %s',name)
+                    error('Unknown command type %s', what)
             end
+
+            if isnumeric(value)
+               value = num2str(value);
+           end
+           command = [name, value];
         end
     end
     

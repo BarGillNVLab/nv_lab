@@ -46,7 +46,7 @@ classdef ExpESR < Experiment
             obj.shouldAutosave = true;
             
             obj.frequency = obj.ZERO_FIELD_SPLITTING + (-100 : 1 : 100);     %in MHz
-            obj.amplitude = -10;        % dBm
+            obj.amplitude = -30;        % dBm
             obj.mode = 'CW';            % Can only be 'CW' for now.
             obj.nChannels = 1;          % two channels can be added....
             
@@ -245,6 +245,15 @@ classdef ExpESR < Experiment
             spcm = getObjByName(Spcm.NAME);
             spcm.setSPCMEnable(true);
             spcm.prepareExperimentCount(numScans, obj.timeout);
+
+            % Initialize FrequencyGenerator
+            fgCell = FrequencyGenerator.getFG();
+            fg1 = fgCell{1};
+            fg1.connect;
+            if obj.nChannels > 1
+                fg2 = fgCell{2};
+                fg2.connect;
+            end
             
             % Set parameter, for saving
             obj.mCurrentXAxisParam.value = obj.frequency;
@@ -305,7 +314,10 @@ classdef ExpESR < Experiment
                             didAmplitudeChange = true;
                             fg1.amplitude = obj.amplitude(1) - 1.5;
                         end
-                    tracker.compareReference(sig(2), Tracker.REFERENCE_TYPE_KCPS, TrackablePosition.NAME);
+                    isTrackingNeeded = tracker.compareReference(sig(2), Tracker.REFERENCE_TYPE_KCPS);
+                    if isTrackingNeeded
+                        tracker.trackUsing(TrackablePosition.NAME)
+                    end
                         if didAmplitudeChange, fg1.amplitude = obj.amplitude(1); end
                 end
             end
@@ -346,6 +358,15 @@ classdef ExpESR < Experiment
             
             spcm = getObjByName(Spcm.NAME);
             spcm.setSPCMEnable(false);
+
+            % Disconnect FrequencyGenerator
+            fgCell = FrequencyGenerator.getFG();
+            fg1 = fgCell{1};
+            fg1.disconnect;
+            if obj.nChannels > 1
+                fg2 = fgCell{2};
+                fg2.disconnect;
+            end
         end
         
         function dataParam = alternateSignal(obj) %#ok<MANU>

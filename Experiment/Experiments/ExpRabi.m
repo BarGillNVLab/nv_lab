@@ -121,6 +121,7 @@ classdef ExpRabi < Experiment
             s = reshape(s, 2, length(s)/2);
             sig = mean(s,2).';
             sig = sig./(obj.detectionDuration*musec)/kc; %kcounts per second
+            spcm.stopExperimentCount;
         end
     end
     
@@ -171,6 +172,7 @@ classdef ExpRabi < Experiment
             
             % Set Frequency Generator
             fg = getObjByName(obj.freqGenName);
+            fg.connect;
             fg.amplitude = obj.amplitude;
             fg.frequency = obj.frequency;
 
@@ -214,7 +216,10 @@ classdef ExpRabi < Experiment
                         obj.signal(:, t, obj.currIter) = sig;
                         
                         if obj.isTracking
-                            tracker.compareReference(sig(2), Tracker.REFERENCE_TYPE_KCPS, TrackablePosition.NAME);
+                            isTrackingNeeded = tracker.compareReference(sig(2), Tracker.REFERENCE_TYPE_KCPS, TrackablePosition.NAME);
+                            if isTrackingNeeded
+                                tracker.trackUsing(TrackablePosition.NAME)
+                            end
                         end
                         success = true;
                         break;
@@ -245,13 +250,17 @@ classdef ExpRabi < Experiment
             end           
         end
         
-        function wrapUp(obj) %#ok<MANU>
+        function wrapUp(obj)
             % Things that need to happen when the experiment is done; a
             % counterpart for obj.prepare.
             % In the future, it will also analyze results.
             
             spcm = getObjByName(Spcm.NAME);
             spcm.setSPCMEnable(false);
+            
+            % Disconnect FrequencyGenerator
+            fg = getObjByName(obj.freqGenName);
+            fg.disconnect;
         end
         
         function dataParam = alternateSignal(obj) %#ok<MANU>

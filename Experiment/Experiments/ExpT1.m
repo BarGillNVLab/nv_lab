@@ -169,6 +169,8 @@ classdef ExpT1 < Experiment
             S.addEvent(obj.detectionDuration(2),...
                                             {'greenLaser', 'detector'});                    % Reference detection
             S.addEvent(obj.laserOffDelay);                                                  % Calibration of the laser with SPCM (laser off)
+%             S.addEvent(obj.mwOnDelay,       'MW');
+            S.addEvent(obj.halfPiTime,      'MW',                       'projectionPulse'); % MW before
             S.addEvent(obj.tau(end),        '',                         'tau');             % Delay
             S.addEvent(lastDelay,           '',                         'lastDelay');       % Last delay, making sure the MW is off
             
@@ -276,7 +278,7 @@ classdef ExpT1 < Experiment
             end
         end
         
-        function wrapUp(obj)
+        function wrapUp(obj) %#ok<MANU>
             % Things that need to happen when the experiment is done; a
             % counterpart for obj.prepare.
             % In the future, it will also analyze results and fit from it

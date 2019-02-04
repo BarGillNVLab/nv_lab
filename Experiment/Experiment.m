@@ -140,7 +140,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
         end
     end
        
-    %% Setter
+    %% Setters
     methods
         %%% detectionDuration
         function checkDetectionDuration(obj, newVal)
@@ -160,6 +160,11 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             obj.detectionDuration = newVal;
         end
         
+        function set.repeats(obj, newVal)
+            obj.repeats = newVal;
+            obj.changeFlag = true;  %#ok<MCSUP> % We need to update the PG
+        end
+        
     end
     
     %% Running
@@ -170,10 +175,13 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             % This Experiment is running and is therefore the current one.
             obj.getSetCurrentExp(obj.NAME);
             
-            if obj.restartFlag
-                % Preparing
+            if obj.restartFlag || obj.changeFlag
+                % In either case, we want to reinitialize all devices
                 obj.prepare;
                 obj.sendEventParamChanged;  % That happenned at preperation
+            end
+            if obj.restartFlag
+                % Resetting data
                 obj.reset;
                 obj.restartFlag = false;    % If we pause now, it will already be the middle of an experiment, and we want to be able to resume it.
                 
@@ -219,6 +227,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
 %             obj.restartFlag = true;
             obj.pause;
             sendEventExpPaused(obj);
+            obj.wrapUp;
         end
         
         function pause(obj)
@@ -293,7 +302,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
                 obj.pause;
             elseif strcmp(obj.current, obj.NAME) ...
                     && isfield(event.extraInfo, Tracker.EVENT_TRACKER_FINISHED)
-                obj.prepare;
+                obj.changeFlag = true;  % This means that next time the experiment runs, we will @prepare(obj)
             end
         end
     end

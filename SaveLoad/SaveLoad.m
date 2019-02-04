@@ -304,6 +304,16 @@ classdef SaveLoad < Savable & EventSender
                 obj.notesStatus = obj.STRUCT_STATUS_NOT_SAVED;
             end
             
+            % Parse filename (needed only locally, for now)
+            if strcmp(obj.mCategory, Savable.CATEGORY_IMAGE)
+                namePrefix = Savable.CATEGORY_IMAGE;
+            else
+                % The prefix will be the name of the current (running)
+                % Experiment
+                namePrefix = Experiment.current;
+            end
+            obj.mLoadedFileName = sprintf('%s_%s.mat', namePrefix, structToSave.(Savable.PROPERTY_TIMESTAMP_START));
+            
             eventStruct = struct(... 
                 obj.EVENT_STATUS_LOCAL_STRUCT, obj.mLocalStructStatus, ...
                 obj.EVENT_LOCAL_STRUCT, obj.mLocalSaveStruct);
@@ -314,16 +324,7 @@ classdef SaveLoad < Savable & EventSender
             % Get struct
             structToSave = obj.saveAllObjects(Savable.TYPE_RESULTS);
             obj.mLocalSaveStruct = structToSave;
-            % Parse filename:
-            if strcmp(obj.mCategory, Savable.CATEGORY_IMAGE)
-                namePrefix = Savable.CATEGORY_IMAGE;
-            else
-                % The prefix will be the name of the current (running)
-                % Experiment
-                namePrefix = Experiment.current;
-            end
             
-            obj.mLoadedFileName = sprintf('%s_%s.mat', namePrefix, structToSave.(Savable.PROPERTY_TIMESTAMP_END));
             eventStruct = struct(... 
                 obj.EVENT_STATUS_LOCAL_STRUCT, obj.mLocalStructStatus, ...
                 obj.EVENT_LOCAL_STRUCT, obj.mLocalSaveStruct, ...

@@ -23,22 +23,29 @@ classdef SaveLoadCatExp < SaveLoad & EventListener
             % (re)starts and when there are new results (so we can save
             % backup).
             
-            if isfield(event.extraInfo, Experiment.EVENT_PARAM_CHANGED)
+            info = event.extraInfo;
+            
+            if isfield(info, Experiment.EVENT_PARAM_CHANGED)
                 obj.saveParamsToLocalStruct;
                 
             elseif isa(event.creator, 'SpcmCounter')
                 % The SPCM counter updates so frequently, we want to treat
                 % it seperately, and save backup only when we pause the
                 % Counter
-                if isfield(event.extraInfo, Experiment.EVENT_EXP_PAUSED)
+                if isfield(info, Experiment.EVENT_EXP_PAUSED)
                     obj.saveResultsToLocalStruct();
                     obj.saveBackup;
                 end
-            elseif isfield(event.extraInfo, Experiment.EVENT_DATA_UPDATED)
+            elseif isfield(info, Experiment.EVENT_EXP_RESUMED) ...
+                    && event.creator.shouldAutosave
+                diaryName = [obj.PATH_DEFAULT_AUTO_SAVE, obj.mLoadedFileName, '_log.txt'];
+                diary(diaryName)
+            elseif isfield(info, Experiment.EVENT_DATA_UPDATED)
                 obj.saveResultsToLocalStruct();
                 obj.saveBackup;
-            elseif isfield(event.extraInfo, Experiment.EVENT_EXP_PAUSED) ...
+            elseif isfield(info, Experiment.EVENT_EXP_PAUSED) ...
                     && event.creator.shouldAutosave
+                diary off
                 obj.autoSave;
             end
         end

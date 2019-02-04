@@ -35,9 +35,12 @@ classdef Tracker < EventSender & EventListener & Savable
     end
     
     methods
-        function compareReference(obj, newValue, referenceType, trackableName)
+        function isTrackingNeeded = compareReference(obj, newValue, referenceType, trackableName)
             % Compares newValue to reference of type referenceType, using
-            % trackable.
+            % trackable. Returns whether tracking is needed, so Experiment
+            % can prepare for it.
+
+            isTrackingNeeded = false;   % By default
             
             switch referenceType
                 case obj.REFERENCE_TYPE_KCPS
@@ -57,10 +60,14 @@ classdef Tracker < EventSender & EventListener & Savable
             elseif obj.isDifferenceAboveThreshhold(reference, newValue, threshhold)
                 fprintf('Starting tracking, current counts are %.2f%s, reference is %.2f%s\n', ...
                     newValue, refName, reference, refName);
-                trackable = obj.getTrackable(trackableName);
-                trackable.startTrack;
-                obj.sendEventTrackerFinished;
+                isTrackingNeeded = true;
             end
+        end
+
+        function trackUsing(obj, trackableName)
+            trackable = obj.getTrackable(trackableName);
+            trackable.startTrack;
+            obj.sendEventTrackerFinished;
         end
     end
     

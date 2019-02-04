@@ -58,7 +58,7 @@ classdef (Abstract) ClassStage < EventSender & Savable & EventListener
                             catch
                                 newStage = ClassPILPS65.create(curStageStruct);
                             end
-                        case 'ClassGalvo' % Galvo mirrors for the Cryo setup
+                        case 'Galvo' % Galvo mirrors for the Cryo setup
                             try
                                 newStage = getObjByName(ClassGalvo.NAME);
                             catch
@@ -66,7 +66,7 @@ classdef (Abstract) ClassStage < EventSender & Savable & EventListener
                             end
                         case 'ECC'
                             newStage = ClassECC.GetInstance(); % ECC100 stages used in setup 1 - > Very old and might not be comptiable
-                        case 'ClassANC'
+                        case 'ANC'
                             newStage = ClassANC.GetInstance(); % ANC stages used in setup 3
                         case 'PIP-562'
                             try
@@ -154,7 +154,7 @@ classdef (Abstract) ClassStage < EventSender & Savable & EventListener
                 if (index < 1 || index > 3)
                     index = strfind(ClassStage.SCAN_AXES, lower(phAxis(i)));
                     if isempty(index) || (index < 1 || index > 3)
-                        EventStation.anonymousError(['Unknown axis: ' phAxis(i)]);
+                        EventStation.anonymousError(['Unknown axis: ', phAxis(i)]);
                     end
                 end
                 tempAxis(i) = index;

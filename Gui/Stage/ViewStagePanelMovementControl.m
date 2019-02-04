@@ -350,7 +350,7 @@ classdef ViewStagePanelMovementControl < GuiComponent & EventListener
             % Enables or disables (Greys out) the movement control buttons.
             % Control can be either 'On' or 'Off'
             
-            isEnabled = true; % will be true if ANY of the checks gives true, and false otherwise
+            isEnabled = true; % will be false if ANY of the checks gives false, and true otherwise
 
             % We want to enable movement only if
             %  * we're in closed loop

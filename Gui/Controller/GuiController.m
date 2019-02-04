@@ -80,11 +80,12 @@ classdef GuiController < handle
                     screenSize = get(groot, 'MonitorPositions');
                     obj.screenWidth = screenSize(obj.POSITION_INDEX_WIDTH);
                     obj.screenHeight = screenSize(obj.POSITION_INDEX_HEIGHT);
+                    windowsBarHeight = 40;	% in px. Height of both taskbar and titlebar
                     
                     dummyGuiComponent.component = obj.figureWindow;
                     mainView = obj.getMainView(dummyGuiComponent);
-                    obj.windowMinHeight = mainView.height;
-                    obj.windowMinWidth = mainView.width;
+                    obj.windowMinHeight = min(mainView.height, obj.screenHeight - 2*windowsBarHeight); % The actual size of the screen is minus the taskbar and the titlebar 
+                    obj.windowMinWidth = min(mainView.width, obj.screenWidth);
                     
                     obj.onAboutToStart();
                     obj.figureWindow.Visible = 'on';

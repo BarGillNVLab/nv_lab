@@ -20,7 +20,7 @@ classdef LaserSourceOnefiveKatana05 < LaserPartAbstract & SerialControlled
         NEEDED_FIELDS = {'port'};
     end
     
-    methods
+    methods (Access = private)
         % constructor
         function obj = LaserSourceOnefiveKatana05(name, port)
             obj@LaserPartAbstract(name);
@@ -45,7 +45,9 @@ classdef LaserSourceOnefiveKatana05 < LaserPartAbstract & SerialControlled
                 rethrow(err)
             end
         end
-        
+    end
+    
+    methods    
         function connect(obj)
             obj.open;
             obj.query(obj.COMMAND_POWER_TAKE_CONTROL);
@@ -98,8 +100,8 @@ classdef LaserSourceOnefiveKatana05 < LaserPartAbstract & SerialControlled
         
         function val = getEnabledRealWorld(obj)
             regex = 'status: ([01])\n';  % either 0 or 1 followed by new-line
-            string = obj.query(obj.COMMAND_ON_QUERY, regex);
-            switch string
+            str = obj.query(obj.COMMAND_ON_QUERY, regex);
+            switch str
                 case '0'
                     val = false;
                 case '1'
@@ -121,7 +123,7 @@ classdef LaserSourceOnefiveKatana05 < LaserPartAbstract & SerialControlled
             missingField = FactoryHelper.usualChecks(jsonStruct, LaserSourceOnefiveKatana05.NEEDED_FIELDS);
             if ~isnan(missingField)
                 EventStation.anonymousError(...
-                    'While trying to create an AOM part for laser "%s", could not find "%s" field. Aborting', ...
+                    'While trying to create a source part for laser "%s", could not find "%s" field. Aborting', ...
                     name, missingField);
             end
             

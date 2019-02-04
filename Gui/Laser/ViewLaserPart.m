@@ -155,7 +155,11 @@ classdef ViewLaserPart < ViewHBox & EventListener
         function onEvent(obj, event)
             info = event.extraInfo;
             if event.isError
-                obj.refresh;
+                try
+                    obj.refresh;
+                catch
+                    error('%s could not refresh its display', obj.laserPart.name)
+                end
             elseif isfield(info, 'isEnabled')
                 obj.setEnabledInternally(info.isEnabled);
             elseif isfield(info, 'value')

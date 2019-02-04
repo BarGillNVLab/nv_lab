@@ -1,8 +1,6 @@
 classdef LaserSourceLaserquantumSmd12 < LaserPartAbstract & SerialControlled
     %LASERSOURCELASERQUANTUMSMD12 Laser Quantum SMD12 laser controller, via RS232
     
-%     incomplete!!!
-    
     properties
         canSetEnabled = true;
         canSetValue = true;
@@ -20,7 +18,7 @@ classdef LaserSourceLaserquantumSmd12 < LaserPartAbstract & SerialControlled
         NEEDED_FIELDS = {'port'};
     end
     
-    methods
+    methods (Access = private)
         % constructor
         function obj = LaserSourceLaserquantumSmd12(name, port)
             obj@LaserPartAbstract(name);
@@ -43,7 +41,9 @@ classdef LaserSourceLaserquantumSmd12 < LaserPartAbstract & SerialControlled
                 rethrow(err)
             end
         end
-        
+    end
+       
+    methods
         function delete(obj)
             isEnabled = obj.getEnabledRealWorld;
             if isEnabled % We try to turn the laser off, and we tell the user, whatever happens
@@ -77,25 +77,21 @@ classdef LaserSourceLaserquantumSmd12 < LaserPartAbstract & SerialControlled
         end
         
         function val = getValueRealWorld(obj)
-            regex = 'lp=(\d+\.\d+)\n'; % a number of the form ##.### followed by new-line
+            regex = '(\d+\.\d+)mW'; % a number of the form ##.### followed by new-line
             val = str2double(obj.query(obj.COMMAND_POWER_QUERY, regex));
         end
         
         function val = getEnabledRealWorld(obj)
-            regex = 'status: ([01])\n';  % either 0 or 1 followed by new-line
-            string = obj.query(obj.COMMAND_ON_QUERY, regex);
-            switch string
-                case '0'
-                    val = false;
-                case '1'
-                    val = true;
-                otherwise
-                    obj.sendError('Problem in regex!!')
-            end
-            
-            % Clear memory. Needed because of Katana bug
-            if obj.bytesAvailable > 1
-                obj.readAll;
+            str = obj.query(obj.COMMAND_ON_QUERY);
+            if isempty(str)
+                val = false;
+                warning('Cannot Connect with %s', obj.name)
+            elseif contains(str, 'DISABLED')
+                val = false;
+            elseif contains(str, 'ENABLED')
+                val = true;
+            else
+                warning('Problem in query!!')
             end
         end
     end
@@ -103,10 +99,10 @@ classdef LaserSourceLaserquantumSmd12 < LaserPartAbstract & SerialControlled
     %% Factory
     methods (Static)
         function obj = create(name, jsonStruct)
-            missingField = FactoryHelper.usualChecks(jsonStruct, LaserSourceOnefiveKatana05.NEEDED_FIELDS);
+            missingField = FactoryHelper.usualChecks(jsonStruct, LaserSourceLaserquantumSmd12.NEEDED_FIELDS);
             if ~isnan(missingField)
                 EventStation.anonymousError(...
-                    'While trying to create an AOM part for laser "%s", could not find "%s" field. Aborting', ...
+                    'While trying to create a source part for laser "%s", could not find "%s" field. Aborting', ...
                     name, missingField);
             end
             
@@ -114,18 +110,6 @@ classdef LaserSourceLaserquantumSmd12 < LaserPartAbstract & SerialControlled
             obj = LaserSourceLaserquantumSmd12(name, port);
         end
     end
-    %%
-    % All available commands, obtained by sending the command 'h':
-    % Laser Configuration: SER ANREGE Laser
-    % 1. Laser emmision Green on/off: leg=0 (off), leg=1 (on), leg? (status)
-    % 3. Laser Green Trigger Source Internal/External frequency: ltg=0 (Int), ltg=1 (Ext), ltg? (status)
-    % 8. Green laser external trigger Level: ltlg=xx.xxx (float format), ltlg? (status)
-    % 9. Store laser configuration Green: lestg
-    % 10. Green Laser Set Temperature: 76.000 deg.C; Actual Temperature=75.990 deg.C
-    % 11. Setting the Green Laser Temperature: let=xx.xx
-    % 42. Repetition rate (frequency) setting green laser: ltg_freq=xxxxxx in Hz, ltg_freq?(status)
-    % 43. Laser power value seting over RS232: lp=xx.xx (from 0-10.0), lp?(status)
-    % 44. Laser power seting over RS232/Knob on front panel: lps=1(over RS232), lps=0(knob), lps?(status)
     
 end
 

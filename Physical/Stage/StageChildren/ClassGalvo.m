@@ -323,7 +323,7 @@ classdef ClassGalvo < ClassStage & NiDaqControlled
             PrepareScanInTwoDimensions(obj, y, x, nFlat, nOverRun, tPixel, 'y', 'x');
         end
         
-        function forwards = ScanNextLine(obj)
+        function [forwards, done] = ScanNextLine(obj)
             % Scans the next line for the 2D scan, to be used after
             % 'PrepareScanXX'.
             % done is set to 1 after the last line has been scanned.

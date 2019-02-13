@@ -8,16 +8,12 @@ classdef (Sealed) FrequencyGeneratorDummy < FrequencyGenerator
         
         TYPE = 'dummy'
         
-        NEEDED_FIELDS = {'name'}
-    end
-    
-    properties (SetAccess = protected)
-        maxFreq = 4.05e9;
+        NEEDED_FIELDS = {'name', 'minFrequency', 'maxFrequency', 'minAmplitude', 'maxAmplitude'}
     end
     
     methods (Access = private)
-        function obj = FrequencyGeneratorDummy(name)
-            obj@FrequencyGenerator(name);
+        function obj = FrequencyGeneratorDummy(name, frequencyLimits, amplitudeLimits)
+            obj@FrequencyGenerator(name, frequencyLimits, amplitudeLimits);
             
             obj.initialize;
         end
@@ -54,8 +50,11 @@ classdef (Sealed) FrequencyGeneratorDummy < FrequencyGenerator
                     missingField);
             end
             
-            obj = FrequencyGeneratorDummy(struct.name);
-            addBaseObject(obj);
+            frequencyLimits = [struct.minFrequency, struct.maxFrequency];
+            amplitudeLimits = [struct.minAmplitude, struct.maxAmplitude];
+            
+            obj = FrequencyGeneratorDummy(struct.name, frequencyLimits, amplitudeLimits);
+            replaceBaseObject(obj);
             
         end
         

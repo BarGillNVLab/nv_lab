@@ -3,27 +3,20 @@ classdef FrequencyGeneratorWindfreak < FrequencyGenerator & SerialControlled
     % includes, for now, synthHD & synthNV
     
     properties (Constant, Hidden)
-        MIN_FREQ = 0;                   % Hz
-        LIMITS_AMPLITUDE = [-60, 18];   % dB. These values may not be reached, depending on the output type.
-        
         TYPE = {'synthhd', 'synthnv'};
         
-        NEEDED_FIELDS = {'address', 'serialNumber'}
+        NEEDED_FIELDS = {'address', 'serialNumber', 'minFrequency', 'maxFrequency', 'minAmplitude', 'maxAmplitude'}
     end
     
     methods (Access = private)
-        function obj=FrequencyGeneratorWindfreak(name, address)
-            obj@FrequencyGenerator(name);
+        function obj=FrequencyGeneratorWindfreak(name, address, frequencyLimits, amplitudeLimits)
+            obj@FrequencyGenerator(name, frequencyLimits, amplitudeLimits);
             obj@SerialControlled(address);
             
             obj.initialize;
         end
     end
-    
-    properties (SetAccess = protected)
-        maxFreq = 4.05e9;
-    end
-    
+
     methods
         function varargout = sendCommand(obj, what, value)
             % value - sent value or ?. units can also be added to value
@@ -87,7 +80,10 @@ classdef FrequencyGeneratorWindfreak < FrequencyGenerator & SerialControlled
             end
             
             name = [lower(type), 'FrequencyGenerator', '-', struct.serialNumber];
-            obj = FrequencyGeneratorSRS(name, struct.address);
+            frequencyLimits = [struct.minFrequency, struct.maxFrequency];
+            amplitudeLimits = [struct.minAmplitude, struct.maxAmplitude];
+            
+            obj = FrequencyGeneratorSRS(name, struct.address, frequencyLimits, amplitudeLimits);
             addBaseObject(obj);
         end
         

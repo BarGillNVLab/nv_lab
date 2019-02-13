@@ -95,7 +95,11 @@
             "__type": "SynthHD",
             "SerialNum": "639",
             "__protocol": "RS232",
-            "__address": "COM2"
+            "__address": "COM2",
+            "minFrequency" : 0,
+            "maxFrequency" : 4.05e9,
+            "minAmplitude" : 0,
+            "maxAmplitude" : 1
         }
     ],
     "microwave" : {

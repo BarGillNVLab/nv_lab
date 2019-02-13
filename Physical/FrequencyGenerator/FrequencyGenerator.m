@@ -6,15 +6,12 @@ classdef (Abstract) FrequencyGenerator < BaseObject
     % # amplitude (in dB)
     %
     % Subclasses need to:
-    % 1. specify values for the constants:
-    %       MIN_FREQ
-    %       LIMITS_AMPLITUDE
-    % 2. implement the functions:
+    % 1. implement the functions:
     %       varargout = sendCommand(obj, command, value)
     %       value = readOutput(obj)
     %       (Static) newFG = getInstance(struct)
     %       (Static) command = createCommand(what, value)
-    % 3. call obj.initialize by the end of the constructor
+    % 2. call obj.initialize by the end of the constructor
     
     
     properties (Dependent)
@@ -24,10 +21,6 @@ classdef (Abstract) FrequencyGenerator < BaseObject
     end
     
     properties (Abstract, Constant)
-        % Minimum and maximum values
-        MIN_FREQ            % for MW frequency
-        LIMITS_AMPLITUDE    % for MW amplitude
-        
         TYPE    % for now, one of: {'srs', 'synthhd', 'synthnv'}
     end
     
@@ -42,13 +35,21 @@ classdef (Abstract) FrequencyGenerator < BaseObject
         outputPrivate       % logical. Output on or off;
     end
     
-    properties (Abstract, SetAccess = protected)
+    properties (SetAccess = protected)
+        minFreq
         maxFreq
+        minAmpl
+        maxAmpl
     end
     
     methods (Access = protected)
-        function obj = FrequencyGenerator(name)
+        function obj = FrequencyGenerator(name, freqLimits, amplLimits)
             obj@BaseObject(name);
+            
+            obj.minFreq = freqLimits(1);
+            obj.maxFreq = freqLimits(2);
+            obj.minAmpl = amplLimits(1);
+            obj.maxAmpl = amplLimits(2);
         end
         
         function initialize(obj)
@@ -86,9 +87,9 @@ classdef (Abstract) FrequencyGenerator < BaseObject
         
         function set.amplitude(obj, newAmplitude)  % in dB
             % Change amplitude level of the frequency generator
-            if ~ValidationHelper.isInBorders(newAmplitude, obj.LIMITS_AMPLITUDE(1), obj.LIMITS_AMPLITUDE(2))
+            if ~ValidationHelper.isInBorders(newAmplitude, obj.minAmpl, obj.maxAmpl)
                 error('MW amplitude must be between %d and %d.\nRequested: %d', ...
-                    obj.LIMITS_AMPLITUDE(1), obj.LIMITS_AMPLITUDE(2), newAmplitude)
+                    obj.minAmpl, obj.maxAmpl, newAmplitude)
             end
             
             switch length(newAmplitude)
@@ -107,9 +108,9 @@ classdef (Abstract) FrequencyGenerator < BaseObject
         
         function set.frequency(obj, newFrequency)      % in Hz
             % Change frequency level of the frequency generator
-            if ~ValidationHelper.isInBorders(newFrequency, obj.MIN_FREQ, obj.maxFreq)
+            if ~ValidationHelper.isInBorders(newFrequency, obj.minFreq, obj.maxFreq)
                 error('MW frequency must be between %d and %d.\nRequested: %d', ...
-                    obj.MIN_FREQ, obj.maxFreq, newFrequency)
+                    obj.minFreq, obj.maxFreq, newFrequency)
             end
             
             switch length(newFrequency)

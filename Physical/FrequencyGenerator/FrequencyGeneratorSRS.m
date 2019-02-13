@@ -8,11 +8,7 @@ classdef FrequencyGeneratorSRS < FrequencyGenerator
         TYPE = 'srs';
         NAME = 'srsFrequencyGenerator';
         
-        NEEDED_FIELDS = {'port', 'serialNumber', 'maxFrequency'}
-    end
-    
-    properties (SetAccess = protected)
-        maxFreq
+        NEEDED_FIELDS = {'port', 'serialNumber', 'minFrequency', 'maxFrequency', 'minAmplitude', 'maxAmplitude'}
     end
        
     properties (Access = private)
@@ -20,14 +16,11 @@ classdef FrequencyGeneratorSRS < FrequencyGenerator
     end
     
     methods (Access = private)
-        function obj = FrequencyGeneratorSRS(name, address, port, maxFrequency)
+        function obj = FrequencyGeneratorSRS(name, address, port, frequencyLimits, amplitudeLimits)
             % All models are the same in regards to controlling them, but
-            % some can generator higher frequencies; this is therefore a
-            % parameter of the constructor.
-            obj@FrequencyGenerator(name);
+            % the limitations on the amplitude and on the allowed frequencies may vary.
+            obj@FrequencyGenerator(name, frequencyLimits, amplitudeLimits);
             obj.t = tcpip(address, port);
-            
-            obj.maxFreq = maxFrequency;
             
             obj.initialize;
         end
@@ -77,7 +70,9 @@ classdef FrequencyGeneratorSRS < FrequencyGenerator
             end
             
             name = [FrequencyGeneratorSRS.NAME, '-', struct.serialNumber];
-            obj = FrequencyGeneratorSRS(name, struct.address, struct.port, struct.maxFrequency);
+            frequencyLimits = [struct.minFrequency, struct.maxFrequency];
+            amplitudeLimits = [struct.minAmplitude, struct.maxAmplitude];
+            obj = FrequencyGeneratorSRS(name, struct.address, struct.port, frequencyLimits, amplitudeLimits);
 
             addBaseObject(obj);
         end

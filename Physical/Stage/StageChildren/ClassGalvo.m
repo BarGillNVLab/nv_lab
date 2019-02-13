@@ -1,4 +1,4 @@
-classdef ClassGalvo < ClassStage & NiDaqControlled
+classdef ClassGalvo < ClassStage
     
     properties (Constant)
         NAME = 'Stage (Fine) - Galvo'
@@ -109,28 +109,24 @@ classdef ClassGalvo < ClassStage & NiDaqControlled
     methods (Access = private)
         % Private default constructor
         function obj = ClassGalvo(readPositionChannel, writePositionChannel, pulseChannel, minVal, maxVal)
-            % ClassStage
+            %%% Create the object
             name = ClassGalvo.NAME;
             availAxis = ClassGalvo.VALID_AXES;
             obj@ClassStage(name, availAxis)
             
-            % NiDaqControlled
-                % Names
-                stageNamesCells = cellfun(@(C) {strcat(C, '_x'), strcat(C, '_y')}, ...
-                    ClassGalvo.NEEDED_FIELDS_STAGE, 'UniformOutput', false);
-                channelNames = [stageNamesCells{:}, ClassGalvo.NEEDED_FIELDS_EXTRA{:}];
-                % Channel IDs
-                channels = [readPositionChannel; writePositionChannel; pulseChannel]';
-                % Minimum and maximum values
-                % This part is a bit crooked, but we need it for conforming
-                % with the overall architecture
-                Os = ones(size(channels));
-                onesCell = mat2cell(Os, 1, Os);     % creates cell of ones
-                minVals = cellfun(@(x) minVal*x, onesCell, 'UniformOutput', false);
-                maxVals = cellfun(@(x) maxVal*x, onesCell, 'UniformOutput', false);
-            obj@NiDaqControlled(channelNames, channels, minVals, maxVals)
+            %%% Register NiDaq Channels (We don't need the stage to be NiDaqControlled)
+            % Channel IDs
+            channels = [readPositionChannel(1:2); writePositionChannel(1:2); pulseChannel];
+            % Names
+            channelNames = {'GalvoReadPosX', 'GalvoReadPosY', 'GalvoWritePosX', 'GalvoWritePosY', ClassGalvo.NAME};
+            % ^ The last one is the channel which other system objects recognize as "the signal from the stage"
             
-            % Save evrything we need for class stage...
+            nidaq = getObjByName(NiDaq.NAME);
+            for k = 1:length(channels)
+                nidaq.registerChannel(channels{k}, channelNames{k}, minVal, maxVal)
+            end
+            
+            %%% Save evrything we need 
             axSize = size(availAxis);
             obj.posRangeLimit = obj.POSITIVE_RANGE_LIMIT * ones(axSize); % Units set to microns.
             obj.negRangeLimit = obj.NEGATIVE_RANGE_LIMIT * ones(axSize); % Units set to microns.
@@ -142,7 +138,6 @@ classdef ClassGalvo < ClassStage & NiDaqControlled
             
             obj.availableProperties.(obj.HAS_SLOW_SCAN) = true;
             
-            % and for NiDaqControlled
             obj.readPositionChannel = readPositionChannel;
             obj.writePositionChannel = writePositionChannel;
             obj.pulseChannel = pulseChannel;
@@ -874,12 +869,4 @@ function PrepareRescanLine(obj)
         end
         
     end
-    
-    methods
-        function onNiDaqReset(obj, niDaq)
-            % This function jumps when the NiDaq resets
-            % Each component can decide what to do
-        end
-    end
-    
 end

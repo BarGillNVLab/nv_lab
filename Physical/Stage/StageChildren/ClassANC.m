@@ -4,6 +4,9 @@ classdef ClassANC < ClassStage
     properties (Constant)
         NAME = 'Stage (Coarse) - ANC'
         VALID_AXES = 'xyz';
+        UNITS = 'um'
+        
+        NEEDED_FIELDS = {'niDaqChannel'}
         
         LIB_DLL_FOLDER = 'C:\Attocube\ANC350_DLL\Win_64Bit\';
         LIB_DLL_FILENAME = 'anc350v2.dll';
@@ -11,28 +14,80 @@ classdef ClassANC < ClassStage
         LIB_H_FILENAME = 'anc350v2';
         LIB_ALIAS = 'anc350v2';
         
+        POSITIVE_HARD_LIMITS = [8055 8005 1600];  % in microns. the values include a saftey range of 20 um.
+        NEGATIVE_HARD_LIMITS = [31 -45 -2];       % in microns. the values include a saftey range of 20 um.
+        STEP_MINIMUM_SIZE = 10      % double. in um
+        STEP_DEFAULT_SIZE = 100     % double. in um
         
+        commDelay = 0.05;%0.005; % 5ms delay needed between consecutive commands sent to the controllers.
+        onTargetResolution = 2;% in um. under the onTargetResolution the stage is "on target".
     end
     
     properties
+        deviceHandle = -1;  % Default value. Means stage is disconnected
+        
+        % Default values
+        stageOffset = [0 0 0];
+        posRangeLimit = ClassANC.POSITIVE_HARD_LIMITS;
+        negRangeLimit = ClassANC.NEGATIVE_HARD_LIMITS;
+        posSoftRangeLimit = ClassANC.POSITIVE_HARD_LIMITS;
+        negSoftRangeLimit = ClassANC.NEGATIVE_HARD_LIMITS;
+        defaultVel = 1000 % Default velocity is 1000 um/s.
+        
+        curPos = [0 0 0]; % nm
+        curVel = [0 0 0]; % um/s
+        
+        forceStop       % logical. True if we want to stop mid-movement
+        
+        maxAmplitude = 45; %max amplidute in volt
+        maxFrequency = 3000; %max frequency in Hz
+        minAmplitude = 20; %min amplidute in volt
+        minFrequency = 10; %min frequency in Hz
+        
+        % For scan
+        maxScanSize = 9999;
+        macroNumberOfPixels = -1;
+        macroMacroNumberOfPixels = -1; % number of points per line
+        macroNormalScanVector = -1;
+        macroScanVector = -1;
+        macroNormalScanAxis = -1;
+        macroScanAxis = -1;
+        macroPixelTime = -1; % time duration at each pixel
+        macroScanVelocity = -1;
+        macroNormalVelocity = -1;
+        macroFixPosition = 0;
+        macroIndex = -1; % -1 = not in scan
+        
+        % NiDaq
+        triggerChannel
+        digitalPulseTask = -1; % Digital pulse task for scanning
+        
+        % Tilt
+        tiltCorrectionEnable
+        tiltThetaXZ
+        tiltThetaYZ
     end
     
     methods (Static, Access = public)
         % Get instance constructor
-        function obj = GetInstance()
-            persistent localObj
-            if isempty(localObj) || ~isvalid(localObj)
-                localObj = ClassANC;
+        function obj = create(stageStruct)
+            
+            missingField = FactoryHelper.usualChecks(stageStruct, ClassANC.NEEDED_FIELDS);
+            if ~isnan(missingField)
+                EventStation.anonymousError(...
+                    'Trying to create the ANC stage, needed field "%s" was missing. Aborting',...
+                    missingField);
             end
-            obj = localObj;
+            
+            niDaqChannel = stageStruct.niDaqChannel;
+            removeObjIfExists(ClassANC.NAME);
+            obj = ClassANC(niDaqChannel);       
         end
         
-        function axis = getAxis(axisName)
+        function axis = GetAxisInternal(axisName)
             % Gives the axis number (0 for x, 1 for y, 2 for z) when the
             % user enters the axis name (x,y,z or 1 for x, 2 for y and 3
             % for z).
-            %
-            % Overridden from ClassStage
             axis = zeros(size(axisName));
             for i = 1:length(axisName)
                 if ((strcmpi(axisName(i),'x')) || (axisName(i) == 1))
@@ -50,11 +105,16 @@ classdef ClassANC < ClassStage
     end
     
     methods (Access = private)
-        function obj = ClassANC()
+        function obj = ClassANC(niDaqChannel)
             name = ClassANC.NAME;
             availAxes = ClassANC.VALID_AXES;
             obj@ClassStage(name, availAxes)
             
+            obj.Connect;
+            
+            daq = getObjByName(NiDaq.NAME);
+            daq.registerChannel(niDaqChannel, obj.name);
+            obj.triggerChannel = niDaqChannel;
             
             obj.availableProperties.(obj.HAS_OPEN_LOOP) = true;
             obj.availableProperties.(obj.HAS_SLOW_SCAN) = true;
@@ -64,8 +124,8 @@ classdef ClassANC < ClassStage
     
     methods
         function Connect(obj) % Connect to the controller
-            if (obj.eHandle == -1)
-                loadlibrary(obj.LIB_ALIAS);
+            if (obj.deviceHandle == -1)
+                obj.LoadPiezoLibrary;
                 [dc, dptr] = calllib(obj.LIB_ALIAS, 'PositionerCheck', libpointer);
                 id = dptr.id;
                 if dptr.locked
@@ -74,16 +134,20 @@ classdef ClassANC < ClassStage
                     fprintf('The device is unlocked and the id is %d.\n', id);
                 end
                 eid = dc - 1;
-                obj.eHandle = SendRawCommand(obj, 'PositionerConnect', eid ,0);
+                obj.deviceHandle = SendRawCommand(obj, 'PositionerConnect', eid ,0);
             end
         end
         
         function LoadPiezoLibrary(obj)
             % Loads the dll file.
-            shrlib = [obj.LIB_DLL_FOLDER, obj.LIB_DLL_FILENAME];
-            hfile = [obj.LIB_H_FOLDER, obj.LIB_H_FILENAME];
-            loadlibrary(shrlib, hfile, 'alias', obj.LIB_ALIAS);
-            fprintf('ANC library ready.\n');
+            aliasANC = obj.LIB_ALIAS;
+            
+            if ~libisloaded(aliasANC)
+                shrlib = [obj.LIB_DLL_FOLDER, obj.LIB_DLL_FILENAME];
+                hfile = [obj.LIB_H_FOLDER, obj.LIB_H_FILENAME];
+                loadlibrary(shrlib, hfile, 'alias', aliasANC);
+                fprintf('ANC library ready.\n');
+            end
         end
         
         function Initialization(obj)
@@ -98,11 +162,11 @@ classdef ClassANC < ClassStage
         
         function CloseConnection(obj)
             % Closes the connection to the controllers.
-            if (obj.eHandle ~= -1)
+            if (obj.deviceHandle ~= -1)
                 % Handle exists, attempt to close
-                SendRawCommand(obj, 'PositionerClose', obj.eHandle);
-                fprintf('Connection Closed: Handle %d released.\n', obj.eHandle);
-                obj.eHandle = -1;
+                SendRawCommand(obj, 'PositionerClose', obj.deviceHandle);
+                fprintf('Connection Closed: Handle %d released.\n', obj.deviceHandle);
+                obj.deviceHandle = -1;
             else
                 % Handle does not exists, ask user what to do.
                 titleString = 'No Handle found';
@@ -113,8 +177,10 @@ classdef ClassANC < ClassStage
                 confirm = questdlg(questionString, titleString, closeDefaultString, abortString, closeDefaultString);
                 switch confirm
                     case closeDefaultString
-                        %startRange = 0;
-                        %endRange = 512;
+                        range = 0:512;
+                        for handle = range
+                            SendRawCommand(obj, 'PositionerClose', handle);
+                        end
                         %case closeCustomString
                         %startRange = input('At which Handle to start?\n');
                         %endRange = input('At which Handle to end?\n');
@@ -126,6 +192,17 @@ classdef ClassANC < ClassStage
                         return;
                 end
             end
+        end
+        
+        function delete(obj)
+            obj.CloseConnection;
+        end
+        
+        function Reconnect(obj)
+            % Reconnects the controller.
+            CloseConnection(obj);
+            Connect(obj);
+            Initialization(obj);
         end
         
         function Delay(obj)
@@ -146,7 +223,7 @@ classdef ClassANC < ClassStage
             tries = 1;
             while tries > 0
                 Delay(obj);
-                [eStatus, varargout{1:nargout}] = calllib(obj.LIB_ALIAS, command, obj.eHandle, axis, varargin{:});
+                [eStatus, varargout{1:nargout}] = calllib(obj.LIB_ALIAS, command, obj.deviceHandle, axis, varargin{:});
                 try
                     CheckErrors(obj, eStatus);
                     tries = 0;
@@ -221,7 +298,7 @@ classdef ClassANC < ClassStage
         function maxScanSize = ReturnMaxScanSize(obj, nDimensions)
             % Returns the maximum number of points allowed for an
             % 'nDimensions' scan.
-            maxScanSize = obj.maxScanSize * ones(1, nDimensions);
+            maxScanSize = obj.maxScanSize;
         end
         
         function ChangeLoopMode(obj, mode)
@@ -268,7 +345,7 @@ classdef ClassANC < ClassStage
         end
  
         function CheckConnectionToAxis(obj) %check if the device is connected to the controller
-            nPhAxes = 3;
+            nPhAxes = length(obj.availableAxes);    % Should be 3
             isPhAxisConnected = false(1,nPhAxes);
             
             for i = 0 : (nPhAxes-1)
@@ -293,40 +370,40 @@ classdef ClassANC < ClassStage
         end
         
         function SetReferenceXY(obj, axisName) %Reference for x and y
-            axis = GetAxis(obj, axisName);
-            if axis == 2
+            realAxis = obj.GetAxisInternal(axisName);
+            if realAxis == 2
                 error('ANC:UsingReferenceXYForZAxis', 'This function doen`t apply to z axis!')
             else
                 %finding max position
                 Move(obj, axisName, obj.MaxPosForReference) %when setting the reference the positioner travels to the end of the range in order to find max position
                 pause(1); % let the stage enough time to start moving before checking it's status
-                status = GetStatus(obj, axis);
+                status = GetStatus(obj, realAxis);
                 while status == 1
-                    status = GetStatus(obj, axis);
+                    status = GetStatus(obj, realAxis);
                 end
                 maxPosition = GetPosition(obj,axisName);
                 
                 % Finding min position
                 Move(obj, axisName,obj.MinPosForReference) %when setting the reference the positioner travels to the end of the range in order to find min position
                 pause(1); % let the stage enough time to start moving before checking it's status
-                status = GetStatus(obj, axis);
+                status = GetStatus(obj, realAxis);
                 while status
-                    status = GetStatus(obj, axis);
+                    status = GetStatus(obj, realAxis);
                 end
                 minPosition = GetPosition(obj,axisName);
                 % Setting the reference position
                 refPos = (maxPosition + minPosition)/2;
                 Move(obj,axisName,refPos);
                 pause(1); % Let the stage enough time to start moving before checking its status
-                status = GetStatus(obj, axis);
+                status = GetStatus(obj, realAxis);
                 while status == 1
-                    status = GetStatus(obj ,axis);
+                    status = GetStatus(obj ,realAxis);
                 end
                 %                 SendCommand(obj, 'PositionerResetPosition', axis); no
                 %                 reset positioner for our stage
                 %                 pos = GetPosition(axis);
                 %                 if pos == 0
-                fprintf('The reference is set for axis %s.\n', obj.(axis+1));
+                fprintf('The reference is set for axis %s.\n', obj.(realAxis+1));
             end
         end
         
@@ -334,11 +411,16 @@ classdef ClassANC < ClassStage
             %waits until the stage is on target <-> the different between
             %the target position and the current position is smaller than
             %the defined onTargetResolution (=2um).
-            realAxis = GetAxis(obj, axisName);
+            realAxis = obj.GetAxisInternal(axisName);
             curPos = GetPosition(obj, axisName);
             curPos = curPos + obj.stageOffset(realAxis + 1);
             while (abs(targetPos - curPos) > obj.onTargetResolution)
                 curPos = GetPosition(obj, axisName) + obj.stageOffset(realAxis + 1);
+                obj.sendEventPositionChanged;
+                if obj.forceStop
+                    obj.HaltPrivate;
+                    break
+                end
             end
         end
         
@@ -346,14 +428,14 @@ classdef ClassANC < ClassStage
         function Move(obj, axisName, targetPosInMicrons)
             % Absolute change in position (the user enters the target position in microns) of axis (x,y,z or 1 for x, 2 for y and 3 for z).
             for i=1:length(axisName)
-                realAxis = GetAxis(obj, axisName(i));
+                realAxis = obj.GetAxisInternal(axisName(i));
                 targetPos = GetTargetPosition(obj, axisName(i), targetPosInMicrons(i));
                 if (targetPos <= obj.posSoftRangeLimit(i))  && (targetPos >= obj.negSoftRangeLimit(i)) %checking if the target position is in range
                     SendCommand(obj, 'PositionerMoveAbsolute', realAxis, targetPos*1000, 1);
                 else
                     warning ('The position you enter is outside of limit range!')
                 end
-                %WaitFor(obj, axisName(i),targetPos)  % wait until the position is set...... takes most time
+                WaitFor(obj, axisName(i),targetPos)  % wait until the position is set...... takes most time
             end
             GetPosition(obj, axisName);
         end
@@ -373,7 +455,7 @@ classdef ClassANC < ClassStage
             %returns the target position in microns in the stage reference
             %- translate the target pos entered by the user to the stage
             %frame
-            realAxis = GetAxis(obj, axisName);
+            realAxis = obj.GetAxisInternal(axisName);
             targetPos = targetPosInMicrons + obj.stageOffset(realAxis + 1);
             
         end
@@ -382,7 +464,7 @@ classdef ClassANC < ClassStage
             %returns the position in microns in the user frame
             posInMicrons = zeros(size(axisName));
             for i=1:length(axisName)
-                realAxis = GetAxis(obj, axisName(i));
+                realAxis = obj.GetAxisInternal(axisName(i));
                 obj.curPos(realAxis + 1) = SendCommand(obj, 'PositionerGetPosition', realAxis ,0);
                 posInMicrons(i) = obj.curPos(realAxis + 1)./1000 - obj.stageOffset(realAxis + 1);
             end
@@ -404,6 +486,23 @@ classdef ClassANC < ClassStage
             end
         end
         
+        function Halt(obj)
+            % Halts all stage movements.
+            % This works by setting the parameter below to 1, which is
+            % checked inside the "WaitFor" function. When the WaitFor is
+            % triggered, is calls an internal function, "HaltPrivate", which
+            % immediately sends a halt command to the controller.
+            % Afterwards it also tries to abort scan. The reason abort scan
+            % happens afterwards is to minimize the the time it takes to
+            % send the halt command to the controller.
+            % This parameters also denies the "MovePrivate" command from
+            % running.
+            % It is reset by a normal/relative "Move Command", which will
+            % be triggered whenever a new external move or scan command is
+            % sent to the stage.
+            obj.forceStop = 1;
+        end
+        
         
         function SetAmplitude(obj, axisName, amplitudeInVolt)
             %setting the amplitude.
@@ -415,7 +514,7 @@ classdef ClassANC < ClassStage
             elseif (amplitudeInVolt < obj.minAmplitude)
                 error('ANC:VoltOutOfMinLimit', 'The voltage you enter is too low.');
             end
-            axis = GetAxis(obj, axisName);
+            axis = obj.GetAxisInternal(axisName);
             amplitude = amplitudeInVolt*1000;
             SendCommand(obj, 'PositionerAmplitude', axis, amplitude)
         end
@@ -425,13 +524,13 @@ classdef ClassANC < ClassStage
             % returns the amplitude.
             % output amplitude is in volt.
             
-            axis = GetAxis(obj, axisName);
+            axis = obj.GetAxisInternal(axisName);
             amplitude = double(SendCommand(obj, 'PositionerGetAmplitude', axis,0));
             amplitudeInVolt = amplitude/1000;
         end
         
         
-        function SetFrequency(obj, phAxisName, frequencyInHz)
+        function SetFrequency(obj, axisName, frequencyInHz)
             % Setting the frequency.
             % input frequency is in Hz.
             % frequency range is between 0 to 1000 Hz.
@@ -441,9 +540,9 @@ classdef ClassANC < ClassStage
             elseif (frequencyInHz < obj.minFrequency)
                 error('ANC:FreqOutOfMinLimit', 'The frequency you enter is too low.');
             end
-            phAxis = GetAxis(obj, phAxisName);
+            axis = obj.GetAxisInternal(axisName);
             frequency = double(frequencyInHz);
-            SendCommand(obj, 'PositionerFrequency', phAxis, frequency)
+            SendCommand(obj, 'PositionerFrequency', axis, frequency)
         end
         
         
@@ -451,7 +550,7 @@ classdef ClassANC < ClassStage
             %returns the frequency.
             %output frequency is in Hz.
             
-            axis = GetAxis(obj, axisName);
+            axis = obj.GetAxisInternal(axisName);
             frequency = double(SendCommand(obj, 'PositionerGetFrequency', axis ,1));
             frequencyInHz = frequency;
         end
@@ -462,7 +561,7 @@ classdef ClassANC < ClassStage
             %the output signal.
             %input resolution is in nanometer.
             
-            axis = GetAxis(obj, axisName);
+            axis = obj.GetAxisInternal(axisName);
             SendCommand(obj, 'PositionerQuadratureAxis', 0, axis)
             SendCommand(obj, 'PositionerQuadratureOutputPeriod', axis, resolution)
             %             switch axisName
@@ -477,7 +576,7 @@ classdef ClassANC < ClassStage
         function EnableOutput(obj, axisName, enable)
             % Enables changes in resolution and clock.
             %             enable = bool(enable);
-            SendCommand(obj, 'PositionerSetOutput',GetAxis(obj, axisName), 1);
+            SendCommand(obj, 'PositionerSetOutput',obj.GetAxisInternal(axisName), 1);
             if enable % Workaround for a glitch when output is enabled
                 SetResolution(obj, axisName, 1000)
                 SetResolution(obj, axisName, 100)
@@ -486,7 +585,7 @@ classdef ClassANC < ClassStage
         
         
         function MoveALot (obj, axisName, steps, displace, res)
-            axis = GetAxis(obj,axisName);
+            axis = GetAxisInternal(obj,axisName);
             SetResolution(obj, axisName, res);
             for i=1:steps
                 pos0 = GetPosition(obj, axisName);
@@ -497,7 +596,7 @@ classdef ClassANC < ClassStage
         
         
         function MoveALot1 (obj, axisName, totdisplace, displace, res)
-            axis = GetAxis(obj,axisName);
+            axis = obj.GetAxisInternal(axisName);
             pos0 = GetPosition(obj, axisName);
             SetResolution(obj, axisName, res);
             steps = totdisplace/displace;
@@ -526,7 +625,7 @@ classdef ClassANC < ClassStage
         
         
         function SetVelocity(obj, axisName, velocity) %seting the velocity in microns/sec
-            axis = GetAxis(obj,axisName);
+            axis = obj.GetAxisInternal(axisName);
             switch axis
                 case {0,1,2}
                     if velocity < 1000
@@ -554,7 +653,7 @@ classdef ClassANC < ClassStage
         end
         
         function velocity = GetVelocity(obj, axisName)
-            axis = GetAxis(obj,axisName);
+            axis = GetAxisInternal(obj,axisName);
             velocity = double(SendCommand(obj, 'PositionerGetSpeed', axis ,1))/1000; % in units of um/s
             obj.curVel(axis+1) = velocity;
         end
@@ -603,7 +702,7 @@ classdef ClassANC < ClassStage
             end
             totalTime = numberOfPixels*tPixel;
             scanVelocity = scanLength/(totalTime);
-            %normalVelocity = obj.curVel(GetAxis(obj,scanAxis));
+            %normalVelocity = obj.curVel(GetAxisInternal(obj,scanAxis));
             
             try
                 SetVelocity(obj, axisName, scanVelocity);
@@ -763,7 +862,7 @@ classdef ClassANC < ClassStage
             fixPosition = macroPixelResolution/2000;
             totalTimePerLine = numberOfMacroPixels*tPixel;
             scanVelocity = macroScanLength/(totalTimePerLine);
-            normalVelocity = obj.curVel(GetAxis(obj, macroScanAxisName)+1);
+            normalVelocity = obj.curVel(obj.GetAxisInternal(macroScanAxisName)+1);
             SetResolution(obj, macroScanAxisName, macroPixelResolution);
             
             % Set real start and end points
@@ -977,15 +1076,8 @@ classdef ClassANC < ClassStage
             end
             
             %preparing DAQ output (trigger for SPCM readouts) for the scan
-            line = 3;
-            triggerChannel = 'port0/line3';
-            %             tPixel = obj.macroPixelTime - 0.008;
-            %             if tPixel < 0
-            %                 fprintf('Minimum pixel time is 8 ms, %.1f were given, changing to 8ms\n', 1000*tPixel);
-            %                 tPixel = 0;
-            %             end
             nidaq = getObjByName(NiDaq.NAME);
-            task = nidaq.prepareDigitalOutputTask(triggerChannel);
+            obj.digitalPulseTask = nidaq.prepareDigitalOutputTask(obj.triggerChannel);
             
             % Scan
             Move(obj, obj.macroNormalScanAxis, obj.macroNormalScanVector(obj.macroIndex));
@@ -994,6 +1086,7 @@ classdef ClassANC < ClassStage
             Move(obj, obj.macroScanAxis, obj.macroScanVector(1));
             Delay(obj) % Wait before start scanning
             
+            line = obj.triggerChannel(end);     % For example, if the channel is 'PFI3', we want the line to be '3'
             for i=1:obj.macroMacroNumberOfPixels
                 Move(obj, obj.macroScanAxis, obj.macroScanVector(i)); % Same as move, without creating and closing the task.
                 nidaq.writeDigitalOnce(obj.digitalPulseTask, 1, line);
@@ -1056,26 +1149,64 @@ classdef ClassANC < ClassStage
             posSoftLimit = obj.posSoftRangeLimit;
         end
         
+        function SetSoftLimits(obj, phAxis, softLimit, negOrPos)
+            % Set the new soft limits:
+            % if negOrPos = 0 -> then softLimit = lower soft limit
+            % if negOrPos = 1 -> then softLimit = higher soft limit
+            % This is because each time this function is called only one of
+            % the limits updates
+            CheckAxis(obj, phAxis)
+            axisIndex = GetAxisIndex(obj, phAxis);
+            if ((softLimit >= obj.negRangeLimit(axisIndex)) && (softLimit <= obj.posRangeLimit(axisIndex)))
+                if negOrPos == 0
+                    obj.negSoftRangeLimit(axisIndex) = softLimit;
+                else
+                    obj.posSoftRangeLimit(axisIndex) = softLimit;
+                end
+            else
+                obj.sendError(sprintf('Soft limit %.4f is outside of the hard limits %.4f - %.4f', ...
+                    softLimit, obj.negRangeLimit(axisIndex), obj.posRangeLimit(axisIndex)))
+            end
+        end
+        
         function [negLimit, posLimit] = ReturnLimits(obj, axisName)% returning the limits for the GUI - Limits around 0
             % Return the soft limits of the given axis (x,y,z or 1 for x,
             % 2 for y and 3 for z).
             % Vectorial axis is possible.
-            negLimit = obj.negSoftRangeLimit - obj.stageOffset;
-            posLimit = obj.posSoftRangeLimit - obj.stageOffset;
+            phAxis = obj.getAxis(axisName);
+            
+            negLimit = obj.negSoftRangeLimit(phAxis) - obj.stageOffset(phAxis);
+            posLimit = obj.posSoftRangeLimit(phAxis) - obj.stageOffset(phAxis);
         end
         
         function [negHardLimit, posHardLimit] = ReturnHardLimits(obj, axisName)
             % Return the hard limits of the given axis (x,y,z or 1 for x,
             % 2 for y and 3 for z).
             % Vectorial axis is possible.
-            negHardLimit = obj.negRangeLimit;
-            posHardLimit = obj.posRangeLimit;
+            phAxis = obj.getAxis(axisName);
+            
+            negHardLimit = obj.negRangeLimit(phAxis);
+            posHardLimit = obj.posRangeLimit(phAxis);
         end
         
         function JoystickControl(obj, enable)
             % Changes the joystick state for all  to the value of
             % 'enable' - 1 to turn Joystick on, 0 to turn it off.
             fprintf('No joystick connected\n');
+        end
+        
+        function binaryButtonState = ReturnJoystickButtonState(obj)
+            % Returns the state of the buttons in 3 bit decimal format.
+            % 1 for first button, 2 for second and 4 for the 3rd.
+            obj.sendWarning('No joystick support for the ANC controller.');
+            binaryButtonState = 0;
+        end
+    end
+    
+    methods (Access = private)
+        function HaltPrivate(obj)
+            todo = 'implement halting!'
+            obj.forceStop = false;
         end
     end
     

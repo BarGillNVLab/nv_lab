@@ -44,90 +44,105 @@ classdef (Abstract) ClassStage < EventSender & Savable & EventListener
                 stagesJson = JsonInfoReader.getJson.stages;
                 stagesCellContainer = CellContainer;
                 
-                for i = 1: length(stagesJson)
-                    if iscell(stagesJson)
-                        curStageStruct = stagesJson{i};
-                    else
-                        curStageStruct = stagesJson(i);
-                    end
-                    stageType = curStageStruct.type;
-                    switch stageType
-                        case 'LPS-65' % Setup 1 LPS-65
-                            try
-                                newStage = getObjByName(ClassPILPS65.NAME);
-                            catch
-                                newStage = ClassPILPS65.create(curStageStruct);
-                            end
-                        case 'Galvo' % Galvo mirrors for the Cryo setup
-                            try
-                                newStage = getObjByName(ClassGalvo.NAME);
-                            catch
-                                newStage = ClassGalvo.create(curStageStruct);
-                            end
-                        case 'ECC'
-                            newStage = ClassECC.GetInstance(); % ECC100 stages used in setup 1 - > Very old and might not be comptiable
-                        case 'ANC'
-                            newStage = ClassANC.GetInstance(); % ANC stages used in setup 3
-                        case 'PIP-562'
-                            try
-                                newStage = getObjByName(ClassPIP562.NAME);
-                            catch
-                                newStage = ClassPIP562.create(curStageStruct);
-                            end
-                        case 'PIM-686'
-                            newStage = ClassPIM686.GetInstance();
-                        case 'PIM-501'
-                            newStage = ClassPIM501.GetInstance();
-                        case 'PIM-686&PIM-501'
-                            newStage = ClassPIM686M501.GetInstance();
-                        case 'STEDCoarse'
-                            newStage = ClassSTEDCoarse.GetInstance();
-                        case 'Dummy'
-                            if isfield(curStageStruct, 'name')
-                                stageName = curStageStruct.name;
-                            else
-                                stageName = 'Dummy stage';
-                            end
-                            
-                            try
-                                % Maybe this already exists, and we will
-                                % then replace it.
-                                oldStage = getObjByName(stageName);
-                                EventStation.anonymousWarning('%s will be overridden!', stageName);
-                                removeObjIfExists(oldStage);
-                            catch
-                                % This is actually the simple case, despite
-                                % what syntax might suggest.
-                            end
+                try
+                    for i = 1: length(stagesJson)
+                        if iscell(stagesJson)
+                            curStageStruct = stagesJson{i};
+                        else
+                            curStageStruct = stagesJson(i);
+                        end
+                        stageType = curStageStruct.type;
+                        switch stageType
+                            case 'LPS-65' % Setup 1 LPS-65
+                                try
+                                    newStage = getObjByName(ClassPILPS65.NAME);
+                                catch
+                                    newStage = ClassPILPS65.create(curStageStruct);
+                                end
+                            case 'Galvo' % Galvo mirrors for the Cryo setup
+                                try
+                                    newStage = getObjByName(ClassGalvo.NAME);
+                                catch
+                                    newStage = ClassGalvo.create(curStageStruct);
+                                end
+                            case 'ECC'
+                                newStage = ClassECC.GetInstance(); % ECC100 stages used in setup 1 - > Very old and might not be comptiable
+                            case 'ANC'
+                                try
+                                    newStage = getObjByName(ClassANC.NAME);
+                                catch
+                                    newStage = ClassANC.create(curStageStruct);
+                                end
+                            case 'PIP-562'
+                                try
+                                    newStage = getObjByName(ClassPIP562.NAME);
+                                catch
+                                    newStage = ClassPIP562.create(curStageStruct);
+                                end
+                            case 'PIM-686'
+                                newStage = ClassPIM686.GetInstance();
+                            case 'PIM-501'
+                                newStage = ClassPIM501.GetInstance();
+                            case 'PIM-686&PIM-501'
+                                newStage = ClassPIM686M501.GetInstance();
+                            case 'STEDCoarse'
+                                newStage = ClassSTEDCoarse.GetInstance();
+                            case 'Dummy'
+                                if isfield(curStageStruct, 'name')
+                                    stageName = curStageStruct.name;
+                                else
+                                    stageName = 'Dummy stage';
+                                end
                                 
-                            
-                            if isfield(curStageStruct, 'is_scanable')
-                                stageScanable = curStageStruct.is_scanable;
-                            else
-                                stageScanable = true;
-                            end
-                            
-                            if isfield(curStageStruct, 'axes')
-                                stageAxes = curStageStruct.axes;
-                            else
-                                stageAxes = ClassStage.SCAN_AXES;  % all of them
-                            end
-                            
-                            if isfield(curStageStruct, 'tilt_available')
-                                tiltAvailable = curStageStruct.tilt_available;
-                            else
-                                tiltAvailable = true;
-                            end
-                            
-                            newStage = ClassDummyStage(stageName, stageAxes, stageScanable, tiltAvailable);
-                        otherwise
-                            EventStation.anonymousError('Unknown stage: %s', stageType);
+                                try
+                                    % Maybe this already exists, and we will
+                                    % then replace it.
+                                    oldStage = getObjByName(stageName);
+                                    EventStation.anonymousWarning('%s will be overridden!', stageName);
+                                    removeObjIfExists(oldStage);
+                                catch
+                                    % This is actually the simple case, despite
+                                    % what syntax might suggest.
+                                end
+                                
+                                
+                                if isfield(curStageStruct, 'is_scanable')
+                                    stageScanable = curStageStruct.is_scanable;
+                                else
+                                    stageScanable = true;
+                                end
+                                
+                                if isfield(curStageStruct, 'axes')
+                                    stageAxes = curStageStruct.axes;
+                                else
+                                    stageAxes = ClassStage.SCAN_AXES;  % all of them
+                                end
+                                
+                                if isfield(curStageStruct, 'tilt_available')
+                                    tiltAvailable = curStageStruct.tilt_available;
+                                else
+                                    tiltAvailable = true;
+                                end
+                                
+                                newStage = ClassDummyStage(stageName, stageAxes, stageScanable, tiltAvailable);
+                            otherwise
+                                EventStation.anonymousError('Unknown stage: %s', stageType);
+                        end
+                        
+                        %%%% init the new stage %%%%
+                        newStage.initScanParams();
+                        stagesCellContainer.cells{end + 1} = newStage;
                     end
-                    
-                    %%%% init the new stage %%%%
-                    newStage.initScanParams();
-                    stagesCellContainer.cells{end + 1} = newStage;
+                catch err
+                    % Close open stages. We will open them again when needed
+                    stages = stagesCellContainer.cells;
+                    for i = 1:length(stages)
+                        delete(stages{i});
+                    end
+                    stagesCellContainer = [];
+                    rethrow(err)
                 end
+                    
             end  % if isempty || ~isvalid
             
             stages = stagesCellContainer.cells;

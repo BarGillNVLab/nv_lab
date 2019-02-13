@@ -74,7 +74,8 @@ classdef JsonInfoReader
             len = length(list);
             
             if len == 1
-                isDefault = 1;
+                nDefault = 1;   % Number of default objects
+                isDefault = 1;  % Index of the default object
             else
                 % We have several items
                 
@@ -94,11 +95,11 @@ classdef JsonInfoReader
                         isDefault(i) = true;
                     end
                 end
+                
+                nDefault = sum(isDefault);
             end
             
             % Find out if we have a winner
-            nDefault = sum(isDefault);
-
             switch nDefault
                 case 0
                     EventStation.anonymousError('None of the %s is set to be %s! Aborting.', ...

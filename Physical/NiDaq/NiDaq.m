@@ -46,8 +46,6 @@ classdef NiDaq < EventSender
         end
         
         function init(obj, deviceName, dummyModeBoolean)
-            obj.channelArray = {};
-            
             % Internal channels that are being used by someone
             obj.registerChannel('100MHzTimebase', obj.CHANNEL_100MHZ)
             obj.registerChannel('100kHzTimebase', obj.CHANNEL_100kHZ)
@@ -121,12 +119,14 @@ classdef NiDaq < EventSender
                 if ~isempty(channelAlreadyInIndexes)
                     channelIndex = channelAlreadyInIndexes(1);
                     channelCapturedName = obj.getChannelNameFromIndex(channelIndex);
-                    if ~strcmp(newChannel, channelCapturedName)
+                    if ~strcmp(newChannelName, channelCapturedName)
                         % Maybe we are just trying to register again the
                         % same channel, and that is just fine. Otherwise,
                         errorTemplate = 'Can''t assign channel "%s" to "%s", as it has already been taken by "%s"!';
                         errorMsg = sprintf(errorTemplate, newChannel, newChannelName, channelCapturedName);
                         obj.sendError(errorMsg);
+                    else
+                        return  % This channel is already registered
                     end
                 end
             end

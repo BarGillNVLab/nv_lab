@@ -93,15 +93,24 @@ classdef StageScanner < EventSender & EventListener & Savable
             
             timerVal = tic;
             disp('Initiating scan...');
-            kcpsScanMatrix = obj.scan(stage, spcm, obj.mStageScanParams);
-            % kcps = kilo counts per second
-            
-            while (stage.scanParams.continuous && obj.mCurrentlyScanning)
-                kcpsScanMatrix = obj.scan(stage, spcm, obj.mStageScanParams, kcpsScanMatrix);
-                drawnow; % todo check what happens if removing this line
+            try
+                kcpsScanMatrix = obj.scan(stage, spcm, obj.mStageScanParams);
+                % kcps = kilo counts per second
+                
+                while (stage.scanParams.continuous && obj.mCurrentlyScanning)
+                    kcpsScanMatrix = obj.scan(stage, spcm, obj.mStageScanParams, kcpsScanMatrix);
+                    drawnow; % todo check what happens if removing this line
+                end
+            catch err
+                % We couldn't scan. Wrap it up nicely
+                spcm.setSPCMEnable(false);
+                obj.mCurrentlyScanning = false;
+                stage.sendEventStageAvailabilityChanged;
+                rethrow(err)
             end
             
-            if isempty(kcpsScanMatrix)  % Maybe scan did not happen at all
+            % Maybe we didn't encounter an error, but the scan still did not happen
+            if isempty(kcpsScanMatrix)
                 spcm.setSPCMEnable(false);
                 obj.mCurrentlyScanning = false;
                 stage.sendEventStageAvailabilityChanged;
@@ -379,6 +388,8 @@ classdef StageScanner < EventSender & EventListener & Savable
                     startIndexAxisA, endIndexAxisA);
                 obj.mScan = kcpsScanMatrix;
                 obj.sendEventScanUpdated(kcpsScanMatrix);
+                
+                startIndexAxisA = endIndexAxisA + 1;     % Updating for next chunk
             end
         end
         

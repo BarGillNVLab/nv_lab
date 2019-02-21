@@ -203,7 +203,7 @@ classdef ViewSpcm < ViewVBox & EventListener
         end
         function btnResetCallback(obj, ~ ,~)
             spcmCount = obj.getCounter;
-            spcmCount.reset;
+            spcmCount.resetHistory;
         end
         function edtIntegrationTimeCallback(obj, ~, ~) 
             spcmCount = obj.getCounter;

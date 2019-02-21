@@ -796,7 +796,7 @@ classdef ImageScanResult < Savable & EventSender & EventListener
                 catch err
                     % Probably, there is nothing to draw on. Moving on!
                     % For debugging purposes, we do show this warning.
-                    EventStation.anonymousWarning(err.message)
+%                     EventStation.anonymousWarning(err.message)
                 end
             end
         end

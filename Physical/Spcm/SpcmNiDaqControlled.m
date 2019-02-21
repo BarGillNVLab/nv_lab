@@ -86,15 +86,20 @@ classdef SpcmNiDaqControlled < Spcm & NiDaqControlled
                 countsSPCM = obj.readEdgeCounting(obj.counterTimeTask, obj.nTimeCounts, obj.counterIntegrationTime);
             catch err
                 msg = err.message;
-                expression = '-200279'; % "The application is not able to keep up with the hardware acquisition."
-                if contains(msg, expression)
+                errCodeSlow = '-200279'; % "The application is not able to keep up with the hardware acquisition."
+                errCodeTaskAbort = '-88709'; % "The specified operation cannot be performed because a task has been aborted [...]"
+                
+                if contains(msg, errCodeSlow) 
                     % There was NiDaq reset, we can now safely resume
                     err2warning(err);
                     countsSPCM = obj.readEdgeCounting(obj.counterTimeTask, obj.nTimeCounts, obj.counterIntegrationTime);
-                    % ^ This *should* work. If it doesn't, there might be a
-                    % bigger problem, and we want to let the user know
-                    % about it.
+                elseif contains(msg, errCodeTaskAbort)
+                    obj.prepareReadByTime(obj.counterIntegrationTime)
+                    countsSPCM = obj.readEdgeCounting(obj.counterTimeTask, obj.nTimeCounts, obj.counterIntegrationTime);
                 end
+                % ^ This *should* work. If it doesn't, there might be a
+                % bigger problem, and we want to let the user know
+                % about it.
             end
             
             % Data processing

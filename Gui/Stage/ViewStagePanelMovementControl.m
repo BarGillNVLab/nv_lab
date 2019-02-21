@@ -181,6 +181,8 @@ classdef ViewStagePanelMovementControl < GuiComponent & EventListener
             
             obj.checkMovementEnabled;
             
+            drawnow % If we are in mid-operation
+            
         end
         
         function edtStepSizeCallback(obj)

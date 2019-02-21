@@ -770,13 +770,17 @@ classdef StageScanner < EventSender & EventListener & Savable
                 end
             end
             
-            % Getting initial information from scan parameters, ...
+            % Getting initial information from stage ...
+            stageName = savedStruct.stageName;
+            stage = getObjByName(stageName);
+            availAxes = stage.getAxis(stage.availableAxes);
+            
+            % and from scan parameters, ...
             params = savedStruct.scanParams;
             scanAxes = find(~params.isFixed);
             axesLetters = upper(ClassStage.GetLetterFromAxis(scanAxes));
             fixAxes = find(params.isFixed);
-            
-            stageName = savedStruct.stageName;
+            fixAxes = intersect(fixAxes, availAxes);    % Some of the "fixed axes" might not actually be real
             
             % so we can create the output string
             string = sprintf('Scanning %s %s:', stageName, axesLetters);

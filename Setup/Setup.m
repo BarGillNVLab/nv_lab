@@ -54,6 +54,8 @@ classdef Setup < handle
 			ClassStage.getStages;       % the first call to getStages() also inits them
             Tracker.init;
             % Joystick.init should be also here. For the moment, it is found in the appropriate stage
+            
+            gcp();  % Creates parallel pool, since we might need it soon
         end
     end
        

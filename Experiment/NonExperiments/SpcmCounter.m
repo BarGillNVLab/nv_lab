@@ -116,12 +116,29 @@ classdef SpcmCounter < Experiment
             spcm.setSPCMEnable(true);
             spcm.prepareReadByTime(integrationTime/1000);
             
+            % Prepare for parallel pool
+            paralPool = gcp();
+            futureCell = {};
+            
             try
                 while ~obj.stopFlag
-                    % Creating data to be saved
-                    [kcps, std] = spcm.readFromTime;
-                    obj.newRecord(kcps, std);
-                    obj.sendEventDataUpdated;
+                    % Creating data to be saved, using multiple threads
+                    futureCell{end+1} = parfeval(paralPool, @spcm.readFromTime, 2); %#ok<AGROW>
+                    for i = 1:length(futureCell)
+                        f = futureCell{i};
+                        if strcmp(f.State, 'finished')
+                            [kcps, std] = fetchOutputs(f);
+                            obj.newRecord(kcps, std);
+                            obj.sendEventDataUpdated;
+                        end
+                    end
+                    % Delete read threads (a.k.a Futures)
+                    readIdx = cellfun(@(x) x.Read, futureCell);
+                    if any(readIdx)
+                        futureCell(readIdx) = [];  %#ok<AGROW>
+                    end
+                    
+                    % Update integration time, if necessary
                     if integrationTime ~= obj.integrationTimeMillisec
                         integrationTime = obj.integrationTimeMillisec;
                         spcm.clearTimeRead;
@@ -141,6 +158,10 @@ classdef SpcmCounter < Experiment
             obj.stopFlag = true;
             pause((obj.integrationTimeMillisec + 1) / 1000);    % Let me finish what I was doing
             obj.sendEventExpPaused;
+        end
+        
+        function resetHistory(obj)
+            obj.reset;
         end
     end
         

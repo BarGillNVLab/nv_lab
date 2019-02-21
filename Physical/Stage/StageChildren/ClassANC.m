@@ -63,9 +63,9 @@ classdef ClassANC < ClassStage
         digitalPulseTask = -1; % Digital pulse task for scanning
         
         % Tilt
-        tiltCorrectionEnable
-        tiltThetaXZ
-        tiltThetaYZ
+        tiltCorrectionEnable = false
+        tiltThetaXZ = 0
+        tiltThetaYZ = 0
     end
     
     methods (Static, Access = public)
@@ -146,7 +146,7 @@ classdef ClassANC < ClassStage
                 shrlib = [obj.LIB_DLL_FOLDER, obj.LIB_DLL_FILENAME];
                 hfile = [obj.LIB_H_FOLDER, obj.LIB_H_FILENAME];
                 loadlibrary(shrlib, hfile, 'alias', aliasANC);
-                fprintf('ANC library ready.\n');
+                fprintf('Matlab: ANC library loaded.\n');
             end
         end
         
@@ -1205,8 +1205,13 @@ classdef ClassANC < ClassStage
     
     methods (Access = private)
         function HaltPrivate(obj)
-            todo = 'implement halting!'
             obj.forceStop = false;
+            
+            axesLetters = obj.availableAxes; % For brevity
+            for i=1:length(axesLetters)
+                realAxis = obj.GetAxisInternal(axesLetters(i));
+                SendCommand(obj, 'PositionerStopMoving', realAxis);
+            end
         end
     end
     

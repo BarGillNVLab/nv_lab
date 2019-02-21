@@ -5,8 +5,12 @@ classdef LaserSourceLaserquantumSmd12 < LaserPartAbstract & SerialControlled
         canSetEnabled = true;
         canSetValue = true;
     end
+       
+    properties (Access = private)
+        valueInternal % Keeps Laser power even when it is off
+    end
     
-    properties (Constant)
+    properties (Constant, Hidden)
         %%%% Commands %%%%
         COMMAND_ON = 'ON'
         COMMAND_OFF = 'OFF'
@@ -16,6 +20,8 @@ classdef LaserSourceLaserquantumSmd12 < LaserPartAbstract & SerialControlled
         COMMAND_POWER_QUERY = 'POWER?'
         
         NEEDED_FIELDS = {'port'};
+        
+        POWER_VALUE_DEFAULT = 6 %mW
     end
     
     methods (Access = private)
@@ -26,6 +32,7 @@ classdef LaserSourceLaserquantumSmd12 < LaserPartAbstract & SerialControlled
 
             obj.minValue = 0;
             obj.maxValue = 120;
+            obj.valueInternal = obj.POWER_VALUE_DEFAULT;
             obj.units = 'mW';
             
             obj.baudRate = 9600;
@@ -74,11 +81,20 @@ classdef LaserSourceLaserquantumSmd12 < LaserPartAbstract & SerialControlled
             % Validating value is assumed to have been done
             commandPower = sprintf(obj.COMMAND_POWER_FORMAT_SPEC, newValue);
             obj.query(commandPower);
+            
+            % Save value for when laser is turned off
+            obj.valueInternal = newValue;
         end
         
         function val = getValueRealWorld(obj)
-            regex = '(\d+\.\d+)mW'; % a number of the form ##.### followed by new-line
-            val = str2double(obj.query(obj.COMMAND_POWER_QUERY, regex));
+            isOn = obj.getEnabledRealWorld;
+            if isOn
+                regex = '(\d+\.\d+)mW'; % a value of the form ##.###mW
+                val = str2double(obj.query(obj.COMMAND_POWER_QUERY, regex));
+            else
+                % The laser gives 0 if it is off.
+                val = obj.valueInternal;
+            end
         end
         
         function val = getEnabledRealWorld(obj)

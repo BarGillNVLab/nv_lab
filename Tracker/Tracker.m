@@ -186,10 +186,10 @@ classdef Tracker < EventSender & EventListener & Savable
         end
         
         function trackable = getTrackable(trackableName, varargin)
-            try
-                % Maybe this trackable already exists
-                trackable = getObjByName(trackableName);
-            catch
+            % Maybe this trackable already exists
+            trackable = getObjByName(trackableName);
+            % but maybe it doesn't
+            if isempty(trackable)
                 switch trackableName
                     case TrackablePosition.NAME
                         % If this is the case, calling the function might

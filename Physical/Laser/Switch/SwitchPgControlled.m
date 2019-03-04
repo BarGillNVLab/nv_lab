@@ -16,6 +16,7 @@ classdef SwitchPgControlled < EventSender & EventListener
             % name - the nickname of the object
             % pgChannel - 'Channel. PG will work with *this*.'
             PG = getObjByName(PulseGenerator.NAME);
+                if isempty(PG); throwBaseObjException(PulseGenerator.NAME); end
             obj@EventSender(name);
             obj@EventListener(PG.NAME);
             

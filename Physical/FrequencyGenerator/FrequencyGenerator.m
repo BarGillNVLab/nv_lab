@@ -200,16 +200,14 @@ classdef (Abstract) FrequencyGenerator < BaseObject
                     t = lower(type);
                     switch t
                         case FrequencyGeneratorSRS.TYPE
-                            try
-                                newFG = getObjByName(FrequencyGeneratorSRS.NAME);
-                            catch
+                            newFG = getObjByName(FrequencyGeneratorSRS.NAME);
+                            if isempty(newFG)
                                 newFG = FrequencyGeneratorSRS.getInstance(curFgStruct);
                             end
                         case FrequencyGeneratorWindfreak.TYPE
-                            try
-                                name = [t, 'FrequencyGenerator'];
-                                newFG = getObjByName(name);
-                            catch
+                            name = [t, 'FrequencyGenerator'];
+                            newFG = getObjByName(name);
+                            if isempty(newFG)
                                 newFG = FrequencyGeneratorWindfreak.getInstance(curFgStruct);
                             end
                         case FrequencyGeneratorDummy.TYPE

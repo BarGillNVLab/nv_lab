@@ -69,6 +69,8 @@ classdef ViewStagePanelTiltCorrection < GuiComponent & EventListener
         function refresh(obj)
             % todo update from stage
             stage = getObjByName(obj.stageName);
+            if isempty(stage); throwBaseObjException(obj.stageName); end
+                
             if ~stage.tiltAvailable
                 return  % Nothing to do here
             end
@@ -82,6 +84,8 @@ classdef ViewStagePanelTiltCorrection < GuiComponent & EventListener
         
         function cbxEnabledCallback(obj)
             stage = getObjByName(obj.stageName);
+            if isempty(stage); throwBaseObjException(obj.stageName); end
+            
             stage.enableTiltCorrection(obj.cbxEnable.Value);
         end
         
@@ -107,15 +111,21 @@ classdef ViewStagePanelTiltCorrection < GuiComponent & EventListener
             
             if isError
                 stage = getObjByName(obj.stageName);
-                [~, thetaXZ, thetaYZ] = stage.GetTiltStatus();
-                obj.edtThetaX.String = StringHelper.formatNumber(thetaXZ);
-                obj.edtThetaY.String = StringHelper.formatNumber(thetaYZ);
+                if ~isempty(stage)
+                    % We can recover the old values
+                    [~, thetaXZ, thetaYZ] = stage.GetTiltStatus();
+                    obj.edtThetaX.String = StringHelper.formatNumber(thetaXZ);
+                    obj.edtThetaY.String = StringHelper.formatNumber(thetaYZ);
+                else
+                    EventStation.anonymousError('Could not find %s! Reverting was not possible.', obj.stageName);
+                end
                 return
             end
             
             thetaXZ = str2double(obj.edtThetaX.String);
             thetaYZ = str2double(obj.edtThetaY.String);
             stage = getObjByName(obj.stageName);
+                if isempty(stage); throwBaseObjException(obj.stageName); end
             stage.setTiltAngle(thetaXZ, thetaYZ);
         end
         

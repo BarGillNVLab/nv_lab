@@ -9,14 +9,16 @@ function oldObjOrNan = replaceBaseObject(newObj)
 
 % Find and remove previous object
 name = newObj.name;
-try
-    baseObj = getObjByName(name);
+baseObj = getObjByName(name);
+
+if isempty(baseObj)
+    % Don't remove anything: there was nothing there in the first place
+    oldObjOrNan = nan;
+else
     BaseObject.removeObject(baseObj);
     oldObjOrNan = baseObj;
-catch
-    % Don't remove anything as error indicates that it was not there in the first place
-    oldObjOrNan = nan;
 end
+
 BaseObject.addObject(newObj);
 
 end

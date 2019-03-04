@@ -38,6 +38,7 @@ classdef ViewImageResultPanelPlot < GuiComponent
         function update(obj)
             % Get data from ImageScanResult, and apply on views
             imageScanResult = getObjByName(ImageScanResult.NAME);
+            if isempty(imageScanResult); throwBaseObjException(ImageScanResult.NAME); end
             switch imageScanResult.mDimNumber
                 case 1
                     obj.popupStyle.String = ImageScanResult.PLOT_STYLE_OPTIONS_1D;
@@ -52,12 +53,15 @@ classdef ViewImageResultPanelPlot < GuiComponent
         %%%% Callbacks %%%%        
         function btnOpenInFigureCallback(obj, ~, ~) %#ok<INUSD>
             imageScanResult = getObjByName(ImageScanResult.NAME);
+            if isempty(imageScanResult); throwBaseObjException(ImageScanResult.NAME); end
             isVisible = true;
             imageScanResult.copyToFigure(isVisible);
         end
         
         function popupStyleCallback(obj, ~, ~)
             imageScanResult = getObjByName(ImageScanResult.NAME);
+            if isempty(imageScanResult); throwBaseObjException(ImageScanResult.NAME); end
+            
             imageScanResult.plotStyle = obj.popupStyle.Value;
             imageScanResult.imagePostProcessing;    % Update added layer (including plot style)
         end

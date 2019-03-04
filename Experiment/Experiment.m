@@ -187,6 +187,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
                 
                 if obj.isTracking
                     tracker = getObjByName(Tracker.NAME);
+                    if isempty(tracker); throwBaseObjException(Tracker.Name); end
                     trackablePos = tracker.getTrackable(TrackablePosition.NAME);
                     if ~trackablePos.isHistoryEmpty ...
                             && QuestionUserYesNo('Restart tracking?', 'Do you want to restart tracking?')
@@ -264,6 +265,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             
             % Inform user
             pg = getObjByName(PulseGenerator.NAME);
+            if isempty(pg); throwBaseObjException(PulseGenerator.Name); end
             seqTime = pg.sequence.duration * 1e-6; % Multiplication in 1e-6 is for converting usecs to secs.
             
             averageTime = obj.repeats * seqTime * nMeasPerRepeat;
@@ -398,6 +400,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
     methods
         function getDelays(obj)
             pg = getObjByName(PulseGenerator.NAME);
+            if isempty(pg); throwBaseObjException(PulseGenerator.Name); end
             
             if isempty(obj.laserOnDelay) || isempty(obj.laserOffDelay)
                 [obj.laserOnDelay, obj.laserOffDelay] = pg.channelName2Delays('greenLaser');

@@ -141,24 +141,22 @@ classdef ViewSpcm < ViewVBox & EventListener
         
         function refresh(obj)
             % Just uicontrols, not axes
-            try
-                spcmCount = getObjByName(SpcmCounter.NAME);
-                obj.edtIntegrationTime.String = spcmCount.integrationTimeMillisec;
-                
-                obj.btnStartStop.isRunning = spcmCount.isRunning;
-                
-            catch
+            spcmCount = getObjByName(SpcmCounter.NAME);
+            if isempty(spcmCount)
                 % The counter is unavailable
                 obj.btnStartStop.isRunning = false;
+            else
+                obj.edtIntegrationTime.String = spcmCount.integrationTimeMillisec;
+                obj.btnStartStop.isRunning = spcmCount.isRunning;
             end
         end
         
         function update(obj)
             % Axes AND uicontrols
-            
-            try
-                counter = getObjByName(SpcmCounter.NAME);
-            catch
+
+            counter = getObjByName(SpcmCounter.NAME);
+            if isempty(counter)
+                % Nothing to do here
                 return
             end
             
@@ -215,9 +213,9 @@ classdef ViewSpcm < ViewVBox & EventListener
     
     methods (Static)
         function spcmCounter = getCounter
-            try
-                spcmCounter = getObjByName(SpcmCounter.NAME);
-            catch
+            spcmCounter = getObjByName(SpcmCounter.NAME);
+            if isempty(spcmCounter)
+                % If we don't already have one, we want to create it
                 spcmCounter = SpcmCounter;
             end
         end

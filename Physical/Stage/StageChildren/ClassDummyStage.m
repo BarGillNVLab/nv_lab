@@ -511,13 +511,10 @@ classdef (Sealed) ClassDummyStage  < ClassStage
             end
             
             % (Maybe) stop TrackablePosition
-            try
-                exp = getObjByName(TrackablePosition.NAME);
-                if exp.isRunning
-                    exp.isRunning = false;
-                    obj.sendWarning(warningMsg);
-                end
-            catch
+            exp = getObjByName(TrackablePosition.NAME);
+            if ~isempty(exp) && exp.isRunning
+                exp.isRunning = false;
+                obj.sendWarning(warningMsg);
             end
         end
         

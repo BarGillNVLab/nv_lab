@@ -35,7 +35,8 @@ classdef GuiControllerExperimentPlot < GuiController
             
             % If the experiment is running, we want to inform the user
             exp = getObjByName(obj.expName);
-            if exp.isRunning
+
+            if ~isempty(exp) && exp.isRunning
                 EventStation.anonymousWarning('The window closed, but %s is still running', obj.expName);
             end
         end

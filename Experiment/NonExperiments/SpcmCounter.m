@@ -113,6 +113,7 @@ classdef SpcmCounter < Experiment
             integrationTime = obj.integrationTimeMillisec;  % For convenience
             
             spcm = getObjByName(Spcm.NAME);
+            if isempty(spcm); throwBaseObjException(Spcm.NAME); end
             spcm.setSPCMEnable(true);
             spcm.prepareReadByTime(integrationTime/1000);
             
@@ -180,12 +181,12 @@ classdef SpcmCounter < Experiment
     %%
 	methods (Static)
         function init
-            try
-                obj = getObjByName(SpcmCounter.NAME);
-                obj.pause;
-            catch
+            obj = getObjByName(SpcmCounter.NAME);
+            if isempty(obj)
                 % There was no such object, so we create one
                 SpcmCounter;
+            else
+                obj.pause;
             end
         end
     end

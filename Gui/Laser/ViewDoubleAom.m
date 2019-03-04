@@ -140,6 +140,7 @@ classdef ViewDoubleAom < ViewVBox & EventListener
 		function laserPartObject = laserPart(obj)
 			% Get the laser part
 			laserPartObject = getObjByName(obj.mLaserPartName);
+            if isempty(laserPartObject); throwBaseObjException(obj.mLaserPartName); end
         end
         
         function [channel, channelNum] = getChannelFromHandle(obj, handle)

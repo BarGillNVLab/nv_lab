@@ -47,6 +47,8 @@ classdef ViewImageResultPanelCursor < GuiComponent
         %%%% Callbacks %%%%
         function callbackRadioSelection(obj, ~, event)
             imageScanResult = getObjByName(ImageScanResult.NAME);
+            if isempty(imageScanResult); throwBaseObjException(ImageScanResult.NAME); end
+            
             action = event.NewValue.Tag;
             imageScanResult.updateDataCursor(action);
             if event.NewValue == obj.radioZoom
@@ -60,7 +62,10 @@ classdef ViewImageResultPanelCursor < GuiComponent
             % When other operations finish, we want to return the cursor to
             % "marker" mode, both visually and functionally
             obj.radioMarker.Value = true;
+            
             imageScanResult = getObjByName(ImageScanResult.NAME);
+            if isempty(imageScanResult); throwBaseObjException(ImageScanResult.NAME); end
+            
             action = imageScanResult.CURSOR_OPTIONS{1};
             imageScanResult.updateDataCursor(action);    % functionally
         end

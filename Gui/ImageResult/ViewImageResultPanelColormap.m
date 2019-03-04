@@ -57,7 +57,7 @@ classdef ViewImageResultPanelColormap < GuiComponent
         
         function update(obj)
             % Get values from ImageScanResult
-            imageScanResult = getObjByName(ImageScanResult.NAME);
+            imageScanResult = obj.getImageScanResult();
             obj.popupTypes.Value = imageScanResult.colormapType;
             
             obj.cbxAuto.Value = imageScanResult.colormapAuto;
@@ -75,13 +75,13 @@ classdef ViewImageResultPanelColormap < GuiComponent
         function popupTypesCallback(obj, ~, ~)
             colormapType = obj.popupTypes.Value;
             
-            imageScanResult = getObjByName(ImageScanResult.NAME);
+            imageScanResult = obj.getImageScanResult();
             imageScanResult.colormapType = colormapType;
             imageScanResult.imagePostProcessing;    % which now updates added layer (including colormap)
         end
         
         function cbxAutoCallback(obj, ~, ~)
-            imageScanResult = getObjByName(ImageScanResult.NAME);
+            imageScanResult = obj.getImageScanResult();
             imageScanResult.colormapAuto = obj.cbxAuto.Value;
             if imageScanResult.colormapAuto
                 if imageScanResult.isDataAvailable
@@ -99,7 +99,7 @@ classdef ViewImageResultPanelColormap < GuiComponent
         end
         
         function edtMinCallback(obj, ~, ~)
-            imageScanResult = getObjByName(ImageScanResult.NAME);
+            imageScanResult = obj.getImageScanResult();
             limits = imageScanResult.colormapLimits;     % = [minVal maxVal]
             
             if ~ValidationHelper.isStringValueANumber(obj.edtMin.String)
@@ -122,7 +122,7 @@ classdef ViewImageResultPanelColormap < GuiComponent
         end
         
         function edtMaxCallback(obj, ~, ~)
-            imageScanResult = getObjByName(ImageScanResult.NAME);
+            imageScanResult = obj.getImageScanResult();
             limits = imageScanResult.colormapLimits;     % = [minVal maxVal]
             
             if ~ValidationHelper.isStringValueANumber(obj.edtMax.String)
@@ -142,6 +142,15 @@ classdef ViewImageResultPanelColormap < GuiComponent
             imageScanResult.colormapAuto = false;
             imageScanResult.colormapLimits(2) = newMaxVal;
             imageScanResult.imagePostProcessing;    % Updates added layer (including colormap)
+        end
+    end
+    
+    methods (Static)
+        function isr = getImageScanResult
+            isr = getObjByName(ImageScanResult.NAME);
+            if isempty(isr)
+                throwBaseObjException(ImageScanResult.NAME);
+            end
         end
     end
     

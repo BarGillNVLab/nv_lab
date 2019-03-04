@@ -22,7 +22,7 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
             obj@ViewVBox(parent, controller, padding, spacing);
             obj@EventListener({expName, SaveLoadCatExp.NAME});
             obj.expName = expName;
-            exp = getObjByName(expName);
+            exp = getExpByName(expName);
             
             fig = obj.component;    % for brevity
             obj.vAxes = axes('Parent', fig, ...
@@ -71,7 +71,7 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
         %%% Callbacks %%%
         function btnStopCallback(obj, ~, ~)
             try
-                exp = getObjByName(obj.expName);
+                exp = getExpByName(obj.expName);
                 exp.pause;
                 obj.btnStartStop.stopString = 'Pausing...';
                 obj.btnStartStop.isRunning = true;
@@ -81,11 +81,7 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
         end
         
         function btnStartCallback(obj, ~, ~)
-            try
-                exp = getObjByName(obj.expName);
-            catch
-                
-            end
+            exp = getExpByName(obj.expName);
             exp.run;
             obj.refresh;
         end
@@ -97,14 +93,14 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
         end
         
         function btnEmergencyStopCallback(obj, ~, ~)
-            exp = getObjByName(obj.expName);
+            exp = getExpByName(obj.expName);
             exp.emergencyStop;
         end
         
         %%% Plotting %%%
         function plot(obj)
             % Check whether we have anything to plot
-            exp = getObjByName(obj.expName);
+            exp = getExpByName(obj.expName);
             if obj.isPlotAlternate
                 data = exp.alternateSignal().value;
             else
@@ -168,7 +164,7 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
         end
         
         function refresh(obj)
-            exp = getObjByName(obj.expName);
+            exp = getExpByName(obj.expName);
             if ~exp.restartFlag
                 obj.btnStartStop.startString = 'Resume';
             else
@@ -201,21 +197,6 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
             
             %%% close the figure
             close(figureInvis);
-        end
-    end
-    
-    methods
-        function exp = getExperiment(obj)
-            try
-                exp = getObjByName(obj.expName);
-            catch
-                [expNamesCell, expClassNamesCell] = Experiment.getExperimentNames();
-                ind = strcmp(obj.expName, expNamesCell); % index of obj.expName in list
-                
-                % We use @str2func which is superior to @eval, when possible
-                className = str2func(expClassNamesCell{ind}); % function handle for the class
-                exp = className();
-            end
         end
     end
     

@@ -109,6 +109,7 @@ classdef (Abstract) EventListener < handle
                 obj.namesToListenTo = obj.namesToListenTo(allOther);
                 es.removeListener(obj, senderName);
             else
+                % This is a cell array of names;
                 % Iterate and remove
                 for i = 1 : length(oldName)
                     senderName = oldName{i};

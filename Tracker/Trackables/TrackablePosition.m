@@ -52,6 +52,7 @@ classdef TrackablePosition < Trackable % & StageScanner
             if exist('stageName', 'var')
                 obj.mStageName = stageName;
                 stage = getObjByName(stageName);
+                    if isempty(stage); throwBaseObjException(stageName); end
                 assert(stage.isScannable)
             else
                 stage = JsonInfoReader.getDefaultObject('stages');
@@ -86,11 +87,14 @@ classdef TrackablePosition < Trackable % & StageScanner
             obj.resetAlgorithm;
             obj.isCurrentlyTracking = true;
             stage = getObjByName(obj.mStageName);
+                if isempty(stage); throwBaseObjException(stageName); end
             
             spcm = getObjByName(Spcm.NAME);
+                if isempty(spcm); throwBaseObjException(Spcm.NAME); end
             spcm.setSPCMEnable(true);
             
             laser = getObjByName(obj.mLaserName);
+                if isempty(laser); throwBaseObjException(obj.mLaserName); end
             laser.isOn = true;
             
             %%%% Get initial position and signal value, for history %%%%

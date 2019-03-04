@@ -30,6 +30,8 @@ classdef ViewStagePanelScan < GuiComponent & EventListener
             
             % Get scan speed parameters from stage
             stage = getObjByName(obj.stageName);
+            if isempty(stage); throwBaseObjException(obj.stageName); end
+            
             fastScannable = stage.hasFastScan;
             slowScannable = stage.hasSlowScan;
             enable = BooleanHelper.boolToOnOff(fastScannable && slowScannable);
@@ -59,7 +61,9 @@ classdef ViewStagePanelScan < GuiComponent & EventListener
         
         function refresh(obj)
             stage = getObjByName(obj.stageName);
+                if isempty(stage); throwBaseObjException(obj.stageName); end
             scanParams = stage.scanParams;
+            
             obj.cbxAutoSave.Value = scanParams.autoSave;
             obj.cbxContinuous.Value = scanParams.continuous;
             obj.cbxFastScan.Value = scanParams.fastScan;
@@ -68,28 +72,36 @@ classdef ViewStagePanelScan < GuiComponent & EventListener
         
         function cbxAutoSaveCallback(obj)
             stage = getObjByName(obj.stageName);
+                if isempty(stage); throwBaseObjException(obj.stageName); end
             scanParams = stage.scanParams;
+            
             scanParams.autoSave = obj.cbxAutoSave.Value;
             stage.sendEventScanParamsChanged();
         end
         
         function cbxContCallback(obj)
             stage = getObjByName(obj.stageName);
+                if isempty(stage); throwBaseObjException(obj.stageName); end
             scanParams = stage.scanParams;
+            
             scanParams.continuous = obj.cbxContinuous.Value;
             stage.sendEventScanParamsChanged();
         end
         
         function cbxFastScanCallback(obj)
             stage = getObjByName(obj.stageName);
+                if isempty(stage); throwBaseObjException(obj.stageName); end
             scanParams = stage.scanParams;
+            
             scanParams.fastScan = obj.cbxFastScan.Value;
             stage.sendEventScanParamsChanged();
         end
         
         function edtPixelTimeCallback(obj)
             stage = getObjByName(obj.stageName);
+                if isempty(stage); throwBaseObjException(obj.stageName); end
             scanParams = stage.scanParams;
+            
             if ~ValidationHelper.isValuePositive(obj.edtPixelTime.String)
                 obj.edtPixelTime.String = StringHelper.formatNumber(scanParams.pixelTime);
                 EventStation.anonymousError('Pixel time has to be a positive number! Reverting.');

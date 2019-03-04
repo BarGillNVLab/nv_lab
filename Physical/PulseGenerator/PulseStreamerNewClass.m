@@ -174,9 +174,8 @@ classdef (Sealed) PulseStreamerNewClass < PulseGenerator
     methods (Static, Access = public)
         function obj = getInstance(struct)
             % Returns a singelton instance.
-            try
-                obj = getObjByName(PulseGenerator.NAME);
-            catch
+            obj = getObjByName(PulseGenerator.NAME);
+            if isempty(obj)
                 % None exists, so we create a new one
                 missingField = FactoryHelper.usualChecks(struct, PulseStreamerNewClass.NEEDED_FIELDS);
                 if ~isnan(missingField)

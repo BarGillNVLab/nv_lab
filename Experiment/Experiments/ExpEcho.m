@@ -179,12 +179,14 @@ classdef ExpEcho < Experiment
             
             %%% Send to PulseGenerator
             pg = getObjByName(PulseGenerator.NAME);
+            if isempty(pg); throwBaseObjException(PulseGenerator.Name); end
             pg.sequence = S;
             pg.repeats = obj.repeats;
             seqTime = pg.sequence.duration * 1e-6; % Multiplication in 1e-6 is for converting usecs to secs.
             
             % Set Frequency Generator
             fg = getObjByName(obj.freqGenName);
+            if isempty(fg); throwBaseObjException(obj.freqGenName); end
             fg.amplitude = obj.amplitude;
             fg.frequency = obj.frequency;
             
@@ -195,6 +197,7 @@ classdef ExpEcho < Experiment
             numScans = 2*obj.repeats;
             obj.timeout = 15 * numScans * seqTime;       % some multiple of the actual duration
             spcm = getObjByName(Spcm.NAME);
+            if isempty(spcm); throwBaseObjException(Spcm.Name); end
             spcm.setSPCMEnable(true);
             spcm.prepareExperimentCount(numScans, obj.timeout);
             
@@ -209,6 +212,7 @@ classdef ExpEcho < Experiment
             seq = pg.sequence;
             spcm = getObjByName(Spcm.NAME);
             tracker = getObjByName(Tracker.NAME);
+                if isempty(tracker); throwBaseObjException(Tracker.Name); end
             
             % Some magic numbers
             maxLastDelay = obj.mwOffDelay + 2 * max(obj.tau);
@@ -324,9 +328,12 @@ classdef ExpEcho < Experiment
                 % No input -- we take the default FG
                 name = FrequencyGenerator.getDefaultFgName;
             elseif ischar(FG)
-                getObjByName(FG);
-                % If this did not throw an error, then the FG exists
-                name = FG;
+                FgObj = getObjByName(FG);
+                if isempty(FgObj)
+                    throwBaseObjException(FG)
+                else
+                    name = FG;
+                end
             elseif isa(FG, 'FrequencyGenerator')
                 name = FG.name;
             else

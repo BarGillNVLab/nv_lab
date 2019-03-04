@@ -1,12 +1,12 @@
 function baseObjOrNan = removeObjIfExists(baseObjName)
 %REMOVEOBJIFEXISTS Removes a base object if it exists
-    try
-        baseObj = getObjByName(baseObjName);
+    baseObj = getObjByName(baseObjName);
+    if isempty(baseObj)
+        % Don't remove anything: nothing was there in the first place
+        baseObjOrNan = nan;
+    else
         BaseObject.removeObject(baseObj);
         baseObjOrNan = baseObj;
-    catch
-        % Don't remove anything as error indicates that it was not there in the first place
-        baseObjOrNan = nan;
     end
 end
 

@@ -169,6 +169,8 @@ classdef ViewMainTiltCalculator < GuiComponent
         function btnSetToFixedCallback(obj, pointNumber)
             % pointNumber - can be 1, 2 or 3
             stage = getObjByName(obj.stageName);
+            if isempty(stage); throwBaseObjException(obj.stageName); end
+            
             point = stage.scanParams.fixedPos;
             obj.updatePoint(point, pointNumber);    
         end
@@ -176,6 +178,8 @@ classdef ViewMainTiltCalculator < GuiComponent
         function btnSetToCurrentPointCallback(obj, pointNumber)
             % pointNumber - can be 1, 2 or 3
             stage = getObjByName(obj.stageName);
+            if isempty(stage); throwBaseObjException(obj.stageName); end
+            
             point = stage.Pos('XYZ');
             obj.updatePoint(point, pointNumber);
         end
@@ -218,6 +222,7 @@ classdef ViewMainTiltCalculator < GuiComponent
             thetaYZ = anglesVec(2);
             
             stage = getObjByName(obj.stageName);
+            if isempty(stage); throwBaseObjException(obj.stageName); end
             stage.setTiltAngle(thetaXZ, thetaYZ);
             
             % update the points to be saved in the gui

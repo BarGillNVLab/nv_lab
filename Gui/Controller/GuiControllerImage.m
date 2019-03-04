@@ -25,10 +25,10 @@ classdef GuiControllerImage < GuiController
         
         function onClose(obj)
             % Callback. Things to run when need to close the GUI.
-            try
-                imageScanResult = getObjByName(ImageScanResult.NAME);
+            imageScanResult = getObjByName(ImageScanResult.NAME);
+            if ~isempty(imageScanResult)
                 imageScanResult.checkGraphicAxes;       % Tell it that vAxes are no longer available (without being EventSender)
-            catch
+            else
                 % Could not find ImageScanResult, so nothing needs updating.
             end
 %             StageControlEvents.sendCloseConnection;

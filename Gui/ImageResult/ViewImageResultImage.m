@@ -15,6 +15,9 @@ classdef ViewImageResultImage < GuiComponent
         function obj = ViewImageResultImage(parent, controller)
             obj@GuiComponent(parent, controller);
             imageScanResult = getObjByName(ImageScanResult.NAME);
+            if isempty(imageScanResult)
+                throwBaseObjException(ImageScanResult.NAME)
+            end
             
             obj.component = uicontainer('parent', parent.component);
             obj.vAxes = axes('Parent', obj.component, 'ActivePositionProperty', 'outerposition');

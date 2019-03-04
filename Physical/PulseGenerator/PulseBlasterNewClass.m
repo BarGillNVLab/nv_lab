@@ -759,9 +759,8 @@ classdef (Sealed) PulseBlasterNewClass < PulseGenerator
     methods (Static, Access = public)
         function obj = GetInstance(struct)
             % Returns a singelton instance.
-            try
-                obj = getObjByName(PulseGenerator.NAME);
-            catch
+            obj = getObjByName(PulseGenerator.NAME);
+            if isempty(obj)
                 % None exists, so we create a new one
                 missingField = FactoryHelper.usualChecks(struct, PulseBlasterNewClass.NEEDED_FIELDS);
                 if ~isnan(missingField)

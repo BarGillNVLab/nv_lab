@@ -41,13 +41,17 @@ classdef ViewStagePanelGeneral < GuiComponent
         %%%% Callbcaks %%%%
         function btnResetStageCallback(obj,~,~)
             stage = getObjByName(obj.stageName);
+            if isempty(stage); throwBaseObjException(obj.stageName); end
+            
             stage.Reconnect;
             stage.sendEventPositionChanged;     % It might have
         end
         
         function cbxClosedLoopCallback(obj,~,~)
-            mode = BooleanHelper.ifTrueElse(obj.cbxClosedLoop.Value, 'Closed', 'Open');
             stage = getObjByName(obj.stageName);
+            if isempty(stage); throwBaseObjException(obj.stageName); end
+            
+            mode = BooleanHelper.ifTrueElse(obj.cbxClosedLoop.Value, 'Closed', 'Open');
             stage.ChangeLoopMode(mode);
         end
     end

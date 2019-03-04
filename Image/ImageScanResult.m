@@ -146,6 +146,7 @@ classdef ImageScanResult < Savable & EventSender & EventListener
             % Get current stage position
             try     % This will not happen without an operating stage
                 stage = getObjByName(obj.mStageName);
+                    if isempty(stage); throwBaseObjException(obj.mStageName); end
                 pos = stage.Pos(obj.mAxesString);
                 % Draw
                 if isempty(obj.cursor)
@@ -266,6 +267,8 @@ classdef ImageScanResult < Savable & EventSender & EventListener
             % (the color level from the colormap)
             
             imageScanResult = getObjByName(ImageScanResult.NAME);
+            if isempty(imageScanResult); throwBaseObjException(ImageScanResult.NAME); end
+            
             if ~imageScanResult.isDataAvailable
                 txt = '';
                 EventStation.anonymousWarning('Image is empty');
@@ -324,6 +327,7 @@ classdef ImageScanResult < Savable & EventSender & EventListener
             
             try
                 stage = getObjByName(obj.mStageName);
+                if isempty(stage); throwBaseObjException(obj.mStageName); end
                 assert(stage.isScannable)
             catch
                 EventStation.anonymousError('Can''t set new scan parameters, since there is no relevant stage');
@@ -479,6 +483,7 @@ classdef ImageScanResult < Savable & EventSender & EventListener
             
             % Get everything we need
             stage = getObjByName(obj.mStageName);
+            if isempty(stage); throwBaseObjException(obj.mStageName); end
             pos = obj.gAxes.CurrentPoint(1, 1:obj.mDimNumber);
 
             % Now move to the corresponding location
@@ -621,21 +626,23 @@ classdef ImageScanResult < Savable & EventSender & EventListener
     methods
         function set.mStageName(obj, stageName)
             % The stage might have changed, and we need to start listening to it
-            try
-                % We might not need to do anything, since we are not using
-                % the same stage.
-                if ~strcmp(stageName, obj.mStageName)
-                    % Check that required stage is available
-                    getObjByName(stageName);
-                    
-                    % Switch to new stage
-                    obj.stopListeningTo(obj.mStageName);
-                    obj.mStageName = stageName;
-                    obj.startListeningTo(obj.mStageName);
-                end
-            catch
-                obj.sendWarning('New stage is not available. Some things might not work properly.');
+            
+            % We might not need to do anything, since we are using
+            % the same stage.
+            if strcmp(stageName, obj.mStageName)
+                return
             end
+            
+            % Check that required stage is available
+            newStage = getObjByName(stageName);
+            if isempty(newStage)
+                obj.sendWarning('New stage is not available. Some things might not work properly.');
+            else
+                % Switch to new stage
+                obj.stopListeningTo(obj.mStageName);
+                obj.mStageName = stageName;
+                obj.startListeningTo(obj.mStageName);
+            end 
         end
     end
     
@@ -787,16 +794,14 @@ classdef ImageScanResult < Savable & EventSender & EventListener
                 scanner = getObjByName(StageScanner.NAME);
                 if scanner.mCurrentlyScanning; return; end
                 
-                try
-                    stage = getObjByName(obj.mStageName);
+                stage = getObjByName(obj.mStageName);
+                if isempty(stage)
+                    % Probably, there is nothing to draw on. Moving on!
+                else
                     physAxes = obj.mAxesString;
                     pos = stage.Pos(physAxes);
                     limits = axis(obj.gAxes);   % vector of [x_min x_max y_min y_max]
                     obj.drawCrosshairs(limits, pos)
-                catch err
-                    % Probably, there is nothing to draw on. Moving on!
-                    % For debugging purposes, we do show this warning.
-%                     EventStation.anonymousWarning(err.message)
                 end
             end
         end

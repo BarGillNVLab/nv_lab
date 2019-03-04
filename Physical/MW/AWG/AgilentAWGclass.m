@@ -74,7 +74,8 @@ classdef (Sealed) AgilentAWGclass <  handle
                 end
                 try
                     fclose(obj.InstrObj);% close the AWG connection - if it was not closed before.
-                catch
+                catch err
+                    err2warning(err)
                 end
                 set(obj.InstrObj, 'OutputBufferSize', obj.blocksize + 64);
                 set(obj.InstrObj, 'InputBufferSize', 256);

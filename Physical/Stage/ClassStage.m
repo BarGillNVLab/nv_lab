@@ -54,29 +54,25 @@ classdef (Abstract) ClassStage < EventSender & Savable & EventListener
                         stageType = curStageStruct.type;
                         switch stageType
                             case 'LPS-65' % Setup 1 LPS-65
-                                try
-                                    newStage = getObjByName(ClassPILPS65.NAME);
-                                catch
+                                newStage = getObjByName(ClassPILPS65.NAME);
+                                if isempty(newStage)
                                     newStage = ClassPILPS65.create(curStageStruct);
                                 end
                             case 'Galvo' % Galvo mirrors for the Cryo setup
-                                try
-                                    newStage = getObjByName(ClassGalvo.NAME);
-                                catch
+                                newStage = getObjByName(ClassGalvo.NAME);
+                                if isempty(newStage)
                                     newStage = ClassGalvo.create(curStageStruct);
                                 end
                             case 'ECC'
                                 newStage = ClassECC.GetInstance(); % ECC100 stages used in setup 1 - > Very old and might not be comptiable
                             case 'ANC'
-                                try
-                                    newStage = getObjByName(ClassANC.NAME);
-                                catch
+                                newStage = getObjByName(ClassANC.NAME);
+                                if isempty(newStage)
                                     newStage = ClassANC.create(curStageStruct);
                                 end
                             case 'PIP-562'
-                                try
-                                    newStage = getObjByName(ClassPIP562.NAME);
-                                catch
+                                newStage = getObjByName(ClassPIP562.NAME);
+                                if isempty(newStage)
                                     newStage = ClassPIP562.create(curStageStruct);
                                 end
                             case 'PIM-686'
@@ -94,15 +90,12 @@ classdef (Abstract) ClassStage < EventSender & Savable & EventListener
                                     stageName = 'Dummy stage';
                                 end
                                 
-                                try
-                                    % Maybe this already exists, and we will
-                                    % then replace it.
-                                    oldStage = getObjByName(stageName);
+                                % Maybe this already exists, and we will
+                                % then replace it.
+                                oldStage = getObjByName(stageName);
+                                if ~isempty(oldStage)
                                     EventStation.anonymousWarning('%s will be overridden!', stageName);
                                     removeObjIfExists(oldStage);
-                                catch
-                                    % This is actually the simple case, despite
-                                    % what syntax might suggest.
                                 end
                                 
                                 

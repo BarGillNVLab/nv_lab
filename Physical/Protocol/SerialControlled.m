@@ -68,9 +68,10 @@ classdef (Abstract) SerialControlled < handle
                 % Free the instrument for other procceses
                 try
                     obj.close;
-                catch
+                catch err
                     msg = sprintf('Could not disconnect %s upon deletion!', obj.name);
                     EventStation.anonymousWarning(msg)
+                    err2warning(err)
                 end
             end
             delete(obj.s);

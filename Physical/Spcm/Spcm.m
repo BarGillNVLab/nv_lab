@@ -87,13 +87,12 @@ classdef (Abstract) Spcm < EventSender
                 EventStation.anonymousError('Can''t initialize SPCM - needed field "%s" was not found in initialization struct!', missingField);
             end
             
-            try % Maybe there is already one
-                getObjByName(Spcm.NAME);
+            % Maybe there is already one
+            obj = getObjByName(Spcm.NAME);
+            if ~isempty(obj)
+                % Don't create one if another already exists!
                 warning('Another instance of the SPCM already exists')
                 return
-            catch
-                % We actually hope to get here, since this means we are not
-                % creating an object that already exists
             end
             
             % Create new object

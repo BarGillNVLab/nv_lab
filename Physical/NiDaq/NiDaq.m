@@ -82,11 +82,12 @@ classdef NiDaq < EventSender
                 dummy = false;
             end
             
-            try
+            
+            obj = getObjByName(NiDaq.NAME);
+            if ~isempty(obj)
                 % Initialize object if it exists
-                obj = getObjByName(NiDaq.NAME);
                 init(obj, niDaqStruct.deviceName, dummy);
-            catch
+            else
                 % Create it otherwise
                 obj = NiDaq(niDaqStruct.deviceName, dummy);
                 addBaseObject(obj); % so it can be reached by getObjByName()

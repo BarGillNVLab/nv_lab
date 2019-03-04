@@ -32,6 +32,7 @@ classdef ViewStagePanelLimits < GuiComponent & EventListener
             
             axesLen = length(obj.stageAxes);
             stage = getObjByName(obj.stageName);
+            if isempty(stage); throwBaseObjException(obj.stageName); end
             
             %%%% panel init %%%%
             panelLimits = uix.Panel('Parent', parent.component, 'Title', 'Stage Limits', 'Padding', 5);
@@ -132,6 +133,7 @@ classdef ViewStagePanelLimits < GuiComponent & EventListener
             % refresh the info shown in the GUI based on values from the
             % stage
             stage = getObjByName(obj.stageName);
+            if isempty(stage); throwBaseObjException(obj.stageName); end
                         
             for i = 1 : length(stage.availableAxes)
                 phAxis = ClassStage.getAxis(stage.availableAxes(i));
@@ -145,6 +147,8 @@ classdef ViewStagePanelLimits < GuiComponent & EventListener
         function edtLowerLimitCallback(obj, index)
             % index - int. [1 to length(obj.stageAxes)] which view was changed
             stage = getObjByName(obj.stageName);
+            if isempty(stage); throwBaseObjException(obj.stageName); end
+            
             phAxis = ClassStage.getAxis(obj.stageAxes(index));
             [limNeg, limPos] = stage.ReturnLimits(phAxis);
             [negHardLimit, posHardLimit] = stage.ReturnHardLimits(phAxis);
@@ -173,6 +177,8 @@ classdef ViewStagePanelLimits < GuiComponent & EventListener
         function edtUpperLimitCallback(obj, index)
             % index - int. [1 to length(obj.stageAxes)] which view was changed
             stage = getObjByName(obj.stageName);
+            if isempty(stage); throwBaseObjException(obj.stageName); end
+            
             phAxis = ClassStage.getAxis(obj.stageAxes(index));
             [limNeg, limPos] = stage.ReturnLimits(phAxis);
             [negHardLimit, posHardLimit] = stage.ReturnHardLimits(phAxis);
@@ -201,14 +207,14 @@ classdef ViewStagePanelLimits < GuiComponent & EventListener
         
         function btnSetToAroundCallback(obj)
             % sets the stage limits to be around the value in the edit-text field
-            stage = getObjByName(obj.stageName); 
-            around = obj.edtSetAround.String;
+            stage = getObjByName(obj.stageName);
+            if isempty(stage); throwBaseObjException(obj.stageName); end
             
+            around = obj.edtSetAround.String;
             if ~ValidationHelper.isStringValueANumber(around)
                 obj.edtSetAround.String = obj.SET_AROUND_DEFAULT_STRING;
                 EventStation.anonymousError('"around" should be a number! Reverting...');
             end
-            
             around = str2double(around);
             
             for i = 1 : length(obj.stageAxes)
@@ -229,7 +235,9 @@ classdef ViewStagePanelLimits < GuiComponent & EventListener
         
         function btnSetToCurPosCallback(obj)
             % sets the stage limits to the current stage position
-            stage = getObjByName(obj.stageName); 
+            stage = getObjByName(obj.stageName);
+            if isempty(stage); throwBaseObjException(obj.stageName); end
+            
             for i = 1 : length(obj.stageAxes)
                 phAxis = ClassStage.getAxis(obj.stageAxes(i));
                 curPos = stage.Pos(phAxis);
@@ -246,7 +254,9 @@ classdef ViewStagePanelLimits < GuiComponent & EventListener
         
         function btnSetToMaxCallback(obj)
             % sets the stage limits to their maximum avaliability
-            stage = getObjByName(obj.stageName); 
+            stage = getObjByName(obj.stageName);
+            if isempty(stage); throwBaseObjException(obj.stageName); end
+            
             for i = 1 : length(obj.stageAxes)
                 phAxis = ClassStage.getAxis(obj.stageAxes(i));
                 [limHardNeg, limHardPos] = stage.ReturnHardLimits(phAxis);

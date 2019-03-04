@@ -235,6 +235,7 @@ classdef ExpESR < Experiment
             
             %%% Send to PulseGenerator
             pg = getObjByName(PulseGenerator.NAME);
+            if isempty(pg); throwBaseObjException(PulseGenerator.Name); end
             pg.sequence = S;
             pg.repeats = obj.repeats;
             seqTime = pg.sequence.duration * 1e-6; % Multiplication in 1e-6 is for converting usecs to secs.
@@ -243,6 +244,7 @@ classdef ExpESR < Experiment
             numScans = 2*obj.repeats;
             obj.timeout = 10 * numScans * seqTime;       % some multiple of the actual duration
             spcm = getObjByName(Spcm.NAME);
+            if isempty(spcm); throwBaseObjException(Spcm.Name); end
             spcm.setSPCMEnable(true);
             spcm.prepareExperimentCount(numScans, obj.timeout);
 
@@ -271,6 +273,7 @@ classdef ExpESR < Experiment
             pg = getObjByName(PulseGenerator.NAME);
             spcm = getObjByName(Spcm.NAME);
             tracker = getObjByName(Tracker.NAME);
+                if isempty(tracker); throwBaseObjException(Tracker.Name); end
             
             fgCell = FrequencyGenerator.getFG();
             fg1 = fgCell{1};

@@ -62,9 +62,10 @@ classdef LaserSourceOnefiveKatana08 < LaserPartAbstract & SerialControlled
                 if strcmp(obj.status, 'closed')
                     obj.disconnect;
                 end
-            catch
+            catch err
                 msg = sprintf('Could not disconnect %s upon deletion!', obj.name);
                 obj.sendWarning(msg)
+                err2warning(err)
             end
         end
     end

@@ -65,9 +65,8 @@ classdef SaveLoad < Savable & EventSender
             % category - string
 
             saveLoadName = SaveLoad.getInstanceName(category);
-            try
-                obj = getObjByName(saveLoadName);
-            catch                   % if it hasn't been created yet
+            obj = getObjByName(saveLoadName);
+            if isempty(obj)     % it hasn't been created yet
                 obj = SaveLoad(category);
             end
         end
@@ -85,15 +84,13 @@ classdef SaveLoad < Savable & EventSender
             % 2. One for category Experiments: Similarly, it needs to
             %    listen to class Experiment.
             
-            try
-                getObjByName(SaveLoadCatImage.NAME);
-            catch               % i.e. no available object
+            slImage = getObjByName(SaveLoadCatImage.NAME);
+            if isempty(slImage) % i.e. no available object
                 SaveLoadCatImage;	% init this object
             end
             
-            try
-                getObjByName(SaveLoadCatExp.NAME);
-            catch               % i.e. no available object
+            slExp = getObjByName(SaveLoadCatExp.NAME);
+            if isempty(slExp)   % i.e. no available object
                 SaveLoadCatExp;
             end
         end

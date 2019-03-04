@@ -10,9 +10,9 @@ classdef BaseObject < HiddenMethodsHandle & PropertiesDisplaySorted
     %   would be via calling addBaseObject() --> an Exception will be
     %   thrown if an object is in with the same name.
     %   Removing a BaseObject from the map is done via removeObjIfExists().
-    %   Querying (getting) objects from the map is done via 
-    %   getObjByName(string), which will return the BaseObject or throw an
-    %   exception if no BaseObject was found.
+    %   Querying (getting) objects from the map is done via
+    %   getObjByName(string), which will return either the BaseObject if it
+    %   was found, or an empty variable if no BaseObject was found.
     %
     %   This class extends CustomDisplay so that properties could look
     %   better and readable.
@@ -64,7 +64,7 @@ classdef BaseObject < HiddenMethodsHandle & PropertiesDisplaySorted
     methods (Static, Hidden)
         function baseObject = getByName(objName)
             % Searches and returns an object based on its "name" property;
-            % produces an error/exception if no such object was found.
+            % returns an empty variable if no such object was found.
             %
             % Although this function is accessable from anywhere in the
             % code, it is hidden so that it won't auto-complete in every
@@ -74,12 +74,15 @@ classdef BaseObject < HiddenMethodsHandle & PropertiesDisplaySorted
             allBaseObjects = BaseObject.allObjects.wrapped;
 
             if ~ischar(objName) && ~isstring(objName)
-                error('Requested object name, %s, is invalid!', objName)
+                baseObject = [];
+%                 error('Requested object name, %s, is invalid!', objName)
             elseif ~allBaseObjects.isKey(objName)
-                error('No object named "%s" exists!', objName)
+                baseObject = [];
+%                 error('No object named "%s" exists!', objName)
+            else
+                baseObject = allBaseObjects(objName);
+                assert(isscalar(baseObject)); % found only one object
             end
-            baseObject = allBaseObjects(objName);
-            assert(isscalar(baseObject)); % found only one object
         end
         
         function addObject(baseObject)

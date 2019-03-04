@@ -38,6 +38,8 @@ classdef ViewStagePanelTrack < GuiComponent & EventListener
         
         function refresh(obj)
             trackablePos = getObjByName(TrackablePosition.NAME);
+            if isempty(trackablePos); throwBaseObjException(TrackablePosition.NAME); end
+            
             obj.cbxContinuous.Value = trackablePos.isRunningContinuously;
         end
         
@@ -45,11 +47,13 @@ classdef ViewStagePanelTrack < GuiComponent & EventListener
         function btnTrackCallback(obj,~,~)
             % We need to first make sure we have a working experiment, and
             % that it is running the right stage and laser
-            try
-                trackablePos = getObjByName(TrackablePosition.NAME);
-                trackablePos.mStageName = obj.mStageName;
-            catch
+            trackablePos = getObjByName(TrackablePosition.NAME);
+            if isempty(trackablePos)
+                % We create the tracker anew, with this stage
                 trackablePos = TrackablePosition(obj.mStageName);
+            else
+                % Just in case the stage is not the right one,
+                trackablePos.mStageName = obj.mStageName;
             end
             
             trackablePos.resetTrack;
@@ -58,6 +62,8 @@ classdef ViewStagePanelTrack < GuiComponent & EventListener
         
         function cbxContinuousCallback(obj,~,~)
             trackablePos = getObjByName(TrackablePosition.NAME);
+            if isempty(trackablePos); throwBaseObjException(TrackablePosition.NAME); end
+            
             trackablePos.isRunningContinuously = obj.cbxContinuous.Value;
         end
     end

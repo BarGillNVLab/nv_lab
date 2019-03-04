@@ -127,8 +127,9 @@ classdef ViewLaserPart < ViewHBox & EventListener
         end % function setLaserEnabled
 		
 		function laserPartObject = laserPart(obj)
-			% get the laser part
+			% Get the laser part
 			laserPartObject = getObjByName(obj.mLaserPartName);
+            if isempty(laserPartObject); throwBaseObjException(obj.mLaserPartName); end
 		end
         
     end  % methods

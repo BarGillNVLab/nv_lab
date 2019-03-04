@@ -32,6 +32,8 @@ classdef Joystick < BaseObject
             % Checks if the joystick buttons are pressed and executes commands.
             
             stage = getObjByName(obj.mStageName);
+            if isempty(stage); throwBaseObjException(obj.mStageName); end
+            
             % For convenience
             nPoints = obj.NUM_OF_POINTS;
             tSeperation = obj.SEPERTAION_TIME;
@@ -85,9 +87,8 @@ classdef Joystick < BaseObject
     
     methods (Static)
         function init(stageName)
-            try
-                getObjByName(Joystick.NAME);
-            catch
+            jstick = getObjByName(Joystick.NAME);
+            if isempty(jstick)
                 % There is no joystick yet, so we create it
                 jstick = Joystick(stageName);
                 addBaseObject(jstick);

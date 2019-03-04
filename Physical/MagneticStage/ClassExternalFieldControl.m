@@ -109,16 +109,15 @@ classdef (Sealed) ClassExternalFieldControl < handle
                     error('Input type must be char or double, %s entered',class(index))
             end
         end
-        function name = NameFromIndex(obj,index)
+        function name = NameFromIndex(obj, index)
             %Give the name of the stage (a cell array), as used by the GUI, from an
             %index.
             name = cell(1,length(index));
-            try
-                for k = 1:length(name)
-                    name{k} = obj.stage_names{index(k)};                    
-                end
-            catch
-                 error('unknwn index for magnetic stag system')
+            if any(index > length(name))
+                error('Unknown index for magnetic stage system')
+            end
+            for k = 1:length(name)
+                name{k} = obj.stage_names{index(k)};
             end
         end
         function SetSoftLimitsMax(obj, index, newVal)

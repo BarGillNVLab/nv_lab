@@ -58,9 +58,10 @@ classdef LaserSourceLaserquantumSmd12 < LaserPartAbstract & SerialControlled
                     obj.setEnabled(false);
                     msg = sprintf('Turning off %s, upon deletion', obj.name);
                     obj.sendWarning(msg)
-                catch
+                catch err
                     msg = sprintf('Could not turn off %s upon deletion!', obj.name);
-                    obj.sendWarning(msg)
+                    obj.sendWarning(msg);
+                    err2warning(err);
                 end
             end
         end

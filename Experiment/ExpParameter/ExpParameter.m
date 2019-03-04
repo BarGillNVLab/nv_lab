@@ -70,12 +70,12 @@ classdef (Abstract) ExpParameter < HiddenMethodsHandle & PropertiesDisplaySorted
             obj.value = newValue;
             
             if obj.isAssociatedToExp && ~strcmp(obj.type, obj.TYPE_RESULT)
-                try
-                    exp = getObjByName(obj.expName);
-                    exp.sendEventParamChanged();
-                catch
+                exp = getObjByName(obj.expName);
+                if isempty(exp)
                     % Associated experiment does not exist!
                     obj.expName = nan;
+                else
+                    exp.sendEventParamChanged();
                 end
             end
         end

@@ -39,14 +39,14 @@ classdef TcpIpControlled < handle
         function open(obj)
             try 
                 fopen(obj.t);
-            catch error
-                if strcmp(error.identifier, 'MATLAB:tcpip:fopen:opfailed')
+            catch err
+                if strcmp(err.identifier, 'MATLAB:tcpip:fopen:opfailed')
                     % If the device was opened by MATLAB, we can probably
                     % close it, and open a new connection
                     fclose(instrfind('RemoteHost', obj.port));
                     fopen(obj.t);
                 else
-                    rethrow(error)
+                    rethrow(err)
                 end
             end
         end

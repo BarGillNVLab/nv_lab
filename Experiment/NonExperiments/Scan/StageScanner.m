@@ -70,6 +70,7 @@ classdef StageScanner < EventSender & EventListener & Savable
             end
             
             stage = getObjByName(obj.mStageName);
+            if isempty(stage); throwBaseObjException(obj.mStageName); end
             obj.mStageScanParams = stage.scanParams.copy;
             isFastScan = obj.mStageScanParams.fastScan;
             stage.FastScan(isFastScan);
@@ -81,6 +82,7 @@ classdef StageScanner < EventSender & EventListener & Savable
             obj.sendEventScanStarting();
             
             spcm = getObjByName(Spcm.NAME);
+            if isempty(spcm); throwBaseObjException(Spcm.NAME); end
             spcm.setSPCMEnable(true);
             
             try
@@ -584,6 +586,8 @@ classdef StageScanner < EventSender & EventListener & Savable
         function value = dummyScanGaussian(obj,scanParams)
             pos = scanParams.fixedPos;
             stage = getObjByName(obj.mStageName);
+            if isempty(stage); throwBaseObjException(obj.mStageName); end
+            
             phAxes = stage.availableAxes;
             stage.move(phAxes, pos);
             
@@ -625,9 +629,8 @@ classdef StageScanner < EventSender & EventListener & Savable
     
     methods (Static)
         function obj = init
-            try
-                obj = getObjByName(StageScanner.NAME);
-            catch
+            obj = getObjByName(StageScanner.NAME);
+            if isempty(obj)
                 obj = StageScanner;
                 addBaseObject(obj);
             end
@@ -742,14 +745,11 @@ classdef StageScanner < EventSender & EventListener & Savable
                 savedStruct.scan = [];
                 obj.sendWarning('No scan results found. Loading only scan parameters');
             end
-            try
-                getObjByName(savedStruct.stageName);
-            catch
-                obj.sendWarning(sprintf('Can''t load stage! No stage with name "%s"', savedStruct.stageName));
-                return
+            stage = getObjByName(savedStruct.stageName);
+            if isempty(stage)
+                obj.sendError(sprintf('Can''t load stage! No stage with name "%s"', savedStruct.stageName));
             end
             obj.mStageScanParams = StageScanParams.fromStruct(savedStruct.scanParams);
-            stage = getObjByName(savedStruct.stageName);
             stage.scanParams = obj.mStageScanParams; % This will send an event that the scan-parameters have changed
             
             obj.mScan = savedStruct.scan;
@@ -773,6 +773,7 @@ classdef StageScanner < EventSender & EventListener & Savable
             % Getting initial information from stage ...
             stageName = savedStruct.stageName;
             stage = getObjByName(stageName);
+            if isempty(stage); throwBaseObjException(obj.mStageName); end
             availAxes = stage.getAxis(stage.availableAxes);
             
             % and from scan parameters, ...

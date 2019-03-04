@@ -122,8 +122,10 @@ classdef ViewStagePanelScanParams < GuiComponent & EventListener & EventSender
         function edtNumPointsChangedCallback(obj, index)
             % index - int. [1 to length(obj.stageAxes)] which view was changed
             stage = getObjByName(obj.stageName);
+                if isempty(stage); throwBaseObjException(obj.stageName); end
             scanParams = stage.scanParams;
             phAxis = ClassStage.getAxis(obj.stageAxes(index));
+            
             edtNumPointsI = obj.edtNumPoints(index);
             if ValidationHelper.isValuePositiveInteger(edtNumPointsI.String)
                 scanParams.numPoints(phAxis) = str2double(edtNumPointsI.String);
@@ -137,8 +139,10 @@ classdef ViewStagePanelScanParams < GuiComponent & EventListener & EventSender
         function cbxFixedChangedCallback(obj, index)
             % index - int. [1 to length(obj.stageAxes)] which view was changed
             stage = getObjByName(obj.stageName);
+                if isempty(stage); throwBaseObjException(obj.stageName); end
             scanParams = stage.scanParams;
             phAxis = ClassStage.getAxis(obj.stageAxes(index));
+            
             cbx = obj.cbxFixed(index);
             scanParams.isFixed(phAxis) = cbx.Value;
             obj.colorifyFixed(index);
@@ -167,9 +171,12 @@ classdef ViewStagePanelScanParams < GuiComponent & EventListener & EventSender
             
             signifDigits = 1;
             valueLimHalf = round(str2double(valueLimStr)/2, signifDigits);
+            
             stage = getObjByName(obj.stageName);
+                if isempty(stage); throwBaseObjException(obj.stageName); end
             scanParams = stage.scanParams;
             phAxis = ClassStage.getAxis(obj.stageAxes(index));
+            
             from = scanParams.fixedPos(phAxis) - valueLimHalf;
             to = scanParams.fixedPos(phAxis) + valueLimHalf;
             obj.edtFrom(index).String = from;
@@ -181,8 +188,10 @@ classdef ViewStagePanelScanParams < GuiComponent & EventListener & EventSender
         function edtFromChangedCallback(obj, index)
             % index - int. [1 to length(obj.stageAxes)] which view was changed
             stage = getObjByName(obj.stageName);
+                if isempty(stage); throwBaseObjException(obj.stageName); end
             scanParams = stage.scanParams;
             phAxis = ClassStage.getAxis(obj.stageAxes(index));
+            
             viewFrom = obj.edtFrom(index);
             if ~ValidationHelper.isStringValueANumber(viewFrom.String)
                 viewFrom.String = scanParams.from(phAxis);
@@ -211,8 +220,10 @@ classdef ViewStagePanelScanParams < GuiComponent & EventListener & EventSender
         function edtToChangedCallback(obj, index)
             % index - int. [1 to length(obj.stageAxes)] which view was changed
             stage = getObjByName(obj.stageName);
+                if isempty(stage); throwBaseObjException(obj.stageName); end
             scanParams = stage.scanParams;
             phAxis = ClassStage.getAxis(obj.stageAxes(index));
+            
             viewTo = obj.edtTo(index);
             if ~ValidationHelper.isStringValueANumber(viewTo.String)
                 viewTo.String = scanParams.to(phAxis);
@@ -242,8 +253,10 @@ classdef ViewStagePanelScanParams < GuiComponent & EventListener & EventSender
         function edtFixedChangedCallback(obj, index)
             % index - int. [1 to length(obj.stageAxes)] which view was changed
             stage = getObjByName(obj.stageName);
+                if isempty(stage); throwBaseObjException(obj.stageName); end
             scanParams = stage.scanParams;
             phAxis = ClassStage.getAxis(obj.stageAxes(index));
+            
             viewFixed = obj.edtFixedPos(index);
             if ~ValidationHelper.isStringValueANumber(viewFixed.String)
                 viewFixed.String = StringHelper.formatNumber(scanParams.fixedPos(phAxis));
@@ -270,9 +283,10 @@ classdef ViewStagePanelScanParams < GuiComponent & EventListener & EventSender
         
         function colorifyFixed(obj, index)
            % index - int. [1 to length(obj.stageAxes)] which view was changed
-           phAxis = ClassStage.getAxis(obj.stageAxes(index));
            stage = getObjByName(obj.stageName);
+                if isempty(stage); throwBaseObjException(obj.stageName); end
            scanParams = stage.scanParams;
+           phAxis = ClassStage.getAxis(obj.stageAxes(index));
            axisIsFixed = scanParams.isFixed(phAxis);
            
            obj.recolor( ...     % Grays out if second parameter is true, reverts -- if false
@@ -283,6 +297,7 @@ classdef ViewStagePanelScanParams < GuiComponent & EventListener & EventSender
         
         function refresh(obj)
             stage = getObjByName(obj.stageName);
+                if isempty(stage); throwBaseObjException(obj.stageName); end
             scanParams = stage.scanParams;
             
             for i = 1 : length(obj.stageAxes)

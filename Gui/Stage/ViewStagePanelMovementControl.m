@@ -172,6 +172,7 @@ classdef ViewStagePanelMovementControl < GuiComponent & EventListener
         
         function refresh(obj)
             stage = getObjByName(obj.stageName);
+            if isempty(stage); throwBaseObjException(obj.stageName); end
             
             obj.edtSteps.String = StringHelper.formatNumber(stage.stepSize);
             currentPosition = stage.Pos(obj.stageAxes);
@@ -186,8 +187,10 @@ classdef ViewStagePanelMovementControl < GuiComponent & EventListener
         end
         
         function edtStepSizeCallback(obj)
-            stepSizeString = obj.edtSteps.String;
             stage = getObjByName(obj.stageName);
+            if isempty(stage); throwBaseObjException(obj.stageName); end
+            
+            stepSizeString = obj.edtSteps.String;
             try
                 if ~ValidationHelper.isStringValueANumber(stepSizeString)
                     error('Step size must be a valid number! Reverting.');
@@ -204,25 +207,33 @@ classdef ViewStagePanelMovementControl < GuiComponent & EventListener
         end
         
         function btnMoveCallback(obj,index,trueForLeftFalseForRight)
-            phAxis = ClassStage.getAxis(obj.stageAxes(index));
             stage = getObjByName(obj.stageName);
+            if isempty(stage); throwBaseObjException(obj.stageName); end
+            
+            phAxis = ClassStage.getAxis(obj.stageAxes(index));
             step = BooleanHelper.ifTrueElse(trueForLeftFalseForRight,-1,1)*stage.stepSize;
-            stage.relativeMove(phAxis,step);
+            stage.relativeMove(phAxis, step);
         end
         
         function btnMoveStageToFixedPosCallback(obj)
             stage = getObjByName(obj.stageName);
+            if isempty(stage); throwBaseObjException(obj.stageName); end
+            
             stage.moveByScanParams();
         end
         
         function btnSendToFixedNonScanableCallback(obj)
             stage = getObjByName(obj.stageName);
+            if isempty(stage); throwBaseObjException(obj.stageName); end
+            
             stage.sendPosToScanParams();
             obj.refresh;
         end
         
         function btnMoveToBlueCallback(obj)
             stage = getObjByName(obj.stageName);
+            if isempty(stage); throwBaseObjException(obj.stageName); end
+            
             isBeingGrayed = true;
             for i = 1 : length(obj.stageAxes)
                 obj.btnMoveLeft(i).Enable = 'off';
@@ -252,8 +263,10 @@ classdef ViewStagePanelMovementControl < GuiComponent & EventListener
         end
         
         function tvCurPosCallback(obj, index)
-            phAxis = ClassStage.getAxis(obj.stageAxes(index));
             stage = getObjByName(obj.stageName);
+            if isempty(stage); throwBaseObjException(obj.stageName); end
+            
+            phAxis = ClassStage.getAxis(obj.stageAxes(index));
             [limNeg, limPos] = stage.ReturnLimits(phAxis);
             if ValidationHelper.isStringValueInBorders(obj.tvCurPos(index).String, limNeg, limPos)
                 obj.edtCurPos(index).String = obj.tvCurPos(index).String;
@@ -275,8 +288,10 @@ classdef ViewStagePanelMovementControl < GuiComponent & EventListener
             % Enables or disable the joystick according to the GUI settings.
             % While the joystick is on, updates the location every ~300ms.
             stage = getObjByName(obj.stageName);
-            stageScanner = getObjByName(StageScanner.NAME);
+                if isempty(stage); throwBaseObjException(obj.stageName); end
             jstick = getObjByName(Joystick.NAME);
+                if isempty(jstick); throwBaseObjException(Joystick.NAME); end
+            stageScanner = getObjByName(StageScanner.NAME);
             
             isEnabled = obj.cbxJoystick.Value;
             % Don't let other things interrupt
@@ -317,8 +332,10 @@ classdef ViewStagePanelMovementControl < GuiComponent & EventListener
             % Checks that string in obj.edtCurPos has a valid value.
             % Reverts the value if not valid based on obj.edtCurPosValue
             % or updates obj.edtCurPosValue based on the edt
-            phAxis = ClassStage.getAxis(obj.stageAxes(index));
             stage = getObjByName(obj.stageName);
+            if isempty(stage); throwBaseObjException(obj.stageName); end
+                
+            phAxis = ClassStage.getAxis(obj.stageAxes(index));
             [limNeg, limPos] = stage.ReturnLimits(phAxis);
             if ValidationHelper.isStringValueInBorders(obj.edtCurPos(index).String, limNeg, limPos)
                 obj.edtCurPosValue(index) = str2double(obj.edtCurPos(index).String);
@@ -357,21 +374,27 @@ classdef ViewStagePanelMovementControl < GuiComponent & EventListener
             % We want to enable movement only if
             %  * we're in closed loop
             stage = getObjByName(obj.stageName);
+            isStageExist = ~isempty(stage);
             isLoopClosed = strcmp(stage.loopMode, 'Closed');
-            isEnabled = isEnabled && isLoopClosed;
+            isEnabled = isEnabled && isStageExist && isLoopClosed;
             %  * stage scanner is not running
             scanner = getObjByName(StageScanner.NAME);
             isEnabled = isEnabled && ~scanner.mCurrentlyScanning;
             %  * joystick is off
             if stage.hasJoystick
                 jstick = getObjByName(Joystick.NAME);
-                isEnabled = isEnabled && ~jstick.isEnabled;
+                if ~isempty(jstick)
+                    isEnabled = isEnabled && ~jstick.isEnabled;
+                else
+                    % This is not the main event, but it's not bad to tell
+                    % the user that there is an upcoming problem
+                    EventStation.anonymousWarning('Joystick was supposed to be found, but wasn''t!')
+                end
             end
             %  * current Experiment is not running
-            try
-                exp = getObjByName(Experiment.current);
+            exp = getObjByName(Experiment.current);
+            if ~isempty(exp)
                 isEnabled = isEnabled && ~exp.isRunning;
-            catch % Perfectly fine
             end
             
             

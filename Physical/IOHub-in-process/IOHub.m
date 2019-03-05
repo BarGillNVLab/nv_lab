@@ -18,6 +18,10 @@ classdef (Abstract) IOHub < handle
         % 4th column - channel maximum value. by default it is 1.
     end
     
+    properties (Constant, Abstract)
+        AVAILABLE_ADDRESSES
+    end
+    
     properties (Constant, Hidden)
         IDX_CHANNEL = 1;
         IDX_CHANNEL_NAME = 2;
@@ -45,40 +49,39 @@ classdef (Abstract) IOHub < handle
     end
     
     methods
-        function registerChannel(obj, newChannel, newChannelName, minValueOptional, maxValueOptional)
-            % We accept also empty values for minValueOptional &
-            % maxValueOptional, which allows us to tell the function to
-            % use default values for any of the optional variables
-            if exist('minValueOptional', 'var') && ~isempty(minValueOptional)
-                minValue = minValueOptional;
-            else
-                minValue = obj.DEFAULT_MIN_VOLTAGE;
-            end
-            if exist('maxValueOptional', 'var') && ~isempty(maxValueOptional)
-                maxValue = maxValueOptional;
-            else
-                maxValue = obj.DEFAULT_MAX_VOLTAGE;
+        function registerChannel(obj, channels)
+            %%% Validation %%%
+            % Channel data is in correct format
+            if ~isa(channels, 'Channel')
+                error('Object to be registered is not a channel! Ignoring.')
             end
             
-            if ~isempty(obj.channelArray)
-                % We want to make sure we are not overwriting an existing
-                % channel
-                takenIndices = obj.channelArray(1:end, IOHub.IDX_CHANNEL);
-                channelAlreadyInIndexes = find(contains(...
-                    takenIndices, newChannel));
-                if ~isempty(channelAlreadyInIndexes)
-                    errorTemplate = 'Can''t assign channel "%s" to "%s", as it has already been taken by "%s"!';
-                    channelIndex = channelAlreadyInIndexes(1);
-                    channelCapturedName = obj.getChannelNameFromIndex(channelIndex);
-                    errorMsg = sprintf(errorTemplate, newChannel, newChannelName, channelCapturedName);
-                    obj.sendError(errorMsg);
-                end
+            warnMsg = '';
+            % Physical addresses is available
+            address = [channels.address];       % Careful! if addresses is are char array, this might break!
+            occupiedAdd = obj.channelAddresses; % List of physical addresses already taken
+            addressValid = ismember(address, obj.AVAILABLE_ADDRESSES) && ~ismember(address, occupiedAdd);
+            if any(~addressValid)
+                warnMsg = [warnMsg, 'Some of the channels could not be registered in specified adresses.\n'];
+            end
+            % Name is not yet taken
+            name = {channels.name};
+            occupiedName = obj.channelNames;        % list of channel names already taken
+            nameValid = ~ismember(name, occupiedName);
+            if any(~nameValid)
+                warnMsg = [warnMsg, 'Some of the channels could not be registered, since their name already exists in the registrar.'];
+            end
+            % Let user know what's going on
+            tf = addressValid && nameValid;
+            if ~any(tf)
+                obj.sendError('No channel was registered.')
+            elseif any(~tf)
+                obj.sendWarning(warnMsg);
             end
             
-            obj.channelArray{end + 1, IOHub.IDX_CHANNEL} = newChannel;
-            obj.channelArray{end, IOHub.IDX_CHANNEL_NAME} = newChannelName;
-            obj.channelArray{end, IOHub.IDX_CHANNEL_MIN} = minValue;
-            obj.channelArray{end, IOHub.IDX_CHANNEL_MAX} = maxValue;
+            %%% Registration %%%
+            % Valid channels are added to channel array
+            obj.channels = [obj.channels, channels(tf)];
             
             if obj.dummyMode    % If we are in dummy mode, we want to have default value for value;
                 obj.dummyChannel(length(obj.channelArray)) = -1;
@@ -110,34 +113,7 @@ classdef (Abstract) IOHub < handle
                 '%s couldn''t find either channel or channel name "%s". Have you registered this channel?', ...
                 obj.name, channelOrChannelName);
         end
-        
-        function channelName = getChannelNameFromIndex(obj, index)
-            channelName = obj.channelArray{index, IOHub.IDX_CHANNEL_NAME};
-        end
-        
-        function channel = getChannelFromIndex(obj, index)
-            channel = obj.channelArray{index, IOHub.IDX_CHANNEL};
-        end
-        
-        function min = getChannelMinimumFromIndex(obj, index)
-            min = obj.channelArray{index, IOHub.IDX_CHANNEL_MIN};
-            if ~isnumeric(min)
-                min = str2double(min);
-            end
-            if isnan(min)
-                min = obj.DEFAULT_MIN_VOLTAGE;
-            end
-        end
-        
-        function max = getChannelMaximumFromIndex(obj, index)
-            max = obj.channelArray{index, IOHub.IDX_CHANNEL_MAX};
-            if ~isnumeric(max)
-                max = str2double(max);
-            end
-            if isnan(max)
-                max = obj.DEFAULT_MAX_VOLTAGE;
-            end
-        end
+
     end
     
 end

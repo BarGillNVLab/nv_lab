@@ -5,16 +5,18 @@ classdef (Abstract) ChannelNew < handle
     properties (SetAccess = private) % To be set on initialization only
         name            % char array. I will answer to this name only.
         address         % index in hub
-        delay           % double. in microseconds
+        onDelay         % double. in microseconds
+        offDelay        % double. in microseconds
     end
     
     %%
     methods (Access = protected)
-        function obj = ChannelNew(name, address, delay)
+        function obj = ChannelNew(name, address, onDelay, offDelay)
             obj@handle;
             obj.name = name;
             obj.address = address;
-            obj.delay = delay;
+            obj.onDelay = onDelay;
+            obj.offDelay = offDelay;
         end
     end
     

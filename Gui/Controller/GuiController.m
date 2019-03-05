@@ -92,9 +92,7 @@ classdef GuiController < handle
                     obj.onStarted();
                 catch err
                     delete(obj.figureWindow);
-                    for i = 1:length(obj.views)
-                        delete(obj.views{i})
-                    end
+                    cellfun(@(v) delete(v), obj.views);
                     rethrow(err);
                 end
             end

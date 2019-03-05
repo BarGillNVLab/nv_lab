@@ -58,6 +58,7 @@ classdef (Abstract) Trackable < Experiment
             % (All functions are inherited from Experiment and implemented
             %  in subclasses)
             prepare(obj)
+            obj.sendEventParamChanged;  % That happenned at preperation
             
             obj.stopFlag = false;
             obj.isCurrentlyTracking = true;

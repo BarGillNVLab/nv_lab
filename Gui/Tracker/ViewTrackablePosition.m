@@ -306,7 +306,12 @@ classdef ViewTrackablePosition < ViewTrackable
             obj.btnReset.Enable = BooleanHelper.boolToOnOff(~trackablePos.isCurrentlyTracking);
         end
         function btnSaveCallback(obj, ~, ~)
-            obj.showMessage('Unfortunately, saving is not yet implemented. Sorry...');
+            trackablePos = getObjByName(TrackablePosition.NAME);
+            if isempty(trackablePos); throwBaseObjException(TrackablePosition.NAME); end
+            
+            trackablePos.save;
+            sl = SaveLoad.getInstance(Savable.CATEGORY_EXPERIMENTS);
+            obj.showMessage(['File was saved in ', sl.mLoadedFileFullPath]);
         end
         
         

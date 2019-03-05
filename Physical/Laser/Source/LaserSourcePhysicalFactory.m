@@ -30,6 +30,8 @@ classdef LaserSourcePhysicalFactory
                     laserPhysicalPart = LaserSourceOnefiveKatana05.create(partName, struct);
                 case 'laserquantum smd 12'
                     laserPhysicalPart = LaserSourceLaserquantumSmd12.create(partName, struct);
+                case 'swabian dlnsec'
+                    laserPhysicalPart = LaserSourceSwabianDLNsec.create(partName, struct);
                 otherwise
                     EventStation.anonymousError(...
                         'Can''t create a %s-class laser part for laser "%s" - unknown classname! Aborting.', ...

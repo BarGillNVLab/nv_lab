@@ -50,7 +50,7 @@ classdef ViewStagePanelTrack < GuiComponent & EventListener
             trackablePos = getObjByName(TrackablePosition.NAME);
             if isempty(trackablePos)
                 % We create the tracker anew, with this stage
-                trackablePos = TrackablePosition(obj.mStageName);
+                trackablePos = TrackablePosition.getInstance(obj.mStageName);
             else
                 % Just in case the stage is not the right one,
                 trackablePos.mStageName = obj.mStageName;

@@ -188,22 +188,21 @@ classdef Tracker < EventSender & EventListener & Savable
         function trackable = getTrackable(trackableName, varargin)
             % Maybe this trackable already exists
             trackable = getObjByName(trackableName);
-            % but maybe it doesn't
-            if isempty(trackable)
-                switch trackableName
-                    case TrackablePosition.NAME
-                        % If this is the case, calling the function might
-                        % have included stage name
-                        if ~isempty(varargin)
-                            stageName = varargin{1};
-                            trackable = TrackablePosition(stageName);
-                        else
-                            % Default stage is invoked
-                            trackable = TrackablePosition;
-                        end
-                    otherwise
+            
+            switch trackableName
+                % We might want to do additional things
+                case TrackablePosition.NAME
+                    % and maybe it doesn't even exist yet
+                    if isempty(trackable)
+                        trackable = TrackablePosition.getInstance;
+                    end
+                    % calling the function might have included a stage name
+                    if ~isempty(varargin)
+                        stageName = varargin{1};
+                        trackable.mStageName = stageName;
+                    end
+                otherwise
                         disp('This should not have happenned')
-                end
             end
         end
         

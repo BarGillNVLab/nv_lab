@@ -63,9 +63,7 @@ classdef (Abstract) ClassStage < EventSender & Savable & EventListener
                                 if isempty(newStage)
                                     newStage = ClassGalvo.create(curStageStruct);
                                 end
-                            case 'ECC'
-                                newStage = ClassECC.GetInstance(); % ECC100 stages used in setup 1 - > Very old and might not be comptiable
-                            case 'ANC'
+                            case 'ANC' % Setup 3 ANC stages
                                 newStage = getObjByName(ClassANC.NAME);
                                 if isempty(newStage)
                                     newStage = ClassANC.create(curStageStruct);
@@ -81,6 +79,13 @@ classdef (Abstract) ClassStage < EventSender & Savable & EventListener
                                 newStage = ClassPIM501.GetInstance();
                             case 'PIM-686&PIM-501'
                                 newStage = ClassPIM686M501.GetInstance();
+                            case 'MCS2'
+                                newStage = getObjByName(ClassMCS2.NAME);
+                                if isempty(newStage)
+                                    newStage = ClassMCS2.create(curStageStruct);
+                                end
+                            case 'ECC' % ECC100 stages
+                                newStage = ClassECC.GetInstance();
                             case 'STEDCoarse'
                                 newStage = ClassSTEDCoarse.GetInstance();
                             case 'Dummy'

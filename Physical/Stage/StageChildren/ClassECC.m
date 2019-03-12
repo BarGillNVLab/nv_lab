@@ -24,8 +24,8 @@ classdef ClassECC < ClassStage
     end
        
     properties (Constant)
-        dllFolder = 'C:\Program Files\Attocube\ECC100_DLL\Win_64Bit\lib\';
-        hFolder = 'C:\Program Files\Attocube\ECC100_DLL\Win_64Bit\inc\';
+        dllFolder = 'C:/Users/Owner/Google Drive/NV Lab/Control code/Drivers/Attocube/ECC100_DLL/Win_64Bit/lib/';
+        hFolder = 'C:/Users/Owner/Google Drive/NV Lab/Control code/Drivers/Attocube/ECC100_DLL/Win_64Bit/inc/';
         libAlias = 'ecc';
         
         stageName = 'Stage (Coarse) - ECC';
@@ -57,6 +57,24 @@ classdef ClassECC < ClassStage
             obj = localObj;
         end
         
+        function axis = GetAxisInternal(axisName)
+            % Gives the axis number (0 for x, 1 for y, 2 for z) when the
+            % user enters the axis name (x,y,z or 1 for x, 2 for y and 3
+            % for z).
+            axis = zeros(size(axisName));
+            for i = 1:length(axisName)
+                if ((strcmpi(axisName(i),'x')) || (axisName(i) == 1))
+                    axis(i) = 0;
+                elseif (axisName(i) == 'y') || (axisName(i) == 'Y') || (axisName(i) == 2)
+                    axis(i) = 1;
+                elseif (axisName(i) == 'z') || (axisName(i) == 'Z') || (axisName(i) == 3)
+                    axis(i) = 2;
+                else
+                    error(['Unknown axis: ' axisName]);
+                end
+            end 
+        end
+        
         function warningTiltUnimplemented
             warning('Tilt is not implemented for ECC stage');
         end
@@ -68,7 +86,15 @@ classdef ClassECC < ClassStage
         function obj = ClassECC
             obj@ClassStage(ClassECC.stageName, ClassECC.axes);
             
+            obj.LoadPiezoLibrary;
+            obj.Connect;
+            obj.Initialization;
+            
             obj.availableProperties.(obj.HAS_OPEN_LOOP) = true;
+        end
+        
+        function delete(obj)
+           obj.CloseConnection; 
         end
         
         function Reconnect(obj)
@@ -180,7 +206,7 @@ classdef ClassECC < ClassStage
             if(~libisloaded(obj.libAlias))
                 loadlibrary(shrlib, hfile, 'alias', obj.libAlias);
             end
-            fprintf('Micos library ready.\n');
+            fprintf('ECC library ready.\n');
         end
         
         
@@ -221,7 +247,7 @@ classdef ClassECC < ClassStage
             % Setting target range(=10 nm) for all axes.
             for i=1:3
                 range = 10;
-                SendCommand(obj, 'ECC_controlTargetRange', GetAxis(obj,i), range, 1);
+                SendCommand(obj, 'ECC_controlTargetRange', obj.GetAxisInternal(i), range, 1);
                 fprintf ('The target range for axis %s is %d nanometer.\n', obj.axes(i), range);
             end
             
@@ -309,30 +335,28 @@ classdef ClassECC < ClassStage
                 if ((movingStatus == 2) || (movingStatus == 0))
                     error('Auto movement failed.');
                 else
-                    fprintf('Auto movment succeeded for axis %s.\n', obj.axes(i+1));
+                    fprintf('Auto movement succeeded for axis %s.\n', obj.axes(i+1));
                 end
             end
         end
         
         
         function SetReference(obj, axisName) %Reference
-            axis = GetAxis(obj,axisName);
-            SendCommand(obj, 'ECC_controlAutoReset', axis, 1, 1); % Auto Reset is on
-            SendCommand(obj, 'ECC_controlReferenceAutoUpdate', axis, 1, 1); %when set, every time the reference marking is hit the reference position will be updated.
-            range = SendCommand(obj, 'ECC_controlTargetRange', axis, 1000, 1);  % setting the range (changed from 10 to 100)
-            valid = SendCommand(obj, 'ECC_getStatusReference', axis, 0);
-            refPos = SendCommand(obj, 'ECC_getReferencePosition', axis, 0);
+            realAxis = obj.GetAxisInternal(axisName);
+            SendCommand(obj, 'ECC_controlAutoReset', realAxis, 1, 1); % Auto Reset is on
+            SendCommand(obj, 'ECC_controlReferenceAutoUpdate', realAxis, 1, 1); %when set, every time the reference marking is hit the reference position will be updated.
+            range = SendCommand(obj, 'ECC_controlTargetRange', realAxis, 1000, 1);  % setting the range (changed from 10 to 100)
+            valid = SendCommand(obj, 'ECC_getStatusReference', realAxis, 0);
+            refPos = SendCommand(obj, 'ECC_getReferencePosition', realAxis, 0);
             while (~valid || abs(refPos) > range)
-                fprintf('Refrence isn''t Valid an axis %s, Move manually\n', obj.axes(axis+1));
-                f = figure;
-                uicontrol('Position',[20 20 200 40],'String','Continue',...
-                    'Callback','uiresume(gcbf)');
-                uiwait(gcf);
-                close(f);
-                valid = SendCommand(obj, 'ECC_getStatusReference', axis, 0);
+                questionString = sprintf('Refrence isn''t valid for axis %s. Move manually!', obj.axes(realAxis+1));
+                if ~QuestionUserOkCancel('Invalid Reference', questionString)
+                    break
+                end
+                valid = SendCommand(obj, 'ECC_getStatusReference', realAxis, 0);
             end
             if (valid && refPos==0)
-                fprintf('The reference is set for axis %s.\n', obj.axes(axis+1));
+                fprintf('The reference is set for axis %s.\n', obj.axes(realAxis+1));
             end
         end
         
@@ -358,12 +382,12 @@ classdef ClassECC < ClassStage
             % Waits until a specific action, defined by what, is finished.
             % Current options for what:
             % onTarget - Waits until the stage reaches it's target.
-            axis = GetAxis(obj, axisName);
+            realAxis = obj.GetAxisInternal(axisName);
             switch what
                 case 'onTarget'
                     onTarget = 0;                    
                     while(~onTarget)
-                        onTarget = SendCommand(obj, 'ECC_getStatusTargetRange', axis, 0);
+                        onTarget = SendCommand(obj, 'ECC_getStatusTargetRange', realAxis, 0);
                     end
             end
         end
@@ -373,7 +397,7 @@ classdef ClassECC < ClassStage
             % Checking reference before movement
             % Absolute change in position (the user enters the position in microns) of axis (x,y,z or 1 for x, 2 for y and 3 for z).
             for i=1:length(axisName)
-                realAxis = GetAxis(obj, axisName(i));
+                realAxis = obj.GetAxisInternal(axisName(i));
                 if (~SendCommand(obj, 'ECC_getStatusReference', realAxis, 0))
                     SetReference(obj, axisName(i));
                 end
@@ -409,7 +433,7 @@ classdef ClassECC < ClassStage
             posInMicrons = zeros(1, len);
             
             for i = 1:len
-                realAxis = GetAxis(obj, axisName(i));
+                realAxis = obj.GetAxisInternal(axisName(i));
                 obj.curPos(realAxis+1) = SendCommand(obj, 'ECC_getPosition', realAxis ,0);
                 posInMicrons(i) = obj.curPos(realAxis+1)./1000;
             end
@@ -446,9 +470,9 @@ classdef ClassECC < ClassStage
             else
                 amplitude = amplitudeInVolt*1000;
             end
-            axis = GetAxis(obj, axisName);
+            realAxis = obj.GetAxisInternal(axisName);
 %             amplitude = amplitudeInVolt*1000;
-            SendCommand(obj, 'ECC_controlAmplitude', axis, amplitude, 1)
+            SendCommand(obj, 'ECC_controlAmplitude', realAxis, amplitude, 1)
         end
         
         
@@ -456,8 +480,8 @@ classdef ClassECC < ClassStage
             % returns the amplitude.
             % output amplitude is in volt.
             
-            axis = GetAxis(obj, axisName);
-            amplitude = double(SendCommand(obj, 'ECC_controlAmplitude', axis, 0, 0));
+            realAxis = obj.GetAxisInternal(axisName);
+            amplitude = double(SendCommand(obj, 'ECC_controlAmplitude', realAxis, 0, 0));
             amplitudeInVolt = amplitude/1000;
         end
         
@@ -476,9 +500,9 @@ classdef ClassECC < ClassStage
             else
                 frequency = frequencyInHz*1000;                
             end
-            axis = GetAxis(obj, axisName);
+            realAxis = obj.GetAxisInternal(axisName);
 %             frequency = frequencyInHz*1000;
-            SendCommand(obj, 'ECC_controlFrequency', axis, frequency, 1)
+            SendCommand(obj, 'ECC_controlFrequency', realAxis, frequency, 1)
         end
         
         
@@ -486,8 +510,8 @@ classdef ClassECC < ClassStage
             %returns the frequency.
             %output frequency is in Hz.
             
-            axis = GetAxis(obj, axisName);
-            frequency = double(SendCommand(obj, 'ECC_controlFrequency', axis, 0, 0));
+            realAxis = obj.GetAxisInternal(axisName);
+            frequency = double(SendCommand(obj, 'ECC_controlFrequency', realAxis, 0, 0));
             frequencyInHz = frequency/1000;
         end
         
@@ -496,8 +520,8 @@ classdef ClassECC < ClassStage
             %setting the resolution.
             %input resolution is in nanometer.
             
-            axis = GetAxis(obj, axisName);
-            SendCommand(obj, 'ECC_controlAQuadBOutResolution', axis, resolution, 1)
+            realAxis = obj.GetAxisInternal(axisName);
+            SendCommand(obj, 'ECC_controlAQuadBOutResolution', realAxis, resolution, 1)
             switch axisName
                 case {1,2,3}
                     if (resolution < 10)
@@ -511,25 +535,25 @@ classdef ClassECC < ClassStage
             %returns the resolution.
             %output resolution is in nanometer.
             
-            axis = GetAxis(obj, axisName);
-            resolution = SendCommand(obj, 'ECC_controlAQuadBOutResolution', axis, 0, 0);
+            realAxis = obj.GetAxisInternal(axisName);
+            resolution = SendCommand(obj, 'ECC_controlAQuadBOutResolution', realAxis, 0, 0);
         end
         
         
         function SetClock(obj, axisName, clockInNano)
             %setting the clock.
             %input clock is in nanometer.
-            
+            realAxis = obj.GetAxisInternal(axisName);
             clock = clockInNano/20;
-            SendCommand(obj, 'ECC_controlAQuadBOutClock', GetAxis(obj, axisName), clock, 1)
+            SendCommand(obj, 'ECC_controlAQuadBOutClock', realAxis, clock, 1)
         end
         
         
         function clockInNano = GetClock(obj, axisName)
             %returns the clock.
             %output clock is in nanometer.
-            
-            clock = SendCommand(obj, 'ECC_controlAQuadBOutClock', GetAxis(obj, axisName), 0, 0);
+            realAxis = obj.GetAxisInternal(axisName);
+            clock = SendCommand(obj, 'ECC_controlAQuadBOutClock', realAxis, 0, 0);
             clockInNano = clock*20;
         end
         
@@ -538,7 +562,7 @@ classdef ClassECC < ClassStage
             % Enables changes in resolution and clock.
             %             enable = bool(enable);
             % if enable = 0 this means disable.
-            SendCommand(obj, 'ECC_controlAQuadBOut',GetAxis(obj, axisName), enable, 1);
+            SendCommand(obj, 'ECC_controlAQuadBOut', obj.GetAxisInternal(axisName), enable, 1);
             if enable % Workaround for a glitch when output is enabled
                 SetClock(obj, axisName, 4000)
                 SetClock(obj, axisName, 40)
@@ -553,7 +577,7 @@ classdef ClassECC < ClassStage
             SetResolution(obj, axisName, res);
             for i=1:steps
                 pos0 = GetPosition(obj, axisName);
-                Move(obj, axisName, pos0(axis+1)-displace);
+                Move(obj, axisName, pos0(axis)-displace);
                 Delay(obj,0.01);
             end
         end
@@ -565,7 +589,7 @@ classdef ClassECC < ClassStage
             SetResolution(obj, axisName, res);
             steps = totdisplace/displace;
             for i=1:steps
-                Move(obj, axisName, pos0(axis+1)+displace*i);
+                Move(obj, axisName, pos0(axis)+displace*i);
                 Delay(obj,0.01);
             end
         end
@@ -595,8 +619,8 @@ classdef ClassECC < ClassStage
         end
         
         function SetVelocity(obj, axisName, velocity) %seting the velocity in microns/sec
-            axis = GetAxis(obj,axisName);
-            switch axis
+            realAxis = obj.GetAxisInternal(axisName);
+            switch realAxis
                 case {0,1,2}
                     if velocity < 1000
                         SetAmplitude(obj, axisName, 25);
@@ -615,10 +639,12 @@ classdef ClassECC < ClassStage
                     %                         amplitude = GetAmplitude(obj, axisName);
                     %                         frequency = round((velocity/(amplitude*0.047)));
                     %                     end
+                otherwise
+                    error('Could not find axis %s', axisName)
             end
             try
                 SetFrequency(obj, axisName, frequency);
-                obj.curVel(axis+1) = velocity;
+                obj.curVel(realAxis+1) = velocity;
             catch err
                 switch err.identifier
                     case {'ECC:FreqOutOfMaxLimit', 'ECC:VoltageOutOfMaxLimit'}
@@ -637,7 +663,7 @@ classdef ClassECC < ClassStage
             frequency = GetFrequency(obj,axisName);
             amplitude = GetAmplitude(obj,axisName);
             velocity = round(0.047*frequency*amplitude);
-            obj.curVel(axis+1) = velocity;
+            obj.curVel(axis) = velocity;
         end
         
         function vel = Vel(obj, axisName)
@@ -913,7 +939,7 @@ classdef ClassECC < ClassStage
             startPoint = macroScanAxisVector(1) - fixPosition;
             obj.macroFixPosition = fixPosition;
             
-            normalVelocity = obj.curVel(GetAxis(obj, macroScanAxisName)+1);
+            normalVelocity = obj.curVel(GetAxis(obj, macroScanAxisName));
             obj.macroNormalVelocity = normalVelocity;
             obj.macroScanVelocity = scanVelocity;
             %             obj.macroNormalNumberOfPixels = numberOfNormalPixels;

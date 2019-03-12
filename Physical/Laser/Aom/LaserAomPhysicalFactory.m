@@ -22,7 +22,7 @@ classdef LaserAomPhysicalFactory
             
             partName = sprintf('%s aom_part', name);
             
-            switch(lower(struct.classname))
+            switch lower(struct.classname)
                 case 'dummy'
                     aomPhysicalPart = AomDummy(partName);
                     return

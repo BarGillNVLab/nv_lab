@@ -98,8 +98,8 @@
             "__address": "COM2",
             "minFrequency" : 0,
             "maxFrequency" : 4.05e9,
-            "minAmplitude" : 0,
-            "maxAmplitude" : 1
+            "minAmplitude" : -50,
+            "maxAmplitude" : 10
         }
     ],
     "microwave" : {

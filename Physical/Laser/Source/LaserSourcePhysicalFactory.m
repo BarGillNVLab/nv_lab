@@ -22,7 +22,7 @@ classdef LaserSourcePhysicalFactory
             
             partName = sprintf('%s source', name);
             
-            switch(lower(struct.classname))
+            switch lower(struct.classname)
                 case 'dummy'
                     laserPhysicalPart = LaserSourceDummy.create(partName, struct);
                     return

@@ -18,12 +18,19 @@ classdef (Abstract) Spcm < EventSender
         SPCM_NEEDED_FIELDS = {'classname'};
     end
     
+        
+    methods (Access = protected)
+        function obj = Spcm(spcmName)
+            obj@EventSender(spcmName);
+        end
+    end
+    
     methods (Abstract)
     %%% By time %%%
         prepareReadByTime(obj, integrationTimeInSec)
         % Prepare to read spcm count from opening the spcm window to unit of time
         
-        [kcps, std] = readFromTime(obj)
+        [kcps, std] = readFromTime(obj, countingObj)
         % Actually do the read - it takes "integrationTimeInSec" to do so
         
         clearTimeRead(obj)
@@ -66,9 +73,11 @@ classdef (Abstract) Spcm < EventSender
         % Turn the spcm on\off
     end
     
-    methods (Access = protected)
-        function obj = Spcm(spcmName)
-            obj@EventSender(spcmName);
+        
+    methods (Static) % To be overwritten by subclasses
+        % Auxilary function, for parallel reading
+        function countingObj = variablesForTimeRead
+            countingObj = [];
         end
     end
        

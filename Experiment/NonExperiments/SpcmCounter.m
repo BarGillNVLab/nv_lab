@@ -119,24 +119,19 @@ classdef SpcmCounter < Experiment
             
             % Prepare for parallel pool
             paralPool = gcp();
-            futureCell = {};
+            countingObj = spcm.variablesForTimeRead;
             
             try
+                % Creating data to be saved, using workers
+                f = parfeval(paralPool, @spcm.readFromTime, 2, countingObj);
                 while ~obj.stopFlag
-                    % Creating data to be saved, using multiple threads
-                    futureCell{end+1} = parfeval(paralPool, @spcm.readFromTime, 2); %#ok<AGROW>
-                    for i = 1:length(futureCell)
-                        f = futureCell{i};
-                        if strcmp(f.State, 'finished')
-                            [kcps, std] = fetchOutputs(f);
-                            obj.newRecord(kcps, std);
-                            obj.sendEventDataUpdated;
-                        end
-                    end
-                    % Delete read threads (a.k.a Futures)
-                    readIdx = cellfun(@(x) x.Read, futureCell);
-                    if any(readIdx)
-                        futureCell(readIdx) = [];  %#ok<AGROW>
+                    if strcmp(f.State, 'finished')
+                        [kcps, std] = fetchOutputs(f);
+                        obj.newRecord(kcps, std);
+                        obj.sendEventDataUpdated;
+                        
+                        % Start a new job
+                        f = parfeval(paralPool, @spcm.readFromTime, 2, countingObj);
                     end
                     
                     % Update integration time, if necessary

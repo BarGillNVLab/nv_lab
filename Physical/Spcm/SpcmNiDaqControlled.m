@@ -77,13 +77,13 @@ classdef SpcmNiDaqControlled < Spcm & NiDaqControlled
             niDaq.startTask(obj.counterTimeTask);
         end
         
-        function [kcps, sterr] = readFromTime(obj)
+        function [kcps, sterr] = readFromTime(obj, nidaq)
             % Reads from the SPCM for the integration time and returns a
             % single point which is the kcps and also the standard error.
             
             % Actual reading from device
             try
-                countsSPCM = obj.readEdgeCounting(obj.counterTimeTask, obj.nTimeCounts, obj.counterIntegrationTime);
+                countsSPCM = obj.readEdgeCounting(obj.counterTimeTask, obj.nTimeCounts, obj.counterIntegrationTime, nidaq);
             catch err
                 msg = err.message;
                 errCodeSlow = '-200279'; % "The application is not able to keep up with the hardware acquisition."
@@ -92,10 +92,10 @@ classdef SpcmNiDaqControlled < Spcm & NiDaqControlled
                 if contains(msg, errCodeSlow) 
                     % There was NiDaq reset, we can now safely resume
                     err2warning(err);
-                    countsSPCM = obj.readEdgeCounting(obj.counterTimeTask, obj.nTimeCounts, obj.counterIntegrationTime);
+                    countsSPCM = obj.readEdgeCounting(obj.counterTimeTask, obj.nTimeCounts, obj.counterIntegrationTime, nidaq);
                 elseif contains(msg, errCodeTaskAbort)
                     obj.prepareReadByTime(obj.counterIntegrationTime)
-                    countsSPCM = obj.readEdgeCounting(obj.counterTimeTask, obj.nTimeCounts, obj.counterIntegrationTime);
+                    countsSPCM = obj.readEdgeCounting(obj.counterTimeTask, obj.nTimeCounts, obj.counterIntegrationTime, nidaq);
                 end
                 % ^ This *should* work. If it doesn't, there might be a
                 % bigger problem, and we want to let the user know
@@ -259,8 +259,10 @@ classdef SpcmNiDaqControlled < Spcm & NiDaqControlled
     end
     
     methods (Static, Access = protected)
-        function counts = readEdgeCounting(daqTask, nCounts, timeout)
-            niDaq = getObjByName(NiDaq.NAME);
+        function counts = readEdgeCounting(daqTask, nCounts, timeout, niDaq)
+            if ~exist('var', 'niDaq')
+                niDaq = getObjByName(NiDaq.NAME);
+            end
             counts = double(niDaq.ReadDAQCounter(daqTask, nCounts, timeout));
             counts = niDaq.countDiff(counts);
         end
@@ -312,6 +314,15 @@ classdef SpcmNiDaqControlled < Spcm & NiDaqControlled
             maxVal = spcmStruct.nidaq_channel_max_val;
             
             spcmObj = SpcmNiDaqControlled(spcmName, gate, counts, pg, minVal, maxVal);
+        end
+    end
+    
+    %% Overridden from Spcm
+    methods (Static)
+        % Auxilary function, for parallel reading: we need to fetch objects
+        % before sending task to workers
+        function countingObj = variablesForTimeRead
+            countingObj = getObjByName(NiDaq.NAME);
         end
     end
 

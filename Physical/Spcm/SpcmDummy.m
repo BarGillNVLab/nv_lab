@@ -32,7 +32,7 @@ classdef SpcmDummy < Spcm
             obj.integrationTime = integrationTimeInSec;
         end
         
-        function [kcps, std] = readFromTime(obj)
+        function [kcps, std] = readFromTime(obj, ~)
             if obj.integrationTime <= 0
                 obj.sendError('Can''t call readFromTime() without calling obj.prepareReadByTime() first!');
             end
@@ -143,4 +143,3 @@ classdef SpcmDummy < Spcm
     end
     
 end
-

@@ -49,12 +49,16 @@ classdef FrequencyGeneratorSRS < FrequencyGenerator
     methods
         function sendCommand(obj, command)
             % Actually sends command to hardware
+            obj.connect;
             fprintf(obj.t, command);
+            obj.disconnect;
         end
         
         function value = readOutput(obj)
             % Get value returned from object
+            obj.connect;
             value = fscanf(obj.t, '%s');
+            obj.disconnect;
         end
     end
     

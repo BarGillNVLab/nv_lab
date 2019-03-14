@@ -12,10 +12,16 @@ classdef LaserSourceSwabianDLNsec < LaserPartAbstract & SerialControlled
         COMMAND_OFF = '*OFF'
         COMMAND_ON_QUERY = 'ON?'
         
-        COMMAND_POWER_FORMAT_SPEC = 'PWR %4.2f'
+        COMMAND_POWER_FORMAT_SPEC = 'PWR %f'
         COMMAND_POWER_QUERY = 'PWR?'
         
         NEEDED_FIELDS = {'port'};
+    end
+    
+    properties (Access = private)
+        % We can't get the on/off status from the device, so we save it
+        % ourselves.
+        isEnabledPrivate = [];
     end
     
     methods (Access = private)
@@ -62,6 +68,7 @@ classdef LaserSourceSwabianDLNsec < LaserPartAbstract & SerialControlled
     methods (Access = protected)
         function setEnabledRealWorld(obj, newBoolValue)
             % Validating value is assumed to have been done
+            obj.isEnabledPrivate = newBoolValue;
             if newBoolValue
                 obj.sendCommand(obj.COMMAND_ON);
             else
@@ -73,34 +80,19 @@ classdef LaserSourceSwabianDLNsec < LaserPartAbstract & SerialControlled
             % Validating value is assumed to have been done
             commandPower = sprintf(obj.COMMAND_POWER_FORMAT_SPEC, newValue);
             obj.query(commandPower);
-            
-            % Save value for when laser is turned off
-            obj.valueInternal = newValue;
         end
         
         function val = getValueRealWorld(obj)
-            isOn = obj.getEnabledRealWorld;
-            if isOn
-                regex = '(\d+\.\d+)'; % a value of the form ##.###
-                val = str2double(obj.query(obj.COMMAND_POWER_QUERY, regex));
-            else
-                % The laser gives 0 if it is off.
-                val = obj.valueInternal;
-            end
+            regex = '(\d+\.?\d*)'; % a value of the form ##.###
+            val = str2double(obj.query(obj.COMMAND_POWER_QUERY, regex));
         end
         
         function val = getEnabledRealWorld(obj)
-            str = obj.query(obj.COMMAND_ON_QUERY);
-            if isempty(str)
-                val = false;
-                warning('Cannot Connect with %s', obj.name)
-            elseif contains(str, 'DISABLED')
-                val = false;
-            elseif contains(str, 'ENABLED')
-                val = true;
-            else
-                warning('Problem in query!!')
+            if isempty(obj.isEnabledPrivate)
+                obj.isEnabled = false;
+                obj.isEnabledPrivate = false;
             end
+            val = obj.isEnabledPrivate;
         end
     end
     

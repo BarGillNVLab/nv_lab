@@ -20,15 +20,13 @@ classdef ClassMCS2 < ClassStage
         LIB_H_FOLDER = 'C:/?/';
         LIB_H_FILENAME = '?';
         LIB_ALIAS = 'MCS2';
-        
-        ERR_STRING = 'You are silly'; % Should be the value of 'SA_CTL_ERROR_NONE'
 
         POSITIVE_HARD_LIMITS = [8000 8000 8000];    % in um
         NEGATIVE_HARD_LIMITS = [-8000 -8000 -8000]; % in um
         STEP_MINIMUM_SIZE = 0.1                     % in um
         STEP_DEFAULT_SIZE = 10                      % in um
         
-        SERIAL_NUM = 'usb:sn:MCS2-00000000'
+        SERIAL_NUM = 'usb:sn:MCS2-00000XXX'
     end
        
     properties (Access = protected)
@@ -82,7 +80,7 @@ classdef ClassMCS2 < ClassStage
         end
 
         function Connect(obj)
-            [obj.id, ~, ~] = obj.SendCommand('SA_CTL_Close', [], obj.SERIAL_NUM, []);
+            [obj.id, ~, ~] = obj.SendCommand('SA_CTL_Open', [], obj.SERIAL_NUM, []);
         end
         
         function Delay(obj, seconds) %#ok<INUSL>
@@ -105,9 +103,9 @@ classdef ClassMCS2 < ClassStage
             % and is treated as a return code. (Checked for errors)
             
             % Try sending command
-            returnCode = [];
+            returnCode = 0;
             tries = 0;
-            while ~strcmp(returnCode, obj.ERR_STRING)
+            while ~(returnCode == 0)
                 CommunicationDelay(obj);
                 [returnCode, varargout{1:nargout}] = calllib(obj.LIB_ALIAS, command, realAxis, varargin{:});
                 tries = tries+1;
@@ -174,9 +172,9 @@ classdef ClassMCS2 < ClassStage
             % Checks the returned code, if an error has occured returns the
             % error (as a MATLAB error/exception)
             
-            if ~strcmp(returnCode, obj.ERR_STRING)
+            if ~(returnCode == 0)   % All error codes appear in Appendix A of the Programmer's Guide
                 errorMessage = SendCommandWithoutReturnCode(obj, 'SA_CTL_GetResultInfo', returnCode);
-                errorId = sprintf('MCS2:%s', reutrnCode);
+                errorId = sprintf('MCS2:%d', reutrnCode);
                 error(errorId, 'The following error was received while attempting to communicate with MCS2 controller:\n%s Error  - %s',...
                     returnCode, errorMessage);
             end
@@ -185,7 +183,7 @@ classdef ClassMCS2 < ClassStage
         function LoadPiezoLibrary(obj)
             % Loads the PI MICOS dll file.
 
-            if(~libisloaded(obj.LIB_ALIAS))
+            if ~libisloaded(obj.LIB_ALIAS)
                 % Only load dll if it wasn't loaded before.
                 shrlib = [obj.LIB_DLL_FOLDER, obj.LIB_DLL_FILENAME];
                 hfile = [obj.LIB_H_FOLDER, obj.LIB_H_FILENAME];
@@ -198,8 +196,7 @@ classdef ClassMCS2 < ClassStage
         function DisconnectController(obj)
             % This function disconnects the controller at the given ID
             SendCommand(obj, 'SA_CTL_Cancel', obj.id);
-            SendCommand(obj, 'SA_CTL_Close', obj.id);
-            
+            SendCommand(obj, 'SA_CTL_Close', obj.id); 
         end
         
         function axisIndex = GetAxisIndex(obj, phAxis)
@@ -243,7 +240,7 @@ classdef ClassMCS2 < ClassStage
             end
         end
         
-        function CheckRefernce(obj, phAxis)
+        function CheckReference(obj, phAxis)
             % Checks whether the given (physical) axis is referenced, 
             % and if not, asks for confirmation to refernce it.
             phAxis = GetAxis(obj, phAxis);
@@ -300,19 +297,6 @@ classdef ClassMCS2 < ClassStage
             end
         end
         
-        function Connect(obj)
-            % Connects to the controller.
-            if(obj.ID < 0)
-                % Look for USB controller
-                USBDescription = obj.FindController(obj.controllerModel);
-                
-                % Open Connection
-                obj.ID = SendPICommandWithoutReturnCode(obj, 'PI_ConnectUSB', USBDescription);
-                obj.CheckIDForError(obj.ID, 'USB Controller found but connection attempt failed!');
-            end
-            fprintf('Connected to controller: %s\n', obj.controllerModel);
-        end
-        
         function Initialization(obj)
             % Initializes the piezo stages.
             obj.scanRunning = 0;
@@ -322,7 +306,7 @@ classdef ClassMCS2 < ClassStage
             ChangeLoopMode(obj, 'Closed')
             
             % Reference
-            CheckRefernce(obj, obj.VALID_AXES)
+            CheckReference(obj, obj.VALID_AXES)
             
             % Physical units check
             for i=1:length(obj.VALID_AXES)
@@ -498,7 +482,7 @@ classdef ClassMCS2 < ClassStage
                 obj.sendError('Move Command is outside the soft limits');
             end
             
-            CheckRefernce(obj, phAxis)
+            CheckReference(obj, phAxis)
             
             szAxes = ConvertAxis(obj, phAxis);
             
@@ -981,7 +965,7 @@ classdef ClassMCS2 < ClassStage
             % but we always set them all at once, so it is enough to check
             % the mode for one of the axes (0 == x axis).
             
-            SA_CTL_PKEY_CONTROL_LOOP_INPUT; % todo: set value according to .h file
+            SA_CTL_PKEY_CONTROL_LOOP_INPUT = 50462744;
             
             [lMode, ~]  = SendCommand(obj, 'SA_CTL_SetProperty_i32', obj.id, ...
                 0, SA_CTL_PKEY_CONTROL_LOOP_INPUT, [], []);
@@ -994,7 +978,7 @@ classdef ClassMCS2 < ClassStage
             % 'mode' should be either 'Open' or 'Closed'.
             % Stage will auto-lock when in open mode, which should increase
             % stability.
-            SA_CTL_PKEY_CONTROL_LOOP_INPUT % todo
+            SA_CTL_PKEY_CONTROL_LOOP_INPUT = 50462744;
             
             switch mode
                 case 'Open'

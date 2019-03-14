@@ -30,10 +30,10 @@ classdef ClassECC < ClassStage
         
         stageName = 'Stage (Coarse) - ECC';
         axes = 'xyz';
-        posRangeLimit = 9000; % Units set to microns.
-        negRangeLimit = -9000; % Units set to microns.
-        posSoftRangeLimit = 9000; % Default is same as physical limit.
-        negSoftRangeLimit = -9000; % Default is same as physical limit.
+        posRangeLimit = [9000, 9000, 22000];     % Units set to microns.
+        negRangeLimit = [-9000, -9000, 4000];  % Units set to microns.
+        posSoftRangeLimit = [9000, 9000, 22000]; % Default is same as physical limit.
+        negSoftRangeLimit = [-9000, -9000, 4000]; % Default is same as physical limit.
         maxAmplitude = 45; % Max amplitude in volt
         maxFrequency = 3000; % Max frequency in Hz
         minAmplitude = 20; % Min amplitude in volt
@@ -365,15 +365,7 @@ classdef ClassECC < ClassStage
             % gives the axis number (0 for x, 1 for y, 2 for z) when the
             % user enters the axis name (x,y,z or 1 for x, 2 for y and 3
             % for z).
-            if ((strcmpi(axisName,'x')) || (axisName == 1))
-                axis = 0;
-            elseif (axisName == 'y') || (axisName == 'Y') || (axisName == 2)
-                axis = 1;
-            elseif (axisName == 'z') || (axisName == 'Z') || (axisName == 3)
-                axis = 2;
-            else
-                error(['Unknown axis: ' axisName]);
-            end
+            axis = ClassECC.GetAxisInternal(axisName) + 1;
             
         end
         
@@ -398,12 +390,13 @@ classdef ClassECC < ClassStage
             % Absolute change in position (the user enters the position in microns) of axis (x,y,z or 1 for x, 2 for y and 3 for z).
             for i=1:length(axisName)
                 realAxis = obj.GetAxisInternal(axisName(i));
+                phAxis = realAxis +1;
                 if (~SendCommand(obj, 'ECC_getStatusReference', realAxis, 0))
                     SetReference(obj, axisName(i));
                 end
                 %                 SetReference(obj, realAxis)
                 pos = posInMicrons(i)*1000; %setting the units to nm
-                if (posInMicrons(i) <= obj.posSoftRangeLimit) && (posInMicrons(i) >= obj.negSoftRangeLimit) %checking if the target position is in range
+                if (posInMicrons(i) <= obj.posSoftRangeLimit(phAxis)) && (posInMicrons(i) >= obj.negSoftRangeLimit(phAxis)) %checking if the target position is in range
                     %                 axis = GetAxis(obj, axisName);
                     SendCommand(obj, 'ECC_controlTargetPosition', realAxis, pos, 1);
                     SendCommand(obj, 'ECC_controlMove', realAxis, 1, 1);
@@ -1302,16 +1295,18 @@ classdef ClassECC < ClassStage
             % Return the soft limits of the given axis (x,y,z or 1 for x,
             % 2 for y and 3 for z).
             % Vectorial axis is possible.
-            negSoftLimit = obj.negSoftRangeLimit*ones(size(axisName));
-            posSoftLimit = obj.posSoftRangeLimit*ones(size(axisName));
+            phAxis = obj.getAxis(axisName);
+            negSoftLimit = obj.negSoftRangeLimit(phAxis);
+            posSoftLimit = obj.posSoftRangeLimit(phAxis);
         end
         
         function [negHardLimit, posHardLimit] = ReturnHardLimits(obj, axisName)
             % Return the hard limits of the given axis (x,y,z or 1 for x,
             % 2 for y and 3 for z).
             % Vectorial axis is possible.
-            negHardLimit = obj.negRangeLimit*ones(size(axisName));
-            posHardLimit = obj.posRangeLimit*ones(size(axisName));
+            phAxis = obj.getAxis(axisName);
+            negHardLimit = obj.negRangeLimit(phAxis);
+            posHardLimit = obj.posRangeLimit(phAxis);
         end
         
         function SetSoftLimits(obj, phAxis, softLimit, negOrPos)

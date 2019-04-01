@@ -33,7 +33,7 @@ classdef (Sealed) PulseStreamerNewClass < PulseGenerator
             obj.ps.enableLog(100, 'C:\Users\OWNER\Google Drive\NV Lab\Control code\prod\PSdebug.mat');
             
             obj.initSequence;
-            obj.trigger = PSTriggerStart.HardwareRising; % can be 'Immediate', 'Software', 'HardwareRising', 'HardwareFalling' or 'HardwareBoth'.
+            obj.trigger = PSTriggerStart.Software; % can be 'Immediate', 'Software', 'HardwareRising', 'HardwareFalling' or 'HardwareBoth'.
             obj.automaticRearm = PSTriggerMode.Single; % can be 'Normal' or 'Single'.
             obj.ps.setTrigger(obj.trigger, obj.automaticRearm)
         end
@@ -115,7 +115,7 @@ classdef (Sealed) PulseStreamerNewClass < PulseGenerator
                 % vector
                 inputChannels = obj.channelName2Address(inputChannels); %converts from a cell of names to channel numbers, if needed
                 if isempty(inputChannels)
-                    inputChannels = 0;
+                    channelsBinary = 0;
                     obj.sendWarning('Warning! No channel was turned on or off!');
                 else
                     if sum(rem(inputChannels,1)) || min(inputChannels) <0 || max(inputChannels)> max(obj.AVAILABLE_ADDRESSES)

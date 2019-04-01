@@ -53,11 +53,9 @@ classdef (Abstract) FrequencyGenerator < BaseObject
         end
         
         function initialize(obj)
-            obj.connect;
             obj.frequencyPrivate = obj.queryValue('frequency');
             obj.amplitudePrivate = obj.queryValue('amplitude');
             obj.outputPrivate    = obj.queryValue('enableOutput');
-            obj.disconnect;
         end
     end
     
@@ -127,15 +125,19 @@ classdef (Abstract) FrequencyGenerator < BaseObject
         
         
         function value = queryValue(obj, what)
+            obj.connect;
             command = obj.createCommand(what, '?');
             sendCommand(obj, command);
             value = str2double(obj.readOutput);
+            obj.disconnect;
         end
         
         function setValue(obj, what, value)
             % Can be overridden by children
+            obj.connect;
             command = obj.createCommand(what, value);
             sendCommand(obj, command);
+            obj.disconnect;
         end
     end
     

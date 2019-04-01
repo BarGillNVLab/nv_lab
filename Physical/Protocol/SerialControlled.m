@@ -42,6 +42,10 @@ classdef (Abstract) SerialControlled < handle
             obj.parity = obj.s.Parity;
             obj.flowControl = obj.s.FlowControl;
             obj.terminator = obj.s.Terminator;
+            
+            if obj.keepConnected
+                obj.open
+            end
         end
         
         function open(obj)

@@ -551,6 +551,12 @@ classdef NiDaq < EventSender
         end
         
         
+        function availSamps = availableSamples(obj, task)
+            availSamps = uint32(0);
+            [status, availSamps] = daq.ni.NIDAQmx.DAQmxGetReadAvailSampPerChan(task, availSamps);
+            obj.checkError(status)
+        end
+        
         function [readArray, nRead] = ReadDAQCounter(obj, task, nCounts, timeout)
             numSampsPerChan = nCounts;
             readArray = zeros(1, nCounts);
@@ -570,6 +576,13 @@ classdef NiDaq < EventSender
             if obj.dummyMode; return; end
             
             status = DAQmxStartTask(task);
+            obj.checkError(status)
+        end
+        
+        function tf = isTaskComplete(obj, task)
+            if obj.dummyMode; return; end
+            
+            [status, tf] = DAQmxGetTaskComplete(task);
             obj.checkError(status)
         end
         

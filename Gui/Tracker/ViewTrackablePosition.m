@@ -36,14 +36,14 @@ classdef ViewTrackablePosition < ViewTrackable
             obj.legend1 = AxesHelper.createLegend(obj.vAxes1,{'x','y','z'});
             
             %%%% Get objects we will work with: %%%%
-            % first and foremost: the trackable experiment
+            % First and foremost: the trackable experiment
             trackablePos = obj.getTrackable();
-            % list of all available stages
+            % List of all available stages
             stages = ClassStage.getScannableStages;
             stagesNames = cellfun(@(x) x.name, stages, 'UniformOutput', false);
-            % general stage parameters
+            % General stage parameters
             axesLen = ClassStage.SCAN_AXES_SIZE;
-            % green laser
+            % Green laser
             laser = getObjByName(trackablePos.mLaserName);
                 if isempty(laser); throwBaseObjException(trackablePos.mLaserName); end
             obj.laserPartNames = laser.getContollableParts;

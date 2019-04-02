@@ -23,6 +23,10 @@ classdef (Sealed) ClassPIM686M501 < ClassStage
         function warningScanUnimplemented
             warning('Scan is not implemented for coarse stages');
         end
+        
+        function warningTiltUnimplemented
+            warning('Tilt is not implemented for this stages');
+        end
     end
     
     methods (Access = private) % Private Functions
@@ -233,13 +237,13 @@ classdef (Sealed) ClassPIM686M501 < ClassStage
             % Angles should be in degrees, valid angles are between -5 and 5
             % degrees.
             success = 0;
-            obj.warningScanUnimplemented();
+            obj.warningTiltUnimplemented();
         end
         
         function success = EnableTiltCorrection(obj, enable)
             % Enables the tilt correction according to the angles.
             success = 0;
-            obj.warningScanUnimplemented();
+            obj.warningTiltUnimplemented();
         end
         
         function [tiltEnabled, thetaXZ, thetaYZ] = GetTiltStatus(obj) %#ok<MANU>

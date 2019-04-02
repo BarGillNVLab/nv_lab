@@ -190,9 +190,9 @@ classdef Tracker < EventSender & EventListener & Savable
             trackable = getObjByName(trackableName);
             
             switch trackableName
-                % We might want to do additional things
+                % Maybe it doesn't exist yet, and even if it does, 
+                % we might want to do additional things
                 case TrackablePosition.NAME
-                    % and maybe it doesn't even exist yet
                     if isempty(trackable)
                         trackable = TrackablePosition.getInstance;
                     end

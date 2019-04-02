@@ -99,13 +99,13 @@ classdef ViewStagePanelTiltCorrection < GuiComponent & EventListener
             
             string = obj.edtThetaX.String;
             if ~ValidationHelper.isStringValueInBorders(string, ClassStage.TILT_MIN_LIM_DEG, ClassStage.TILT_MAX_LIM_DEG)
-                EventStation.anonymousWarning('Theta X value not in range! reverting.\nRange possible: [%d, %d]', ClassStage.TILT_MIN_LIM_DEG, ClassStage.TILT_MAX_LIM_DEG);
+                EventStation.anonymousWarning('Theta X value not in range! Reverting.\nRange possible: [%d, %d]', ClassStage.TILT_MIN_LIM_DEG, ClassStage.TILT_MAX_LIM_DEG);
                 isError = true;
             end
                 
             string = obj.edtThetaY.String;
             if ~ValidationHelper.isStringValueInBorders(string, ClassStage.TILT_MIN_LIM_DEG, ClassStage.TILT_MAX_LIM_DEG)
-                EventStation.anonymousWarning('Theta Y value not in range! reverting.\nRange possible: [%d, %d]', ClassStage.TILT_MIN_LIM_DEG, ClassStage.TILT_MAX_LIM_DEG);
+                EventStation.anonymousWarning('Theta Y value not in range! Reverting.\nRange possible: [%d, %d]', ClassStage.TILT_MIN_LIM_DEG, ClassStage.TILT_MAX_LIM_DEG);
                 isError = true;
             end
             
@@ -117,7 +117,7 @@ classdef ViewStagePanelTiltCorrection < GuiComponent & EventListener
                     obj.edtThetaX.String = StringHelper.formatNumber(thetaXZ);
                     obj.edtThetaY.String = StringHelper.formatNumber(thetaYZ);
                 else
-                    EventStation.anonymousError('Could not find %s! Reverting was not possible.', obj.stageName);
+                    EventStation.anonymousError('Could not find %s! Could not revert.', obj.stageName);
                 end
                 return
             end

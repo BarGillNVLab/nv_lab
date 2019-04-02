@@ -15,7 +15,7 @@ classdef PathHelper
         end
         
         function modeString = SetupMode
-            % Determines whether to use dev(elopment) or prod(uction)
+            % Determines whether to use beta or prod(uction)
             % folder for saving and loading, according to json
             jsonStruct = JsonInfoReader.getJson();
             if jsonStruct.debugMode

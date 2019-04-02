@@ -44,6 +44,7 @@ classdef (Abstract) SerialControlled < handle
             obj.terminator = obj.s.Terminator;
             
             if obj.keepConnected
+                % We need to open it here, so it will be connected
                 obj.open
             end
         end

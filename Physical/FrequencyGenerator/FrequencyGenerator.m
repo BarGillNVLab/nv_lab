@@ -86,7 +86,7 @@ classdef (Abstract) FrequencyGenerator < BaseObject
         function set.amplitude(obj, newAmplitude)  % in dB
             % Change amplitude level of the frequency generator
             if ~ValidationHelper.isInBorders(newAmplitude, obj.minAmpl, obj.maxAmpl)
-                error('MW amplitude must be between %d and %d.\nRequested: %d', ...
+                error('MW amplitude must be between %g and %g.\nRequested: %g', ...
                     obj.minAmpl, obj.maxAmpl, newAmplitude)
             end
             

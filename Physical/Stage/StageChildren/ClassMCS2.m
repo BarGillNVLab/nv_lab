@@ -1,12 +1,6 @@
 classdef ClassMCS2 < ClassStage
-    % Created by Yoav Romach, The Hebrew University, September, 2016
-    % Used to control PI Micos stages
-    % libfunctionsview('PI') to view functions
-    % To query parameter:
-    % [~,~,numericOut,stringOut] = SendPICommand(obj, 'PI_qSPA', obj.ID, szAxes, [hex2dec('6B') hex2dec('6B')], zerosVector, '', 0);
-    % szAxes and the following three inputs must of vectors of same length.
-    % If numeric output is needed, the last parameter must specify the
-    % maximum size.
+    % 
+    % libfunctionsview('MCS2') to view functions
     
     properties (Constant, Access = protected)
         NAME = 'Stage (Coarse) - MCS2'
@@ -65,6 +59,22 @@ classdef ClassMCS2 < ClassStage
         tiltThetaYZ = 0
     end
     
+    methods (Static)
+        function obj = create(stageStruct)
+            % Get instance constructor
+            missingField = FactoryHelper.usualChecks(stageStruct, ClassMCS2.NEEDED_FIELDS);
+            if ~isnan(missingField)
+                EventStation.anonymousError(...
+                    'Trying to create the ANC stage, needed field "%s" was missing. Aborting',...
+                    missingField);
+            end
+            
+            niDaqChannel = stageStruct.niDaqChannel;
+            removeObjIfExists(ClassMCS2.NAME);
+            obj = ClassMCS2(niDaqChannel);       
+        end
+    end
+    
     methods (Access = protected) % Protected Functions
         function obj = ClassMCS2()
             % name - string
@@ -103,7 +113,7 @@ classdef ClassMCS2 < ClassStage
             % and is treated as a return code. (Checked for errors)
             
             % Try sending command
-            returnCode = 0;
+            returnCode = -1;
             tries = 0;
             while ~(returnCode == 0)
                 CommunicationDelay(obj);
@@ -181,7 +191,7 @@ classdef ClassMCS2 < ClassStage
         end
         
         function LoadPiezoLibrary(obj)
-            % Loads the PI MICOS dll file.
+            % Loads the MCS2 dll file.
 
             if ~libisloaded(obj.LIB_ALIAS)
                 % Only load dll if it wasn't loaded before.
@@ -199,85 +209,92 @@ classdef ClassMCS2 < ClassStage
             SendCommand(obj, 'SA_CTL_Close', obj.id); 
         end
         
+        function chState = getChannelState(obj, channelIndex)
+            SA_CTL_PKEY_CHANNEL_STATE = 50659343;   % 0x0305000F
+            
+            chState = obj.SendCommand(obj, 'SA_CTL_GetProperty_i32', obj.id, ...
+                channelIndex, SA_CTL_PKEY_CHANNEL_STATE, 0);
+        end
+        
         function axisIndex = GetAxisIndex(obj, phAxis)
             % Converts x,y,z into the corresponding index for this
             % controller; if stage only has 'z' then z is 1.
             phAxis = GetAxis(obj, phAxis);
             CheckAxis(obj, phAxis)
             axisIndex = zeros(size(phAxis));
-            for i=1:length(phAxis)
-                axisIndex(i) = strfind(obj.VALID_AXES, obj.axesName(phAxis(i)));
-                if isempty(axisIndex(i))
+            for i = 1:length(phAxis)
+                idx = strfind(obj.VALID_AXES, obj.axesName(phAxis(i)));
+                if isempty(idx)
                     obj.sendError('Invalid axis')
                 end
+                axisIndex(i) = idx - 1;     % MATLAB starts counting from 1, but the stage counts from 0
             end
-        end
-        
-        function [szAxes, zerosVector] = ConvertAxis(obj, phAxis)
-            % Returns the corresponding szAxes string needed to
-            % communicate with PI controllers that are connected to
-            % multiple axes. Also returns a vector containging zeros with
-            % the length of the axes.
-            % 'phAxis' can be either a specific axis (x,y,z or 1 for x,
-            % 2 for y, and 3 for z) or any vectorial combination of them.
-            phAxis = GetAxis(obj, phAxis);
-            szAxes = num2str(phAxis);
-            zerosVector = zeros(1, length(phAxis));
         end
         
         function CheckAxis(obj, phAxis)
             % Checks that the given axis matches the connected stage.
             % 'phAxis' can be either a specific axis (x,y,z or 1 for x,
             % 2 for y, and 3 for z) or any vectorial combination of them.
-            phAxis = GetAxis(obj, phAxis);
+            phAxis = obj.GetAxis(phAxis);
             if ~isempty(setdiff(phAxis, GetAxis(obj, obj.VALID_AXES)))
-                if length(phAxis) > 1
+                if isscalar(phAxis)
                     string = 'axis is';
                 else
                     string = 'axes are';
                 end
-                obj.sendError(sprintf('%s %s invalid for the %s controller.', upper(obj.axesName(phAxis)), string, obj.controllerModel));
+                obj.sendError(sprintf('%s %s invalid for the MCS2 controller.', upper(obj.axesName(phAxis)), string));
             end
         end
         
         function CheckReference(obj, phAxis)
             % Checks whether the given (physical) axis is referenced, 
-            % and if not, asks for confirmation to refernce it.
+            % and if not, asks for confirmation to reference it.
             phAxis = GetAxis(obj, phAxis);
-            refernced = IsRefernced(obj, phAxis);
-            if ~all(refernced)
-                unreferncedAxesNames = obj.axesName(phAxis(refernced==0));
-                if isscalar(unreferncedAxesNames)
-                    questionStringPart1 = sprintf('WARNING!\n%s axis is unreferenced.\n', unreferncedAxesNames);
-                else
-                    questionStringPart1 = sprintf('WARNING!\n%s axes are unreferenced.\n', unreferncedAxesNames);
-                end
-                % Ask for user confirmation
-                questionStringPart2 = sprintf('Stages must be referenced before use.\nThis will move the stages.\nPlease make sure the movement will not cause damage to the equipment!');
-                questionString = [questionStringPart1 questionStringPart2];
-                referenceString = sprintf('Reference');
-                referenceCancelString = 'Cancel';
-                confirm = questdlg(questionString, 'Referencing Confirmation', referenceString, referenceCancelString, referenceCancelString);
-                switch confirm
-                    case referenceString
-                        Refernce(obj, phAxis)
-                    case referenceCancelString
-                        obj.sendError(sprintf('Referencing canceled for controller %s: %s', ...
-                            obj.controllerModel, unreferncedAxesNames));
-                    otherwise
-                        obj.sendError(sprintf('Referencing failed for controller %s: %s - No user confirmation was given', ...
-                            obj.controllerModel, unreferncedAxesNames));
-                end
+            referenced = IsRefernced(obj, phAxis);
+            if all(referenced)
+                % We are done
+                return
+            end
+            
+            % Otherwise
+            unreferncedAxesNames = obj.axesName(phAxis(~referenced));
+            if isscalar(unreferncedAxesNames)
+                questionStringPart1 = sprintf('WARNING!\n%s axis is unreferenced.\n', unreferncedAxesNames);
+            else
+                questionStringPart1 = sprintf('WARNING!\n%s axes are unreferenced.\n', unreferncedAxesNames);
+            end
+            % Ask for user confirmation
+            questionStringPart2 = sprintf('Stages must be referenced before use.\nThis will move the stages.\nPlease make sure the movement will not cause damage to the equipment!');
+            questionString = [questionStringPart1 questionStringPart2];
+            titleString = 'Referencing Confirmation';
+            referenceString = 'Reference';
+            referenceCancelString = 'Cancel';
+            confirm = questdlg(questionString, titleString, referenceString, referenceCancelString, referenceCancelString);
+            switch confirm
+                case referenceString
+                    Refernce(obj, phAxis)
+                case referenceCancelString
+                    obj.sendError(sprintf('Referencing cancelled for controller MCS2: %s', ...
+                        unreferncedAxesNames));
+                otherwise
+                    obj.sendError(sprintf('Referencing failed for controller MCS2: %s - No user confirmation was given', ...
+                        unreferncedAxesNames));
             end
         end
         
-        function refernced = IsRefernced(obj, phAxis)
+        function tf = IsRefernced(obj, phAxis)
             % Check reference status for the given axis.
             % 'phAxis' can be either a specific axis (x,y,z or 1 for x, 2 for y
             % and 3 for z) or any vectorial combination of them.
-            CheckAxis(obj, phAxis)
-            [szAxes, zerosVector] = ConvertAxis(obj, phAxis);
-            [~, refernced] = SendPICommand(obj, 'PI_qFRF', obj.ID, szAxes, zerosVector);
+            len = length(phAxis);
+            tf = false(1, len);
+            realAxis = obj.GetAxisIndex(phAxis);
+            
+            for i = 1:length(realAxis)
+                chState = obj.getChannelState(realAxis);
+                tf(i) = bitget(chState, 8);     % Bit 7, if we count from 0
+            end
+            tf = logical(tf);
         end
         
         function Refernce(obj, phAxis)
@@ -285,42 +302,35 @@ classdef ClassMCS2 < ClassStage
             % 'phAxis' can be either a specific axis (x,y,z or 1 for x, 2 for y
             % and 3 for z) or any vectorial combination of them.
             CheckAxis(obj, phAxis)
-            [szAxes, zerosVector] = ConvertAxis(obj, phAxis);
-            SendPICommand(obj, 'PI_FRF', obj.ID, szAxes);
+            realAxis = GetAxisIndex(obj, phAxis);
+            
+            len = length(realAxis);
+            isRef = zeros(1, len);
+            for i = 1:length(realAxis)
+                a = realAxis(i);
+                SendCommand(obj, 'SA_CTL_Reference', obj.id, a, 0);
+                WaitFor(obj, 'ReferencingDone', a)
+                isRef(i) = IsRefernced(obj, phAxis(i));
+            end
             
             % Check if ready & if referenced succeeded
-            WaitFor(obj, 'ControllerReady')
-            [~, refernced] = SendPICommand(obj, 'PI_qFRF', obj.ID,szAxes, zerosVector);
-            if (~all(refernced))
-                obj.sendError(sprintf('Referencing failed for controller %s with ID %d: Reason unknown.', ...
-                    obj.controllerModel, obj.ID));
+            if (~all(isRef))
+                obj.sendError(sprintf('Referencing failed for controller MCS2 with ID %d: Reason unknown.', ...
+                    obj.id));
             end
         end
         
         function Initialization(obj)
             % Initializes the piezo stages.
             obj.scanRunning = 0;
-            
-			todo = 'allow opening without reference'
+
             % Change to closed loop
             ChangeLoopMode(obj, 'Closed')
             
             % Reference
             CheckReference(obj, obj.VALID_AXES)
             
-            % Physical units check
-            for i=1:length(obj.VALID_AXES)
-                [szAxes, zerosVector] = ConvertAxis(obj, obj.VALID_AXES(i));
-                [~,~,~,axisUnits] = SendPICommand(obj, 'PI_qSPA', obj.ID, szAxes, hex2dec('7000601'), zerosVector, '', 4);
-                if ~strcmpi(strtrim(axisUnits), strtrim(obj.units))
-                    obj.sendError(sprintf('%s axis - Stage units are in %s, should be%s', ...
-                        upper(obj.VALID_AXES(i)), axisUnits, obj.units));
-                else
-                    fprintf('%s axis - Units are in%s for position and%s/s for velocity.\n', upper(obj.VALID_AXES(i)), obj.units, obj.units);
-                end
-            end
-            
-            CheckLimits(obj);
+%             CheckLimits(obj);
             
             % Set velocity
             SetVelocity(obj, obj.VALID_AXES, zeros(size(obj.VALID_AXES))+obj.defaultVel);
@@ -354,6 +364,9 @@ classdef ClassMCS2 < ClassStage
             end
             
             % Soft limit check.
+            SA_CTL_PKEY_RANGE_LIMIT_MIN = 33816608; % 0x02040020
+            SA_CTL_PKEY_RANGE_LIMIT_MAX = 33816609; % 0x02040021
+            
             [~, ~, posSoftLimit, ~] = SendPICommand(obj, 'PI_qSPA', obj.ID, szAxes, zerosVector+21, zerosVector, '', 0);
             [~, ~, negSoftLimit, ~] = SendPICommand(obj, 'PI_qSPA', obj.ID, szAxes, zerosVector+48, zerosVector, '', 0);
             for i=1:length(obj.VALID_AXES)
@@ -371,31 +384,36 @@ classdef ClassMCS2 < ClassStage
         
         function QueryPos(obj)
             % Queries the position and updates the internal variable.
-            szAxes = ConvertAxis(obj, obj.VALID_AXES);
-            [~,obj.curPos] = SendPICommand(obj, 'PI_qPOS', obj.ID, szAxes, obj.curPos);
+            SA_CTL_PKEY_POSITION = 50659357; % 0x0305001D
+            for i = 1:length(obj.VALID_AXES)
+                realAxis = GetAxisIndex(obj, obj.VALID_AXES(i));
+                obj.curPos(i) = SendCommand(obj, 'SA_CTL_GetProperty_i64', obj.id, realAxis, SA_CTL_PKEY_POSITION, 0);
+            end
         end
         
         function QueryVel(obj)
             % Queries the velocity and updates the internal variable.
-            szAxes = ConvertAxis(obj, obj.VALID_AXES);
-            [~,obj.curVel] = SendPICommand(obj, 'PI_qVEL', obj.ID, szAxes, obj.curVel);
+            SA_CTL_PKEY_MOVE_VELOCITY = 50659369; % 0x03050029
+            for i = 1:length(obj.VALID_AXES)
+                realAxis = GetAxisIndex(obj, obj.VALID_AXES(i));
+                obj.curVel(i) = SendCommand(obj, 'SA_CTL_GetProperty_i64', obj.id, realAxis, SA_CTL_PKEY_MOVE_VELOCITY, 0);
+            end
         end
         
         function WaitFor(obj, what, phAxis)
             % Waits until a specific action, defined by what, is finished.
-            % 'phAxis' can be either a specific (physical) axis (x,y,z or 
-            % 1 for x, 2 for y and 3 for z), or any vectorial combination
-            % of them.
+            % 'phAxis' must a specific (physical) axis (x,y,z or 
+            % 1 for x, 2 for y and 3 for z).
             % Current options for 'what':
             % MovementDone - Waits until movement is done.
-            % onTarget - Waits until the stage reaches it's target.
-            % ControllerReady - Waits until the controller is ready (Not
-            % need for axis)
+            % ReferencingDone - waits until referencing is done.
+%             % onTarget - Waits until the stage reaches it's target.
+%             % ControllerReady - Waits until the controller is ready (Not
+%             % need for axis)
             % WaveGeneratorDone - Waits unti the wave generator is done.
-            if nargin == 3
-                CheckAxis(obj, phAxis);
-                [szAxes, zeroVector] = ConvertAxis(obj, phAxis);
-            end
+            CheckAxis(obj, phAxis);
+            realAxis = GetAxisIndex(obj, phAxis);
+                
             timer = tic;
             timeout = 60; % 60 second timeout
             wait = true;
@@ -409,18 +427,23 @@ classdef ClassMCS2 < ClassStage
                 % todo: $what options need to be set as constant properties for
                 % external methods to invoke
                 switch what
+                    case 'ReferencingDone'
+                        chState = getChannelState(obj, realAxis);
+                        isDone = bitget(chState, 4);	% Bit 3 (from 0) is SA_CTL_CH_STATE_BIT_REFERENCING
+                        wait = ~isDone;
                     case 'MovementDone'
-                        [~, moving] = SendPICommand(obj, 'PI_IsMoving', obj.ID, szAxes, zeroVector);
-                        wait = any(moving);
-                    case 'onTarget'
-                        [~, onTarget] = SendPICommand(obj, 'PI_qONT', obj.ID, szAxes, zeroVector);
-                        wait = ~all(onTarget);
-                    case 'ControllerReady'
-                        ready = SendPICommand(obj, 'PI_IsControllerReady', obj.ID, 0);
-                        wait = ~ready;
-                    case 'WaveGeneratorDone'
-                        [~, running] = SendPICommand(obj, 'PI_IsGeneratorRunning', obj.ID, [], 1, 1);
-                        wait = running;
+                        chState = getChannelState(obj, realAxis);
+                        isMoving = bitget(chState, 1);	% Bit 0 (1st bit) is SA_CTL_CH_STATE_BIT_ACTIVELY_MOVING
+                        wait = isMoving;
+%                     case 'onTarget'
+%                         [~, onTarget] = SendPICommand(obj, 'PI_qONT', obj.ID, szAxes, zeroVector);
+%                         wait = ~all(onTarget);
+%                     case 'ControllerReady'
+%                         ready = SendPICommand(obj, 'PI_IsControllerReady', obj.ID, 0);
+%                         wait = ~ready;
+%                     case 'WaveGeneratorDone'
+%                         [~, running] = SendPICommand(obj, 'PI_IsGeneratorRunning', obj.ID, [], 1, 1);
+%                         wait = running;
                     otherwise
                         obj.sendError(sprintf('Wrong Input %s', what));
                 end
@@ -484,10 +507,15 @@ classdef ClassMCS2 < ClassStage
             
             CheckReference(obj, phAxis)
             
-            szAxes = ConvertAxis(obj, phAxis);
-            
             % Send the move command
-            SendPICommand(obj, 'PI_MOV', obj.ID, szAxes, pos);
+            SA_CTL_PKEY_MOVE_MODE = 50659463;   % 0x03050087
+            SA_CTL_MOVE_MODE_CL_ABSOLUTE = 0;
+            realAxes = GetAxisIndex(obj, phAxis);
+            for i = 1:length(realAxes)
+                obj.SendCommand('SA_CTL_SetProperty_i32', obj.id, realAxes(i), ...
+                    SA_CTL_PKEY_MOVE_MODE, SA_CTL_MOVE_MODE_CL_ABSOLUTE);
+                obj.SendCommand('SA_CTL_Move', obj.id, realAxes(i), 0, pos(i))
+            end
             
             % Wait for move command to finish
             WaitFor(obj, 'onTarget', phAxis)
@@ -495,14 +523,14 @@ classdef ClassMCS2 < ClassStage
 
         function HaltPrivate(obj, phAxis)
             % Halts the stage.
-            SA_CTL_PKEY_MOVE_MODE = 50659463;
+            SA_CTL_PKEY_MOVE_MODE = 50659463;   % 0x03050087
             SA_CTL_MOVE_MODE_CL_RELATIVE = 1;
             
-            szAxes = ConvertAxis(obj, phAxis);
-            for i = 1:length(phAxis)
-                obj.SendCommand('SA_CTL_SetProperty_i32', obj.id, szAxes(i), ...
+            realAxes = GetAxisIndex(obj, phAxis);
+            for i = 1:length(realAxes)
+                obj.SendCommand('SA_CTL_SetProperty_i32', obj.id, realAxes(i), ...
                     SA_CTL_PKEY_MOVE_MODE, SA_CTL_MOVE_MODE_CL_RELATIVE);
-                obj.SendCommand('SA_CTL_Move', obj.id, szAxes(i), 0, 0)
+                obj.SendCommand('SA_CTL_Move', obj.id, realAxes(i), 0, 0)
             end
             AbortScan(obj)
             obj.sendWarning('Stage Halted!');
@@ -513,12 +541,12 @@ classdef ClassMCS2 < ClassStage
             % 2 for y and 3 for z).
             % Does not check if scan is running.
             % Vectorial axis is possible.
-            SA_CTL_PKEY_MOVE_VELOCITY = 50659369;
+            SA_CTL_PKEY_MOVE_VELOCITY = 50659369;   % 0x03050029
             
             CheckAxis(obj, phAxis)
-            szAxes = ConvertAxis(obj, phAxis);
             for i = 1:length(phAxes)
-                obj.SendCommand('SA_CTL_SetProperty_i64', obj.id, szAxes(i), ...
+                realAxis = GetAxisIndex(obj, phAxis(i));
+                obj.SendCommand('SA_CTL_SetProperty_i64', obj.id, realAxis, ...
                     SA_CTL_PKEY_MOVE_VELOCITY, vel(i));
             end
         end
@@ -552,14 +580,15 @@ classdef ClassMCS2 < ClassStage
     methods (Access = public)
         function CloseConnection(obj)
             % Closes the connection to the controllers.
-            if (obj.ID ~= -1)
+            if (obj.id ~= -1)
                 % ID exists, attempt to close
-                DisconnectController(obj, obj.ID)
-                fprintf('Connection to controller %s closed: ID %d released.\n', obj.controllerModel, obj.ID);
+                DisconnectController(obj)
+                fprintf('Connection to controller MCS2 closed: ID %d released.\n', obj.id);
             else
-                obj.ForceCloseConnection(obj.controllerModel);
+                % obj.ForceCloseConnection(obj.controllerModel);
+                obj.sendWarning('Could not close connection to MCS2 controller!')
             end
-            obj.ID = -1;
+            obj.id = -1;
         end
         
         function delete(obj)
@@ -628,7 +657,7 @@ classdef ClassMCS2 < ClassStage
             % Vectorial axis is possible.
             CheckAxis(obj, phAxis)
             QueryPos(obj);
-            axisIndex = GetAxisIndex(obj, phAxis);
+            axisIndex = GetAxis(obj, phAxis);
             pos = obj.curPos(axisIndex);
         end
         
@@ -638,7 +667,7 @@ classdef ClassMCS2 < ClassStage
             % Vectorial axis is possible.
             CheckAxis(obj, phAxis)
             QueryVel(obj);
-            axisIndex = GetAxisIndex(obj, phAxis);
+            axisIndex = GetAxis(obj, phAxis);
             vel = obj.curVel(axisIndex);
         end
         
@@ -684,7 +713,7 @@ classdef ClassMCS2 < ClassStage
             CheckAxis(obj, phAxis)
             QueryPos(obj);
             axisIndex = GetAxisIndex(obj, phAxis);
-            Move(obj, phAxis, obj.curPos(axisIndex) + change);
+            Move(obj, phAxis, obj.curPos(axisIndex) + change); % Stage has its own "relative movement" option, but we do not use it.
         end
         
         function Halt(obj)
@@ -965,7 +994,7 @@ classdef ClassMCS2 < ClassStage
             % but we always set them all at once, so it is enough to check
             % the mode for one of the axes (0 == x axis).
             
-            SA_CTL_PKEY_CONTROL_LOOP_INPUT = 50462744;
+            SA_CTL_PKEY_CONTROL_LOOP_INPUT = 50462744;  % 0x03020018
             
             [lMode, ~]  = SendCommand(obj, 'SA_CTL_SetProperty_i32', obj.id, ...
                 0, SA_CTL_PKEY_CONTROL_LOOP_INPUT, [], []);
@@ -978,7 +1007,7 @@ classdef ClassMCS2 < ClassStage
             % 'mode' should be either 'Open' or 'Closed'.
             % Stage will auto-lock when in open mode, which should increase
             % stability.
-            SA_CTL_PKEY_CONTROL_LOOP_INPUT = 50462744;
+            SA_CTL_PKEY_CONTROL_LOOP_INPUT = 50462744;  % 0x03020018
             
             switch mode
                 case 'Open'
@@ -989,7 +1018,8 @@ classdef ClassMCS2 < ClassStage
                     obj.sendError(sprintf('Unknown mode %s', mode));
             end
             for channel = 0:2
-                SendCommand(obj, 'SA_CTL_SetProperty_i32', obj.id, channel, SA_CTL_PKEY_CONTROL_LOOP_INPUT, modeInternal);
+                SendCommand(obj, 'SA_CTL_SetProperty_i32', obj.id, channel, ...
+                    SA_CTL_PKEY_CONTROL_LOOP_INPUT, modeInternal);
             end
             
             obj.loopMode = mode;

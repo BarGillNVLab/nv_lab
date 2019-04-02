@@ -39,7 +39,14 @@ classdef (Sealed) E3631A_power_supplier < handle
             obj.sendCommand('OUTP ON')
         end
         function sendCommand(obj, what)
-            fprintf(obj.id, what);
+            try
+                fprintf(obj.id, what);
+            catch
+                % For some reason, the connection sometimes closes; we open
+                % it and try again
+                fopen(obj.id);
+                fprintf(obj.id, what);
+            end
             obj.err;
             %fprintf(obj.id, '*OPC?' ); %See if device is ready
         end

@@ -6,9 +6,9 @@ classdef (Sealed) PulseStreamerNewClass < PulseGenerator
         MAX_PULSES = 10e6;          % int. Maximum number of pulses in acceptable sequences
         MAX_DURATION = Inf;         % double. Maximum duration of pulse.
         
-        AVAILABLE_ADDRESSES = 0:8;	% List of all available physical addresses.
+        AVAILABLE_ADDRESSES = 0:7;	% List of all available physical addresses.
                                     % Should be either vector of doubles or cell of char arrays
-        NEEDED_FIELDS = {'ipAddress'}
+        NEEDED_FIELDS = {'ipAddress', 'trigger'}
     end
     
     properties (Access = private)
@@ -24,7 +24,7 @@ classdef (Sealed) PulseStreamerNewClass < PulseGenerator
             obj@PulseGenerator;
         end
         
-        function Initialize(obj, ip) % doesn't need to be an input, and definitly not in the json (and it is now turned off)
+        function Initialize(obj, ip, trigType) % doesn't need to be an input, and definitly not in the json (and it is now turned off)
             % Normal mode
 %             obj.ps = PulseStreamer(ip);
 
@@ -33,7 +33,15 @@ classdef (Sealed) PulseStreamerNewClass < PulseGenerator
             obj.ps.enableLog(100, 'C:\Users\OWNER\Google Drive\NV Lab\Control code\prod\PSdebug.mat');
             
             obj.initSequence;
-            obj.trigger = PSTriggerStart.Software; % can be 'Immediate', 'Software', 'HardwareRising', 'HardwareFalling' or 'HardwareBoth'.
+            switch lower(trigType)
+                % PSTriggerStart is an enumeration with the options 'Immediate', 'Software', 'HardwareRising', 'HardwareFalling' or 'HardwareBoth'.
+                case 'hardwarerising'
+                    obj.trigger = PSTriggerStart.HardwareRising;
+                case 'software'
+                    obj.trigger = PSTriggerStart.Software;
+                otherwise
+                    obj.sendError('%s trigger type is not yet implemented', trigType)
+            end
             obj.automaticRearm = PSTriggerMode.Single; % can be 'Normal' or 'Single'.
             obj.ps.setTrigger(obj.trigger, obj.automaticRearm)
         end
@@ -184,7 +192,8 @@ classdef (Sealed) PulseStreamerNewClass < PulseGenerator
                 
                 obj = PulseStreamerNewClass();
                 ip = struct.ipAddress;
-                Initialize(obj, ip)
+                trigType = struct.trigger;
+                Initialize(obj, ip, trigType)
                 
                 addBaseObject(obj);
             end

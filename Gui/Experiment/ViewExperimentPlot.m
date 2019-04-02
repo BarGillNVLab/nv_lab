@@ -70,7 +70,11 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
         
         %%% Callbacks %%%
         function btnStopCallback(obj, ~, ~)
-            exp = getExpByName(obj.expName);
+            exp = getObjByName(obj.expName);
+            if isempty(exp)
+                EventStation.anonymousWarning('%s Experiment does not exist!')
+                return
+            end
             exp.pause;
             obj.btnStartStop.stopString = 'Pausing...';
             obj.btnStartStop.isRunning = true;
@@ -89,7 +93,11 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
         end
         
         function btnEmergencyStopCallback(obj, ~, ~)
-            exp = getExpByName(obj.expName);
+            exp = getObjByName(obj.expName);
+            if isempty(exp)
+                EventStation.anonymousWarning('%s Experiment does not exist!')
+                return
+            end
             exp.emergencyStop;
         end
         
@@ -175,9 +183,12 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
             % TEMPORARY (!!!) function, to save the plot from an experiment
             % as .png and .fig files
             
+            %%% Copy and stretch axes to an invisible figure
             figureInvis = figure('Visible', 'off');
-            copyobj(obj.vAxes, figureInvis);
+            newAx = copyobj(obj.vAxes, figureInvis);
+            newAx.Position = [0.1, 0.1, 0.8, 0.8];
             
+            %%% Get name for saving
             filename = PathHelper.removeDotSuffix(filename);
             fullpath = PathHelper.joinToFullPath(folder, filename);
             

@@ -88,7 +88,7 @@ classdef (Sealed) PulseBlasterNewClass < PulseGenerator
         function off(obj, channelNames)
             obj.getReady;
             
-            if isempty(channelNames)
+            if ~exist('channelNames', 'var') || isempty(channelNames)
                 % We want everything off
                 channels = 0;
             else

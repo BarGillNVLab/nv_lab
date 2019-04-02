@@ -209,7 +209,7 @@ classdef ExpESR < Experiment
                         otherwise
                             obj.sendError('What should we do here?')
                     end
-                    % todo: 1 looks like an arbitrary magic number!
+                    
                     S.addPulse(P);
                     S.addEvent(obj.laserOnDelay,         'greenLaser')
                     S.addEvent(obj.detectionDuration,    {'greenLaser','detector'})
@@ -292,22 +292,19 @@ classdef ExpESR < Experiment
             for k = 1:len
                 obj.checkEmergencyStop()
                 
-                if isempty(obj.mirrorSweepAround)
-                    i = f1(k);
-                    
-                    fg1.frequency = obj.frequency(i);
-                    if obj.nChannels > 1
-                        fg2.frequency = obj.freqMirrored(i);
-                    end
-                    sig(1:2) = obj.readAndShape(spcm, pg);
-                elseif obj.nChannels == 1 % run another sweep with the same source
+                i = f1(k);
+                fg1.frequency = obj.frequency(i);
+                if obj.nChannels > 1
+                    fg2.frequency = obj.freqMirrored(i);
+                end
+                sig(1:2) = obj.readAndShape(spcm, pg);
+                
+                if obj.nChannels == 1 && ~isempty(obj.mirrorSweepAround) % run another sweep with the same source
                     i = f2(k);
-                    
                     fg1.frequency = obj.freqMirrored(i);
                     sig(3:4) = obj.readAndShape(spcm, pg);
-                else
-                    obj.sendError('This should not have happenned')
                 end
+                
                 obj.signal(:, i, obj.currIter) = sig;
                 
                 % Add tracking

@@ -415,7 +415,32 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             tf = ~obj.stopFlag;
         end
     end
-    
+
+    methods (Static, Access = protected)
+        function s = getRawData(pg, spcm)
+            spcm.startExperimentCount;
+            pg.run;
+            s = spcm.readFromExperiment;
+            spcm.stopExperimentCount;
+        end
+    end
+       
+    methods (Access = protected)
+        function [signal, sterr] = processData(obj, rawData)
+            kc = 1e3;     % kilocounts
+            musec = 1e-6;   % microseconds
+            
+            n = obj.repeats;
+            m = length(rawData)/n;  % Number of reads each repeat
+            s = (reshape(rawData, m, n))';
+            
+            signal = mean(s);
+            signal = signal./(obj.detectionDuration*musec)/kc; %kcounts per second
+            
+            sterr = ste(s);
+            sterr = sterr./(obj.detectionDuration*musec)/kc; % convert to kcps
+        end
+    end
     
     methods (Static, Access = private)
         function expName = getSetCurrentExp(newExperimentName)

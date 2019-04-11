@@ -108,22 +108,6 @@ classdef ExpRabi < Experiment
         end
         
     end
-        
-    %% Helper functions
-    methods
-        function sig = readAndShape(obj, spcm, pg)
-            kc = 1e3;     % kilocounts
-            musec = 1e-6;   % microseconds
-            
-            spcm.startExperimentCount;
-            pg.run;
-            s = spcm.readFromExperiment;
-            s = reshape(s, 2, length(s)/2);
-            sig = mean(s,2).';
-            sig = sig./(obj.detectionDuration*musec)/kc; %kcounts per second
-            spcm.stopExperimentCount;
-        end
-    end
     
     %% Overridden from Experiment
     methods (Access = protected)
@@ -216,11 +200,15 @@ classdef ExpRabi < Experiment
                             seq.change('lastDelay', 'duration', maxLastDelay - obj.tau(t));
                         end
                         
-                        sig = readAndShape(obj, spcm, pg);
+                        data = obj.getRawData(pg, spcm);
+                        [sig, d] = obj.processData(data);
+                        sterr = d(2);   % reference std. err.
                         obj.signal(:, t, obj.currIter) = sig;
                         
                         if obj.isTracking
-                            isTrackingNeeded = tracker.compareReference(sig(2), Tracker.REFERENCE_TYPE_KCPS, TrackablePosition.NAME);
+                            isTrackingNeeded = tracker.compareReference(...
+                                sig(2), sterr, ...
+                                Tracker.REFERENCE_TYPE_KCPS, obj.trackThreshhold);
                             if isTrackingNeeded
                                 tracker.trackUsing(TrackablePosition.NAME)
                             end

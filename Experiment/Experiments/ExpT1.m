@@ -115,21 +115,6 @@ classdef ExpT1 < Experiment
         end
     end
     
-    %% Helper functions
-    methods
-        function sig = readAndShape(obj, spcm, pg)
-            kc = 1e3;     % kilocounts
-            musec = 1e-6;   % microseconds
-            
-            spcm.startGatedCount;
-            pg.run;
-            s = spcm.readGated;
-            s = reshape(s, 2, length(s)/2);
-            sig = mean(s,2).';
-            sig = sig./(obj.detectionDuration*musec)/kc; %kcounts per second
-        end
-    end
-    
     %% Overridden from Experiment
     methods (Access = protected)
         function reset(obj)
@@ -225,17 +210,25 @@ classdef ExpT1 < Experiment
                         if obj.constantTime
                             seq.change('lastDelay', 'duration', maxLastDelay - 2*obj.tau(t));
                         end
-                        sig(1:2) = obj.readAndShape(spcm, pg);
+                        data = obj.getRawData(pg, spcm);
+                        [sig(1:2), d] = obj.processData(data);
+                        sterr = d(2);   % reference std. err.
                         
                         if obj.doubleMeasurement
                             seq.change('projectionPulse', 'duration', obj.threeHalvesPiTime);
-                            sig(3:4) = obj.readAndShape(spcm, pg);
+                            data = obj.getRawData(pg, spcm);
+                            sig(3:4) = obj.processData(data);
                             seq.change('projectionPulse', 'duration', obj.halfPiTime);
                         end
                         obj.signal(:, t, obj.currIter) = sig;
                         
                         if obj.isTracking
-                            tracker.compareReference(sig(2), Tracker.REFERENCE_TYPE_KCPS, TrackablePosition.NAME);
+                            isTrackingNeeded = tracker.compareReference(...
+                                sig(2), sterr, ...
+                                Tracker.REFERENCE_TYPE_KCPS, obj.trackThreshhold);
+                            if isTrackingNeeded
+                                tracker.trackUsing(TrackablePosition.NAME)
+                            end
                         end
                         success = true;     % Since we got till here
                         break;

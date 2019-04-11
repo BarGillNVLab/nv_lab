@@ -168,15 +168,6 @@ classdef ExpESR < Experiment
                 f = fliplr(f);          % So that frequencies are paired
             end
         end
-        
-        function sig = readAndShape(~, spcm, pg)
-            spcm.startExperimentCount;
-            pg.run;
-            s = spcm.readFromExperiment;
-            s = reshape(s,2,length(s)/2);
-            sig = sum(s,2);
-            spcm.stopExperimentCount;
-        end
     end
     
     %% Overridden from Experiment
@@ -297,12 +288,15 @@ classdef ExpESR < Experiment
                 if obj.nChannels > 1
                     fg2.frequency = obj.freqMirrored(i);
                 end
-                sig(1:2) = obj.readAndShape(spcm, pg);
+                data = obj.getRawData(pg, spcm);
+                [sig(1:2), d] = obj.processData(data);
+                sterr = d(2);   % reference std. err.
                 
                 if obj.nChannels == 1 && ~isempty(obj.mirrorSweepAround) % run another sweep with the same source
                     i = f2(k);
                     fg1.frequency = obj.freqMirrored(i);
-                    sig(3:4) = obj.readAndShape(spcm, pg);
+                    data = obj.getRawData(pg, spcm);
+                    sig(3:4) = obj.processData(data);
                 end
                 
                 obj.signal(:, i, obj.currIter) = sig;
@@ -310,14 +304,15 @@ classdef ExpESR < Experiment
                 % Add tracking
                 if obj.isTracking
                         %%% Patch: for CW, we need to decrease MW power
-                        if strcmp(obj.mode, 'CW') 
+                        if strcmp(obj.mode, 'CW')
                             didAmplitudeChange = true;
                             fg1.amplitude = obj.amplitude(1) - 1.5;
                         end
-                    isTrackingNeeded = tracker.compareReference(sig(2), Tracker.REFERENCE_TYPE_KCPS);
+                    isTrackingNeeded = tracker.compareReference(sig(2), sterr, Tracker.REFERENCE_TYPE_KCPS, obj.trackThreshhold);
                     if isTrackingNeeded
                         tracker.trackUsing(TrackablePosition.NAME)
                     end
+                        % Patch part 2: return to original state
                         if didAmplitudeChange, fg1.amplitude = obj.amplitude(1); end
                 end
             end

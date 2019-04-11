@@ -4,7 +4,9 @@ classdef (Abstract) Trackable < Experiment
     % relevant parameters for the experiment have not changed
     
     properties (SetAccess = protected)
+        % Saving history/records of tracking
         mHistory = {};
+        sessionEnds = [];   % Marks the indices (in mHistory) where tracking stopped
         
         timer       % Stores tic from beginning of tracking
         isCurrentlyTracking = false;
@@ -83,9 +85,10 @@ classdef (Abstract) Trackable < Experiment
     methods
         function clearHistory(obj)
             obj.mHistory = {};
+            obj.sessionEnds = [];
         end
         
-        function historyStruct = convertHistoryToStructToSave(obj)
+        function [historyStruct, sessionEndsIdx] = convertHistoryToStructToSave(obj)
             % Takes obj.mHistory and formats it as a struct which can be
             % sent to SaveLoad
             for fCell = obj.HISTORY_FIELDS
@@ -93,6 +96,7 @@ classdef (Abstract) Trackable < Experiment
                 historyStruct.(field) = cellfun(@(c) c.(field), obj.mHistory, 'UniformOutput', false);
                 historyStruct.(field) = historyStruct.(field)';     % better formatting
             end
+            sessionEndsIdx = obj.sessionEnds;
         end
         
         function tf = isHistoryEmpty(obj)
@@ -123,6 +127,10 @@ classdef (Abstract) Trackable < Experiment
        % recordCurrentState(obj)
        % Creates a record with the current state of the system (i.e. the
        % value of each of obj.HISTORY_FIELDS), and add it to obj.mHistory
+       %
+       % recordSessionEnd(obj)
+       % calls obj.recordCurrentState, and also save the index of that
+       % point in time, since it marks the end of a tracking session.
     end
     
     %% Overridden from Experiment

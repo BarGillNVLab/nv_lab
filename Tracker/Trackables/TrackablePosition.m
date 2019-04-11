@@ -8,6 +8,7 @@ classdef TrackablePosition < Trackable % & StageScanner
         currAxis = 1;   % int. Numerical value of currently scanned axis (1 for X, etc.)
 
         mSignal
+        mSignal_ste
         mScanParams     % Object of class StageScanParams, to store current running scan
         stepSize        % nx1 double. Holds the current size of position step
         
@@ -30,16 +31,16 @@ classdef TrackablePosition < Trackable % & StageScanner
         EVENT_STAGE_CHANGED = 'stageChanged'
         
         % Default properties
-        NUM_MAX_ITERATIONS = 120;   % After that many steps, convergence is improbable
+        NUM_MAX_ITERATIONS = 30;   % After that many steps, convergence is improbable
         PIXEL_TIME = 1 ;  % in seconds
         
         % vector constants, for [X Y Z]
         INITIAL_STEP_VECTOR = [0.05 0.05 0.1];    %[0.1 0.1 0.05];
         MINIMUM_STEP_VECTOR = [0.02 0.02 0.02]; %[0.01 0.01 0.01];
-        STEP_RATIO_VECTOR = 0.5*ones(1, 3);     % Needs to be strictly between 0 and 1
+        STEP_RATIO_VECTOR = [0.5 0.5 0.5];     % Needs to be strictly between 0 and 1
         ZERO_VECTOR = [0 0 0];
         
-        HISTORY_FIELDS = {'position', 'step', 'time', 'value'}
+        HISTORY_FIELDS = {'position', 'step', 'time', 'value', 'ste'}
         
         DEFAULT_CONTINUOUS_TRACKING = false;
         
@@ -51,7 +52,7 @@ classdef TrackablePosition < Trackable % & StageScanner
             % Get stage
             if ~exist('stageName', 'var')
                 stage = JsonInfoReader.getDefaultObject('stages');
-                stageName = stage.NAME;
+                stageName = stage.name;
                 
                 % Obselete code, might be useful in the future:
 %                 stages = ClassStage.getScannableStages;
@@ -129,7 +130,6 @@ classdef TrackablePosition < Trackable % & StageScanner
             phAxes = stage.getAxis(stage.availableAxes);
             sp = obj.mScanParams;
             sp.fixedPos = stage.Pos(phAxes);
-            sp.isFixed = true(size(sp.isFixed));    % all axes are fixed on initalization
             sp.pixelTime = obj.pixelTime;
             scanner = StageScanner.init;
             if ~ischar(scanner.mStageName) || ~strcmp(scanner.mStageName, obj.mStageName)
@@ -147,7 +147,11 @@ classdef TrackablePosition < Trackable % & StageScanner
             end
             
             obj.mSignal = scanner.scanPoint(stage, spcm, sp);
-            obj.recordCurrentState;     % record starting point (time == 0)
+            if obj.isHistoryEmpty
+                obj.recordSessionEnd;     % record starting point (time == 0, index == 1)
+            else
+                obj.recordCurrentState;
+            end
         end
         
         function perform(obj)
@@ -155,7 +159,7 @@ classdef TrackablePosition < Trackable % & StageScanner
             % {while(true) {statements} if(condition) {break}}
             while true
                 obj.HovavAlgorithm;
-                obj.recordCurrentState;
+                obj.recordSessionEnd;
                 if ~obj.isRunningContinuously; break; end
                 obj.sendEventTrackableExpEnded;
             end
@@ -278,10 +282,16 @@ classdef TrackablePosition < Trackable % & StageScanner
             record.position = obj.mScanParams.fixedPos;
             record.step = obj.stepSize;
             record.value = obj.mSignal;
+            record.ste = obj.mSignal_ste;
             record.time = obj.timer.toc;  % personalized timer
             
             obj.mHistory{end+1} = record;
             obj.sendEventTrackableUpdated;
+        end
+        
+        function recordSessionEnd(obj)
+            obj.sessionEnds(end+1) = length(obj.mHistory)+1; % Save the index of this point in time
+            obj.recordCurrentState;
         end
     end
 
@@ -303,29 +313,27 @@ classdef TrackablePosition < Trackable % & StageScanner
             sp.fixedPos = stage.Pos(phAxes);
             sp.pixelTime = obj.pixelTime;
             
-            tracker = getObjByName(Tracker.NAME);
-            thresh = tracker.kcpsThreshholdFraction;
+            obj.stepNum = obj.stepNum + 1;   % The first step is always counted
             
             while ~obj.stopFlag && any(obj.stepSize > obj.minimumStepSize(phAxes)) && ~obj.isDivergent
                 cAxis = obj.currAxis;   % For brevity
                 if obj.stepSize(cAxis) > obj.minimumStepSize(cAxis)
-                    obj.stepNum = obj.stepNum + 1;
                     pos = sp.fixedPos(cAxis);
                     step = obj.stepSize(cAxis);
                     
                     % scan to find forward and backward 'derivative'
                     % backward
                     sp.fixedPos(cAxis) = pos - step;
-                    signals(1) = scanner.scanPoint(stage, spcm, sp);
+                    [signals(1), signal_ste(1)] = scanner.scanPoint(stage, spcm, sp);
                     % current
                     sp.fixedPos(cAxis) = pos;
-                    signals(2) = scanner.scanPoint(stage, spcm, sp);
+                    [signals(2), signal_ste(2)] = scanner.scanPoint(stage, spcm, sp);
                     % forward
                     sp.fixedPos(cAxis) = pos + step;
-                    signals(3) = scanner.scanPoint(stage, spcm, sp);
+                    [signals(3), signal_ste(3)] = scanner.scanPoint(stage, spcm, sp);
                     
-                    shouldMoveBack = Tracker.isDifferenceAboveThreshhold(signals(1), signals(2), thresh);
-                    shouldMoveFwd = Tracker.isDifferenceAboveThreshhold(signals(3), signals(2), thresh);
+                    shouldMoveBack = (signals(1) - signals(2) > mean(signal_ste(1:2))); % The "back" signal is considerably higher
+                    shouldMoveFwd = (signals(3) - signals(2) > mean(signal_ste(2:3)));   % The "fwd" signal is considerably higher
                     
                     shouldContinue = false;
                     if shouldMoveBack
@@ -338,6 +346,7 @@ classdef TrackablePosition < Trackable % & StageScanner
                             newStep = -step;
                             pos = pos + newStep;
                             newSignal = signals(1);   % value @ best position yet
+                            newSignal_ste = signal_ste(1);
                             shouldContinue = true;
                         end
                         
@@ -348,31 +357,39 @@ classdef TrackablePosition < Trackable % & StageScanner
                             newStep = step;
                             pos = pos + newStep;
                             newSignal = signals(3);   % value @ best position yet
+                            newSignal_ste = signal_ste(3);
                             shouldContinue = true;
                         else
                             % local maximum or plateau; don't move
+                            sp.fixedPos(cAxis) = pos;
                         end
                     end
                     
                     while shouldContinue
-                        if obj.isDivergent || obj.stopFlag; return; end
+                        if obj.isDivergent || obj.stopFlag; break; end
                         % we are still iterating; save current position before moving on
                         obj.mSignal = newSignal;    % Save value @ best position yet
-                        obj.recordCurrentState;
+                        obj.mSignal_ste = newSignal_ste;
+                        obj.recordCurrentState;     % We are cheating a little, since the location is a bit off. Everything else is good, though.
                         
                         obj.stepNum = obj.stepNum + 1;
                         % New pos = (pos + step), if you should move forward;
                         %           (pos - step), if you should move backwards
                         pos = pos + newStep;
                         sp.fixedPos(cAxis) = pos;
-                        sp.isFixed(cAxis) = true;
-                        newSignal = scanner.scanPoint(stage, spcm, sp);
+                        [newSignal, newSignal_ste] = scanner.scanPoint(stage, spcm, sp);
                         
-                        shouldContinue = Tracker.isDifferenceAboveThreshhold(newSignal, obj.mSignal, thresh);
+                        mean_ste = mean([newSignal_ste, obj.mSignal_ste]);
+                        shouldContinue = (newSignal - obj.mSignal > mean_ste);
+                        
+                        if ~shouldContinue
+                            % We are about to exit the loop
+                            sp.fixedPos(cAxis) = pos - newStep; % Save the last best place, ...
+                            stage.move(phAxes, sp.fixedPos);    % and return there
+                        end
                     end
                     obj.stepSize(cAxis) = step * obj.STEP_RATIO_VECTOR(cAxis);
                 end
-                sp.isFixed(cAxis) = true;        % We are done with this axis, for now
                 obj.currAxis = mod(cAxis, len) + 1; % Cycle through 1:len
             end
         end
@@ -396,4 +413,3 @@ classdef TrackablePosition < Trackable % & StageScanner
     end
     
 end
-

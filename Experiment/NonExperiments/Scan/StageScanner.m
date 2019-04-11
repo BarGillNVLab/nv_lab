@@ -172,7 +172,7 @@ classdef StageScanner < EventSender & EventListener & Savable
             end
         end
         
-        function kcpsValue = scanPoint(obj, stage, spcm, scanParams)
+        function [kcpsValue, steValue] = scanPoint(obj, stage, spcm, scanParams)
             % scan "0D"
             % input arg's:
             %    stage - object deriving from ClassStage
@@ -194,7 +194,7 @@ classdef StageScanner < EventSender & EventListener & Savable
             for trial = 1:StageScanner.TRIALS_AMOUNT_ON_ERROR
                 try
                     spcm.prepareReadByTime(scanParams.pixelTime);
-                    [kcps, ~] = spcm.readFromTime();
+                    [kcps, kcps_ste] = spcm.readFromTime();
                     spcm.clearTimeRead;
                     if kcps == 0
                         obj.sendError('No Signal Detected!')
@@ -215,6 +215,7 @@ classdef StageScanner < EventSender & EventListener & Savable
             end
             
             kcpsValue = kcps;
+            steValue = kcps_ste;
         end
         
         function kcpsScanVector = scan1D(obj, stage, spcm, scanParams)

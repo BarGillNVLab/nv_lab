@@ -168,15 +168,37 @@ classdef ViewTrackablePosition < ViewTrackable
         function update(obj) % (#1)
             trackablePos = obj.getTrackable;
             
-            history = trackablePos.convertHistoryToStructToSave;
-            pos = cell2mat(history.position);
+            [history, sessEndIdx] = trackablePos.convertHistoryToStructToSave;
             
+            % Get the data
+            pos = cell2mat(history.position);
+            if isempty(pos)
+                return  % Nothing to do here
+            end
             switch obj.xAxisMode
                 case obj.STRING_TIME
                     xAx = cell2mat(history.time);
                 case obj.STRING_STEPS
-                    xAx = 1 : length(history.time);  % vector of natural numbers
+                    xAx = 0 : (length(history.time) - 1);  % vector of natural numbers
             end
+            
+            % Choose the relevant part, according to history mode
+            switch lower(obj.historyMode)
+                case 'short'
+                    s = size(pos);
+                    current = s(1);             % current index of history
+                    lastEnd = sessEndIdx(end);  % index of the end of last session
+                    if s(1) == lastEnd && lastEnd~=1
+                        ind = sessEndIdx(end-1):current;
+                    else
+                        ind = lastEnd:current;
+                    end
+                case 'long'
+                    ind = sessEndIdx;           % Only the indices of the final position in each session    
+            end
+            % Now take the relevant data
+            pos = pos(ind, :);
+            xAx = xAx(ind);
             
             p_1 = pos(1, :);
             dp = pos - p_1;
@@ -186,7 +208,10 @@ classdef ViewTrackablePosition < ViewTrackable
             set(obj.legend1, 'String', axesLetters, 'Visible', 'on');
             
             kcps = cell2mat(history.value);
-            plot(obj.vAxes2, xAx, kcps);
+            kcps = kcps(ind);
+            kcpsSte = cell2mat(history.ste);
+            kcpsSte = kcpsSte(ind);
+            AxesHelper.update(obj.vAxes2, kcps, 1, xAx, [], kcpsSte);
             
             currentPos = pos(end, :);
             axesLen = length(obj.stageAxes);

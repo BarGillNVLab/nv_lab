@@ -19,9 +19,13 @@ classdef (Abstract) ViewTrackable <  ViewVBox & EventListener
         vAxes2  % graphical axes. Usually, history of the tracked parameter
         legend1 % legend. for plot in vAxes1
         
+        xAxisMode   % char array. Either 'Steps' or 'Time'
         radioTime   % radiobutton. x Axis shows events time
         radioSteps  % radiobutton. x Axis shows events step number
-        xAxisMode   % char array. Either 'Steps' or 'Time'
+        
+        historyMode % char array. Either 'Short' or 'Long'
+        radioShort  % radioButton. Show history since beginning of last tracking session
+        radioLong   % radioButton. Show only state at the end of each session
         
         % Manual control panel
         cbxContinuous   % checkbox
@@ -96,6 +100,7 @@ classdef (Abstract) ViewTrackable <  ViewVBox & EventListener
                 'NextPlot', 'replacechildren', ...
                 'ActivePositionProperty', 'outerposition');
             obj.xAxisMode = ViewTrackable.STRING_TIME;      % By default. Might be changed by subclasses.
+            obj.historyMode = 'Short';                      % By default. Might be changed by subclasses.
             axes()      % to avoid accidental plotting over the data in the axes
             % Workaround, part 3: minimize "fake" legend to size 0.
             vboxAxes.Heights = [-1 0 -1]; 
@@ -105,16 +110,30 @@ classdef (Abstract) ViewTrackable <  ViewVBox & EventListener
             rbWidth = 70;
             paddingFromBottom = 10;
             
-            bgXAxis = uibuttongroup(...
+            hboxPlotControl = uix.HBox(...
                 'Parent', vboxRight, ...
+                'Spacing', 3);
+            bgXAxis = uibuttongroup(...
+                'Parent', hboxPlotControl, ...
                 'Title', 'x Axis', ...
-                'SelectionChangedFcn',@obj.callbackRadioSelection);
+                'SelectionChangedFcn',@obj.callbackRadioXAxisSelection);
                 obj.radioTime = uicontrol(obj.PROP_RADIO{:}, 'Parent', bgXAxis, ...
                     'String', obj.STRING_TIME, ...
                     'Position', [10 paddingFromBottom rbWidth rbHeight]);  % [fromLeft, fromBottom, width, height]
                 obj.radioSteps = uicontrol(obj.PROP_RADIO{:}, 'Parent', bgXAxis, ...
                     'String', obj.STRING_STEPS, ...
                     'Position', [90 paddingFromBottom rbWidth rbHeight]);  % [fromLeft, fromBottom, width, height]
+            bgHistory = uibuttongroup(...
+                'Parent', hboxPlotControl, ...
+                'Title', 'History Mode', ...
+                'SelectionChangedFcn',@obj.callbackRadioHistorySelection);
+                obj.radioShort = uicontrol(obj.PROP_RADIO{:}, 'Parent', bgHistory, ...
+                    'String', 'Short', ...
+                    'Position', [10 paddingFromBottom rbWidth rbHeight]);  % [fromLeft, fromBottom, width, height]
+                obj.radioLong = uicontrol(obj.PROP_RADIO{:}, 'Parent', bgHistory, ...
+                    'String', 'Long', ...
+                    'Position', [90 paddingFromBottom rbWidth rbHeight]);  % [fromLeft, fromBottom, width, height]
+            hboxPlotControl.Widths = [-1, -1];
 
             obj.btnSave = uicontrol(obj.PROP_BUTTON{:}, ...
                 'Parent', vboxRight, ...
@@ -156,7 +175,7 @@ classdef (Abstract) ViewTrackable <  ViewVBox & EventListener
             EventStation.anonymousWarning(message);
         end
         
-        function callbackRadioSelection(obj, ~, event)
+        function callbackRadioXAxisSelection(obj, ~, event)
             mode = event.NewValue.String;
             obj.xAxisMode = mode;
             switch mode
@@ -165,6 +184,12 @@ classdef (Abstract) ViewTrackable <  ViewVBox & EventListener
                 case obj.STRING_STEPS
                     obj.vAxes2.XLabel.String = obj.LABEL_STEPS;
             end
+            obj.update;
+        end
+        
+        function callbackRadioHistorySelection(obj, ~, event)
+            mode = event.NewValue.String;
+            obj.historyMode = mode;
             obj.update;
         end
         

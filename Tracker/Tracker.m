@@ -6,18 +6,12 @@ classdef Tracker < EventSender & EventListener & Savable
         EVENT_TRACKER_FINISHED = 'trackerFinished'
 
         REFERENCE_TYPE_KCPS = 'kcpsReference'
-        
-        THRESHHOLD_FRACTION = 0.3;  % Change is significant if dx/x > threshhold fraction (Default)
     end
      
     properties (Access = private)
         mLocalStruct = struct;
         
         kcpsReference = [];  % Initialize as 0
-    end
-    
-    properties
-        kcpsThreshholdFraction = Tracker.THRESHHOLD_FRACTION;   % Default value
     end
     
     methods
@@ -35,7 +29,7 @@ classdef Tracker < EventSender & EventListener & Savable
     end
     
     methods
-        function isTrackingNeeded = compareReference(obj, newValue, referenceType, trackableName)
+        function isTrackingNeeded = compareReference(obj, newValue, newSte, referenceType, thresholdFraction4StartTrack)
             % Compares newValue to reference of type referenceType, using
             % trackable. Returns whether tracking is needed, so Experiment
             % can prepare for it.
@@ -45,7 +39,6 @@ classdef Tracker < EventSender & EventListener & Savable
             switch referenceType
                 case obj.REFERENCE_TYPE_KCPS
                     reference = obj.kcpsReference;
-                    threshhold = obj.kcpsThreshholdFraction;
                     refName = ' kcps';
                 otherwise
                     EventStation.anonymousError('This Shouldn''t have happenned!')
@@ -54,10 +47,10 @@ classdef Tracker < EventSender & EventListener & Savable
             if isempty(reference)
                 obj.kcpsReference = newValue;
                 fprintf('Setting tracker reference as %.2f%s\n', newValue, refName);
-            elseif obj.isDifferenceAboveThreshhold(newValue, reference, threshhold)
+            elseif (newValue - reference) > newSte
                 obj.kcpsReference = newValue;
                 fprintf('Tracking reference jumped, setting value to %.2f%s\n', newValue, refName);
-            elseif obj.isDifferenceAboveThreshhold(reference, newValue, threshhold)
+            elseif newValue < (reference * thresholdFraction4StartTrack)
                 fprintf('Starting tracking, current counts are %.2f%s, reference is %.2f%s\n', ...
                     newValue, refName, reference, refName);
                 isTrackingNeeded = true;
@@ -71,14 +64,14 @@ classdef Tracker < EventSender & EventListener & Savable
         end
     end
     
-    methods % Setters
-        function set.kcpsThreshholdFraction(obj, newFraction)
-            if ~ValidationHelper.isValueFraction(newFraction)
-                obj.sendError('Fraction must be a numeric value between 0 and 1');
-            end
-            obj.kcpsThreshholdFraction = newFraction;
-        end
-    end
+%     methods % Setters
+%         function set.kcpsThreshholdFraction(obj, newFraction)
+%             if ~ValidationHelper.isValueFraction(newFraction)
+%                 obj.sendError('Fraction must be a numeric value between 0 and 1');
+%             end
+%             obj.kcpsThreshholdFraction = newFraction;
+%         end
+%     end
     
     methods (Static)
         function init
@@ -204,10 +197,6 @@ classdef Tracker < EventSender & EventListener & Savable
                 otherwise
                         disp('This should not have happenned')
             end
-        end
-        
-        function tf = isDifferenceAboveThreshhold(maybeHigh, maybeLow, threshhold)
-            tf = (maybeHigh - maybeLow) > threshhold * maybeLow;
         end
     end
     

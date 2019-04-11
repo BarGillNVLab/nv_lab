@@ -118,7 +118,11 @@ classdef SpcmCounter < Experiment
             spcm.prepareReadByTime(integrationTime/1000);
             
             % Prepare for parallel pool
-            paralPool = gcp();
+            if isempty(gcp('nocreate'))
+                paralPool = parpool(1);
+            else
+                paralPool = gcp();
+            end
             countingObj = spcm.variablesForTimeRead;
             
             try
@@ -145,7 +149,10 @@ classdef SpcmCounter < Experiment
                 
             catch err
                 obj.pause;
-                spcm.clearTimeTask;
+                try
+                    spcm.clearTimeTask;
+                catch
+                end
                 rethrow(err);
             end
         end

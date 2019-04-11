@@ -6,13 +6,8 @@ classdef EventSender < BaseObject
     %       @ sendEvent(struct)                             %
     %       @ sendWarning(msgString, optionalStruct)        %
     %       @ sendError(msgString, optionalStruct)          %
-    %       @ sendErrorRealWorld()                          %
     %                                                       %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    
-    properties (Constant, Hidden)
-        ERROR_MESSAGE_PHYSICAL = 'Something in the real world just crashed. Sorry'
-    end
     
     methods (Access = protected)
         function obj = EventSender(name)
@@ -71,10 +66,6 @@ classdef EventSender < BaseObject
             end
             EventStation.getInstance.newEvent(errorEvent);
             error(errorString);
-        end
-        
-        function sendErrorRealWorld(obj)
-            obj.sendError(obj.ERROR_MESSAGE_PHYSICAL);
         end
     end
 end

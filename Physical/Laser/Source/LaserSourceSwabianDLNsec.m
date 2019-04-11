@@ -52,7 +52,7 @@ classdef LaserSourceSwabianDLNsec < LaserPartAbstract & SerialControlled
             isEnabled = obj.getEnabledRealWorld;
             if isEnabled % We try to turn the laser off, and we tell the user, whatever happens
                 try
-                    obj.setEnabled(false);
+                    obj.isEnabled = false;
                     msg = sprintf('Turning off %s, upon deletion', obj.name);
                     obj.sendWarning(msg)
                 catch err

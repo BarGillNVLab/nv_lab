@@ -33,7 +33,6 @@ classdef ViewTrackablePosition < ViewTrackable
             obj.vAxes1.YLabel.String = obj.LEFT_LABEL1;
             obj.vAxes2.XLabel.String = obj.LABEL_TIME;
             obj.vAxes2.YLabel.String = obj.LEFT_LABEL2;
-            obj.legend1 = AxesHelper.createLegend(obj.vAxes1,{'x','y','z'});
             
             %%%% Get objects we will work with: %%%%
             % First and foremost: the trackable experiment
@@ -203,9 +202,9 @@ classdef ViewTrackablePosition < ViewTrackable
             p_1 = pos(1, :);
             dp = pos - p_1;
             plot(obj.vAxes1, xAx, dp); % plots each column (x,y,z) against the time
-            drawnow;
             axesLetters = num2cell(obj.stageAxes);     % Odd, but this usefully turns 'xyz' into {'x', 'y', 'z'}
-            set(obj.legend1, 'String', axesLetters, 'Visible', 'on');
+            legend(obj.vAxes1, axesLetters, 'Location', 'northwest');
+            drawnow;
             
             kcps = cell2mat(history.value);
             kcps = kcps(ind);
@@ -305,7 +304,6 @@ classdef ViewTrackablePosition < ViewTrackable
             obj.refresh;
             cla(obj.vAxes1)
             cla(obj.vAxes2)
-            obj.legend1.Visible = 'off';
         end
         function cbxContinuousCallback(obj, ~, ~)
             trackablePos = obj.getTrackable();

@@ -84,26 +84,20 @@ classdef (Abstract) ViewTrackable <  ViewVBox & EventListener
             
             
             %%%% Right column - plots and save %%%%
+            % Plots
             vboxRight = uix.VBox('Parent', hboxMain, ...
                 'Spacing', 3);
-            % While creating legend, the figure gets messed up.
-            % Workaround, part 1: place them in their own VBox, and edit it
-            vboxAxes = uix.VBox('Parent', vboxRight, ...
-                'Spacing', 3);
-            obj.vAxes1 = axes('Parent', vboxAxes, ...
+            obj.vAxes1 = axes('Parent', uicontainer('Parent', vboxRight), ...
                 'NextPlot', 'replacechildren', ...
-                'ActivePositionProperty', 'outerposition');
-            % Workaround, part 2: create legend now, and hide it
-            % (encompassed in "AxesHelper.createLegend" function)
-            obj.legend1 = AxesHelper.createLegend(obj.vAxes1);
-            obj.vAxes2 = axes('Parent', vboxAxes, ...
+                'ActivePositionProperty', 'outerposition', ...
+                'OuterPosition', [-0.05 -0.05 1.15 1.05]);
+            obj.vAxes2 = axes('Parent', uicontainer('Parent', vboxRight), ...
                 'NextPlot', 'replacechildren', ...
-                'ActivePositionProperty', 'outerposition');
+                'ActivePositionProperty', 'outerposition', ...
+                'OuterPosition', [-0.05 -0.05 1.15 1.05]);
             obj.xAxisMode = ViewTrackable.STRING_TIME;      % By default. Might be changed by subclasses.
             obj.historyMode = 'Short';                      % By default. Might be changed by subclasses.
             axes()      % to avoid accidental plotting over the data in the axes
-            % Workaround, part 3: minimize "fake" legend to size 0.
-            vboxAxes.Heights = [-1 0 -1]; 
             
             % Radio buttons
             rbHeight = 15; % "rb" stands for "radio button"
@@ -140,7 +134,7 @@ classdef (Abstract) ViewTrackable <  ViewVBox & EventListener
                 'String', 'Save', ...
                 'Callback', @obj.btnSaveCallback);
             rowHeight = 50;
-            vboxRight.Heights = [-1 rowHeight rowHeight];
+            vboxRight.Heights = [-1 -1 rowHeight rowHeight];
             
             hboxMain.Widths = [280 -1];
             

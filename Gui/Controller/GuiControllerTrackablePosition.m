@@ -38,8 +38,6 @@ classdef GuiControllerTrackablePosition < GuiController
         function onSizeChanged(obj, newX0, newY0, newWidth, newHeight) %#ok<INUSD>
             % Callback. Things to run when the window size is changed
             % child classes can override this method
-            view = obj.views{:};
-            view.legend1.Location = 'northwest';
         end
         
         function onClose(obj)

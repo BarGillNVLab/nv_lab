@@ -89,21 +89,19 @@ classdef AxesHelper
             AxesHelper.fill(gAxes, obj.DEFAULT_Y, 1, obj.DEFAULT_X, [], '', '')
         end
         
-        
-        function leg = createLegend(gAxes, labels)
-            % This function is introduced for the legend workaround
-            % It creates legend in given axes with given labels, before any
-            % data is given, so that displaying it later will nor reshuffle
-            % the axes in view
-            
-            if ~exist('labels','var')
-                labels = 'a';
+        function newFigure = copyToNewFigure(vAxes, isVisible)
+            % Copy given vAxes to a new figure, and rescale it properly.
+            %
+            % By default, the new figure will be invisible.
+            if exist('isVisible', 'var') && isVisible == true
+                isVisibleString = 'on';
+            else
+                isVisibleString = 'off';
             end
             
-            warning off MATLAB:legend:IgnoringExtraEntries
-            leg = legend(gAxes, labels, 'Location', 'northeast');
-            leg.Visible = 'off';
-            warning on MATLAB:legend:IgnoringExtraEntries
+            newFigure = figure('Visible', isVisibleString);
+            newAx = copyobj(vAxes, newFigure);
+            newAx.Position = [0.1, 0.1, 0.8, 0.8];
         end
     end
         

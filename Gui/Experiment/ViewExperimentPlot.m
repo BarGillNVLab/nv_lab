@@ -25,9 +25,9 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
             exp = getExpByName(expName);
             
             fig = obj.component;    % for brevity
-            obj.vAxes = axes('Parent', fig, ...
+            obj.vAxes = axes('Parent', uicontainer('Parent', fig), ...
                 'NextPlot', 'replacechildren', ...
-                'OuterPosition', [0.1, 0.1, 0.8, 0.8]);
+                'OuterPosition', [-0.05 0 1.13 1]);
             obj.progressbarAverages = progressbar(fig, 0, 'Starting experiment. Please wait.');
             
             hboxControls = uix.HBox('Parent', fig, ...
@@ -183,10 +183,8 @@ classdef ViewExperimentPlot < ViewVBox & EventListener
             % TEMPORARY (!!!) function, to save the plot from an experiment
             % as .png and .fig files
             
-            %%% Copy and stretch axes to an invisible figure
-            figureInvis = figure('Visible', 'off');
-            newAx = copyobj(obj.vAxes, figureInvis);
-            newAx.Position = [0.1, 0.1, 0.8, 0.8];
+            %%% Copy axes to an invisible figure
+            figureInvis = AxesHelper.copyToNewFigure(obj.vAxes);
             
             %%% Get name for saving
             filename = PathHelper.removeDotSuffix(filename);

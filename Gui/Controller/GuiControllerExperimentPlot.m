@@ -28,6 +28,7 @@ classdef GuiControllerExperimentPlot < GuiController
             % to the screen.
             % Child classes can override this method
             obj.moveToMiddleOfScreen();
+            datacursormode(obj.figureWindow);
         end
         
         function onClose(obj)

@@ -57,7 +57,7 @@ classdef ExpCalibrateDetectionDuration < Experiment
             obj.shouldAutosave = true;
             
             obj.detectionDuration = 0.05:0.05:1;      % detection windows, in \mus
-            obj.laserInitializationDuration = 20;   % laser initialization in pulsed experiments in us (??)
+            obj.laserInitializationDuration = 20;   % laser initialization in pulsed experiments in us
             obj.getDelays;
             obj.laserOnset = 0.05:0.05:1;
             

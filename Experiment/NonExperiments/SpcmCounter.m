@@ -99,8 +99,6 @@ classdef SpcmCounter < Experiment
             else
                 EventStation.anonymousWarning('Integration time needs to be a positive integer. Reverting.')
             end
-            
-            obj.sendEventParamChanged;
         end
     end
     

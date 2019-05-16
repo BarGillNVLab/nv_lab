@@ -101,6 +101,11 @@ classdef ExpCalibrateDetectionDuration < Experiment
             obj.changeFlag = true;
         end
         
+        function set.isWithMW(obj, newVal)
+            obj.isWithMW = newVal;
+            obj.changeFlag = true;
+        end
+        
         function set.tau(obj ,newVal)	% newVal in microsec
             if ~isscalar(newVal)
                 obj.sendError('Tau must be a scalar! Ignoring.')
@@ -112,7 +117,6 @@ classdef ExpCalibrateDetectionDuration < Experiment
             end
             % If we got here, then newVal is OK.
             obj.tau = newVal;
-            obj.changeFlag = true;
         end
         
         function set.laserOnset(obj, newVal)
@@ -228,8 +232,6 @@ classdef ExpCalibrateDetectionDuration < Experiment
             if isempty(spcm); throwBaseObjException(Spcm.Name); end
             spcm.setSPCMEnable(true);
             spcm.prepareExperimentCount(numScans, obj.timeout);
-            
-            obj.changeFlag = false;     % All devices have been set, according to the ExpParams
         end
         
         function perform(obj)
@@ -273,6 +275,7 @@ classdef ExpCalibrateDetectionDuration < Experiment
                                     Tracker.REFERENCE_TYPE_KCPS, obj.trackThreshhold);
                                 if isTrackingNeeded
                                     tracker.trackUsing(TrackablePosition.NAME)
+                                    obj.prepare;    % Before next measurement
                                 end
                             end
                             success = true;     % Since we got till here

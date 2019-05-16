@@ -250,8 +250,6 @@ classdef ExpESR < Experiment
             
             % Set parameter, for saving
             obj.mCurrentXAxisParam.value = obj.frequency;
-            
-            obj.changeFlag = false;     % All devices have been set, according to the ExpParams
         end
         
         function perform(obj)
@@ -311,6 +309,7 @@ classdef ExpESR < Experiment
                     isTrackingNeeded = tracker.compareReference(sig(2), sterr, Tracker.REFERENCE_TYPE_KCPS, obj.trackThreshhold);
                     if isTrackingNeeded
                         tracker.trackUsing(TrackablePosition.NAME)
+                        obj.prepare;    % Before next measurement
                     end
                         % Patch part 2: return to original state
                         if didAmplitudeChange, fg1.amplitude = obj.amplitude(1); end

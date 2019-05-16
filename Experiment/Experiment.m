@@ -9,9 +9,9 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
     properties (SetAccess = protected)
         mCategory               % string. For loading (might change in subclasses)
        
-        changeFlag = true;      % logical. True if changes have been made 
-                                % in Experiment parameters, but not yet
-                                % uploaded to hardware
+        changeFlag = false;     % logical. True if changes have been made 
+                                % in Experiment parameters, that require
+                                % restarting the experiment
         
         mCurrentXAxisParam      % ExpParameter in charge of axis x (which has name and value)
         topParam                % Optional ExpParameter, parallel to the x axis parameter
@@ -180,8 +180,15 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             obj.getSetCurrentExp(obj.NAME);
             
             % Before we start, we want to initialize all devices
-                obj.prepare;
-                obj.sendEventParamChanged;  % That happenned at preperation
+            obj.prepare;
+            if obj.changeFlag
+                % We can't continue with the old Experiment; something
+                % critical has changed
+                obj.restartFlag = true;
+                obj.sendWarning('Critical parameters have been changed! Restarting Experiment.');
+                obj.sendEventParamChanged;
+                obj.changeFlag = false;
+            end
             if obj.restartFlag
                 % Resetting data
                 obj.reset;
@@ -250,6 +257,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
         
         function restart(obj)
             obj.restartFlag = true;
+            obj.changeFlag = false;     % It doesn't matter, since we are restarting anyway
             obj.run;
         end
         
@@ -447,9 +455,6 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             
             if isfield(event.extraInfo, StageScanner.EVENT_SCAN_STARTED)
                 obj.pause;
-            elseif strcmp(obj.current, obj.NAME) ...
-                    && isfield(event.extraInfo, Tracker.EVENT_TRACKER_FINISHED)
-                obj.changeFlag = true;  % This means that next time the experiment runs, we will @prepare(obj)
             end
         end
     end

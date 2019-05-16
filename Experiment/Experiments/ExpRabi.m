@@ -172,8 +172,6 @@ classdef ExpRabi < Experiment
             if isempty(spcm); throwBaseObjException(Spcm.Name); end
             spcm.setSPCMEnable(true);
             spcm.prepareExperimentCount(numScans, obj.timeout);
-            
-            obj.changeFlag = false;     % All devices have been set, according to the ExpParams
         end
         
         function perform(obj)
@@ -211,6 +209,7 @@ classdef ExpRabi < Experiment
                                 Tracker.REFERENCE_TYPE_KCPS, obj.trackThreshhold);
                             if isTrackingNeeded
                                 tracker.trackUsing(TrackablePosition.NAME)
+                                obj.prepare;    % Before next measurement
                             end
                         end
                         success = true;

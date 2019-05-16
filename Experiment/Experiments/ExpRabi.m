@@ -52,7 +52,7 @@ classdef ExpRabi < Experiment
             obj.laserInitializationDuration = 10; % laser initialization in pulsed experiments
             
             obj.mCurrentXAxisParam = ExpParamDoubleVector('Time', [], StringHelper.MICROSEC, obj.NAME);
-            obj.signalParam = ExpResultDoubleVector('FL', [], 'normalised', obj.NAME);
+            obj.signalParam = ExpResultDoubleVector('FL', [], 'normalized', obj.NAME);
         end
     end
     

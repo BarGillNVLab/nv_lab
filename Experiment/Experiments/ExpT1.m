@@ -55,8 +55,8 @@ classdef ExpT1 < Experiment
             obj.laserInitializationDuration = 20;   % laser initialization in pulsed experiments in \mus (??)
             
             obj.mCurrentXAxisParam = ExpParamDoubleVector('Time', [], StringHelper.MICROSEC, obj.NAME);
-            obj.signalParam = ExpResultDoubleVector('FL', [], 'normalised', obj.NAME);
-            obj.signalParam2 = ExpResultDoubleVector('FL', [], 'normalised', obj.NAME);
+            obj.signalParam = ExpResultDoubleVector('FL', [], 'normalized', obj.NAME);
+            obj.signalParam2 = ExpResultDoubleVector('FL', [], 'normalized', obj.NAME);
         end
     end
     
@@ -181,7 +181,7 @@ classdef ExpT1 < Experiment
             spcm = getObjByName(Spcm.NAME);
             if isempty(spcm); throwBaseObjException(Spcm.Name); end
             spcm.setSPCMEnable(true);
-            spcm.prepareGatedCount(numScans, obj.timeout);
+            spcm.prepareExperimentCount(numScans, obj.timeout);
             
             obj.changeFlag = false;     % All devices have been set, according to the ExpParams
         end
@@ -208,7 +208,7 @@ classdef ExpT1 < Experiment
                     try
                         seq.change('tau', 'duration', obj.tau(t));
                         if obj.constantTime
-                            seq.change('lastDelay', 'duration', maxLastDelay - 2*obj.tau(t));
+                            seq.change('lastDelay', 'duration', maxLastDelay - 2 * obj.tau(t));
                         end
                         data = obj.getRawData(pg, spcm);
                         [sig(1:2), d] = obj.processData(data);
@@ -288,21 +288,17 @@ classdef ExpT1 < Experiment
         function dataParam = alternateSignal(obj)
             % Returns alternate view ("normalized") of the data, as an
             % ExpParam, if possible. If not, it returns an empty variable.
-            persistent dat
-            if isempty(dat)
-                dat = ExpParamDoubleVector('FL', [], 'normalized', obj.NAME);
-            end
+            
+            dataParam = ExpResultDoubleVector('FL', [], 'normalized', obj.NAME);
             signal = obj.signalParam.value;
             background = obj.signalParam2.value;
             
             if isempty(background)
-                dat.value = [];
+                dataParam.value = [];
                 obj.sendError('Cannot normalize data without double measurement!')
             else
-                dat.value = signal./background;
+                dataParam.value = signal./background;
             end
-            
-            dataParam = dat;
         end
     end
     

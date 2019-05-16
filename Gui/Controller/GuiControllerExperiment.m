@@ -1,13 +1,12 @@
-classdef GuiControllerExperimentPlot < GuiController
-    %GUICONTROLLEREXPERIMENTPLOT Gui Controller for an experiment plot +
-    %stop button
+classdef GuiControllerExperiment < GuiController
+    %GUICONTROLLEREXPERIMENT Gui Controller for an experiment 
     
     properties
         expName
     end
     
     methods
-        function obj = GuiControllerExperimentPlot(expName)
+        function obj = GuiControllerExperiment(expName)
             shouldConfirmOnExit = true;
             openOnlyOne = true;
             windowName = sprintf('%s - Plot', expName);
@@ -20,7 +19,7 @@ classdef GuiControllerExperimentPlot < GuiController
             % This function should get the main View of this GUI.
             % can call any view constructor with the params:
             % parent=figureWindowParent, controller=obj
-            view = ViewExperimentPlot(obj.expName, figureWindowParent, obj);
+            view = ViewExperimentPlot(obj.expName, figureWindowParent, obj);   % to be changed in the future
         end
         
         function onAboutToStart(obj)
@@ -34,11 +33,15 @@ classdef GuiControllerExperimentPlot < GuiController
         function onClose(obj)
             % Callback. Things to run when need to close the GUI.
             
-            % If the experiment is running, we want to inform the user
             exp = getObjByName(obj.expName);
 
-            if ~isempty(exp) && exp.isRunning
-                EventStation.anonymousWarning('The window closed, but %s is still running', obj.expName);
+            if ~isempty(exp) 
+                exp.checkGraphicAxes;   % Tell the Experiment that vAxes are no longer available for plotting
+                
+                if exp.isRunning
+                    % this requires informing the user
+                    EventStation.anonymousWarning('The window closed, but %s is still running', obj.expName);
+                end
             end
         end
     end

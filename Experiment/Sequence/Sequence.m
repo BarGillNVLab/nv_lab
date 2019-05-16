@@ -203,7 +203,7 @@ classdef Sequence < handle
                         p(i).clear();
                         p(i).setLevels(newValue);  % We assume, for now, only digital cahnnels.
                     otherwise
-                        error('Unknown option')
+                        error('Error in sequence: unknown option')
                 end
             end
         end

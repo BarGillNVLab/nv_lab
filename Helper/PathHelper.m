@@ -26,7 +26,7 @@ classdef PathHelper
         end
         
         function folderString = recuresiveFindFolder(startingPositionPath, folderNameToSearchString)
-            % Recursively finds and returns the full path of a one folder
+            % Recursively finds and returns the full path of a folder
             % within another (== starting position)
             startingPositionPath = PathHelper.appendBackslashIfNeeded(startingPositionPath);
             folderString = nan;  % if nothing will be found later on

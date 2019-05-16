@@ -39,7 +39,7 @@ classdef AxesHelper
             % 2D needs some special attention 
             if dimNumber == 2
                 axis(gAxes, 'xy', 'tight', 'normal')
-                axis(gAxes, 'manual')
+%                 axis(gAxes, 'manual')
                 c = colorbar(gAxes, 'location', 'EastOutside');
                 xlabel(c, 'kcps')
             end
@@ -89,8 +89,9 @@ classdef AxesHelper
             AxesHelper.fill(gAxes, obj.DEFAULT_Y, 1, obj.DEFAULT_X, [], '', '')
         end
         
-        function newFigure = copyToNewFigure(vAxes, isVisible)
-            % Copy given vAxes to a new figure, and rescale it properly.
+        function newFigure = copyToNewFigure(gObj, isVisible)
+            % Copy given graphical object to a new figure, and rescale it
+            % properly.
             %
             % By default, the new figure will be invisible.
             if exist('isVisible', 'var') && isVisible == true
@@ -100,8 +101,11 @@ classdef AxesHelper
             end
             
             newFigure = figure('Visible', isVisibleString);
-            newAx = copyobj(vAxes, newFigure);
-            newAx.Position = [0.1, 0.1, 0.8, 0.8];
+            newGraphObj = copyobj(gObj, newFigure);
+            
+            % Set Size
+            newGraphObj.Units = 'normalized';
+            newGraphObj.OuterPosition = [0, 0, 1, 1];
         end
     end
         

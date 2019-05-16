@@ -69,6 +69,8 @@ classdef (Abstract) ExpParameter < HiddenMethodsHandle & PropertiesDisplaySorted
             end
             obj.value = newValue;
             
+            % If this is a parameter (as opposed to result) of a known
+            % experiment, this is important, and we want everyone to know
             if obj.isAssociatedToExp && ~strcmp(obj.type, obj.TYPE_RESULT)
                 exp = getObjByName(obj.expName);
                 if isempty(exp)

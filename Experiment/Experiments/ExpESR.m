@@ -60,8 +60,8 @@ classdef ExpESR < Experiment
             obj.displayType2 = '-';
             
             obj.mCurrentXAxisParam = ExpParamDoubleVector('Frequency', [], 'MHz', obj.NAME);
-            obj.signalParam = ExpResultDoubleVector('FL', [], 'normalised', obj.NAME);
-            obj.signalParam2 = ExpResultDoubleVector('FL', [], 'normalised', obj.NAME);
+            obj.signalParam = ExpResultDoubleVector('FL', [], 'normalized', obj.NAME);
+            obj.signalParam2 = ExpResultDoubleVector('FL', [], 'normalized', obj.NAME);
         end
     end
     

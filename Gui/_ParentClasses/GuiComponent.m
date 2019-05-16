@@ -52,6 +52,10 @@ classdef GuiComponent < handle
             
         end % GuiComponent constructor function
         
+        function delete(obj)
+            delete(obj.component);
+        end
+        
         
         function initHeightWidth(obj)
             obj.width = obj.getWidth(obj.component);

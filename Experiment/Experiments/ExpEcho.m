@@ -56,8 +56,8 @@ classdef ExpEcho < Experiment
             obj.laserInitializationDuration = 20;   % laser initialization in pulsed experiments in \mus (??)
             
             obj.mCurrentXAxisParam = ExpParamDoubleVector('Time', [], StringHelper.MICROSEC, obj.NAME);
-            obj.signalParam = ExpResultDoubleVector('FL', [], 'normalised', obj.NAME);
-            obj.signalParam2 = ExpResultDoubleVector('FL', [], 'normalised', obj.NAME);
+            obj.signalParam = ExpResultDoubleVector('FL', [], 'normalized', obj.NAME);
+            obj.signalParam2 = ExpResultDoubleVector('FL', [], 'normalized', obj.NAME);
         end
     end
     
@@ -293,21 +293,17 @@ classdef ExpEcho < Experiment
         function dataParam = alternateSignal(obj)
             % Returns alternate view ("normalized") of the data, as an
             % ExpParam, if possible. If not, it returns an empty variable.
-            persistent dat
-            if isempty(dat)
-                dat = ExpParamDoubleVector('FL', [], 'normalized', obj.NAME);
-            end
+            
+            dataParam = ExpResultDoubleVector('FL', [], 'normalized', obj.NAME);
             signal = obj.signalParam.value;
             background = obj.signalParam2.value;
             
             if isempty(background)
-                dat.value = [];
+                dataParam.value = [];
                 obj.sendError('Cannot normalize data without double measurement!')
             else
-                dat.value = signal./background;
+                dataParam.value = signal./background;
             end
-            
-            dataParam = dat;
         end
     end
     

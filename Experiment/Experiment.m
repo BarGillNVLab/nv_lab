@@ -52,7 +52,10 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
         pausedAverage = false; 
     end
     
-    properties (SetAccess = protected) % to be used by ViewExperimentPlot
+    properties (SetAccess = protected) % For plotting
+        gAxes
+        isPlotAlternate = false;
+        
         % Default values, may be overridden by subclasses
         displayType1 = 'Unnormalized';
         displayType2 = 'Normalized';
@@ -61,6 +64,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
     properties (Constant)
         PATH_ALL_EXPERIMENTS = sprintf('%sControl code\\%s\\Experiment\\Experiments\\', ...
             PathHelper.getPathToNvLab(), PathHelper.SetupMode);
+        PATH_CALIBRATIONS = [Experiment.PATH_ALL_EXPERIMENTS, 'Calibrations\']
         
         EVENT_DATA_UPDATED = 'dataUpdated'      % when something changed regarding the plot (new data, change in x\y axis, change in x\y labels)
         EVENT_EXP_RESUMED = 'experimentResumed' % when the experiment is starting to run
@@ -85,7 +89,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             
             obj@EventSender(name);
             obj@Savable(name);
-            obj@EventListener({Tracker.NAME, StageScanner.NAME});
+            obj@EventListener({Tracker.NAME, StageScanner.NAME, SaveLoadCatExp.NAME});
             
             emptyValue = [];
             emptyUnits = '';
@@ -175,11 +179,9 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             % This Experiment is running and is therefore the current one.
             obj.getSetCurrentExp(obj.NAME);
             
-            if obj.restartFlag || obj.changeFlag
-                % In either case, we want to reinitialize all devices
+            % Before we start, we want to initialize all devices
                 obj.prepare;
                 obj.sendEventParamChanged;  % That happenned at preperation
-            end
             if obj.restartFlag
                 % Resetting data
                 obj.reset;
@@ -197,7 +199,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             end
             
             % Starting
-            GuiControllerExperimentPlot(obj.name).start;
+            GuiControllerExperiment(obj.name).start;
             
             obj.stopFlag = false;
             obj.emergencyStopFlag = false;  % In case we stopped the experiment abruptly
@@ -209,14 +211,14 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
                 obj.currIter = i;
                 try
                     perform(obj);
-                    sendEventDataUpdated(obj)   % Plots and saves
+                    plotResults(obj);
+                    sendEventDataUpdated(obj)   % Saves, and maybe other things
                     percentage = i/obj.averages*100;
                     percision = log10(obj.averages);    % Enough percision, according to division result
                     fprintf('%.*f%%\n', percision, percentage)
                     
                     if obj.stopFlag
-                        sendEventExpPaused(obj);
-                        return
+                        break
                     end
                 catch err
                     obj.currIter = obj.currIter - 1; % This iteration did not succeed
@@ -225,7 +227,6 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
                 end
             end
             
-%             obj.restartFlag = true;
             obj.pause;
             sendEventExpPaused(obj);
             obj.wrapUp;
@@ -262,6 +263,7 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             obj.signalParam.value = [];
             obj.signalParam2.value = [];
             obj.currIter = 0;
+            obj.plotResults;     % Update the plot
             
             % Inform user
             pg = getObjByName(PulseGenerator.NAME);
@@ -274,7 +276,8 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
         end
     end
     
-    %% To be overridden
+    
+    %% Defining the Experiment; to be overridden
     methods (Abstract, Access = protected)
         % Specifics of each of the experiments
         
@@ -288,7 +291,140 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
         % Perform the main part of the experiment.
         
         wrapUp(obj)
+    end
         
+    %% Plotting
+    methods
+        function addGraphicAxes(obj, gAxes)
+            % "Setter" for the axes, when they are created in the GUI
+            if ~(isgraphics(gAxes) && isvalid(gAxes))
+                obj.sendWarning('Graphic Axes were not created. Plotting is unavailable');
+                return
+            end
+            obj.gAxes = gAxes;
+        end
+
+        function checkGraphicAxes(obj)
+            if ~(isgraphics(obj.gAxes) && isvalid(obj.gAxes))
+                % gAxes are no longer available, so we discard them
+                obj.gAxes = [];
+            end
+        end
+    end
+    
+    methods (Access = private)
+        function savePlot(obj, folder, filename)
+            % Saves the plot from the Experiment as .png and .fig files
+            
+            if isempty(obj.gAxes)
+                return % Nothing to do here
+                % todo: Maybe we want to plot and then save, whatever happens?
+            end
+            
+            %%% Copy axes to an invisible figure
+            figureInvis = AxesHelper.copyToNewFigure(obj.gAxes);
+            
+            %%% Get name for saving
+            filename = PathHelper.removeDotSuffix(filename);
+            fullpath = PathHelper.joinToFullPath(folder, filename);
+            
+            %%% Save image (.png)
+            fullPathImage = [fullpath '.' ImageScanResult.IMAGE_FILE_SUFFIX];
+            saveas(figureInvis, fullPathImage);
+            
+            %%% Save figure (.fig)
+            % The figure is saved as invisible, but we set its creation
+            % function to set it as visible
+            set(figureInvis, 'CreateFcn', 'set(gcbo, ''Visible'', ''on'')'); % No other methods of specifying the function seemed to work...
+            savefig(figureInvis, fullpath)
+            
+            %%% close the figure
+            close(figureInvis);
+        end
+        
+        function n = nDim(obj)
+            % Helper function, to tell whether the experiment is 1D or 2D
+            yAxisExists = ~isempty(obj.mCurrentYAxisParam.value);
+            n = BooleanHelper.ifTrueElse(yAxisExists, 2, 1);
+        end
+    end
+    
+    methods (Access = {?Experiment, ?ViewExperimentPlot}) % Inclusion of ?Experiment gives access to its subclasses
+        function plotResults(obj)
+            % Plots the data in axes inside ViewExperimentPlot. Can be
+            % overridden to allow for special kinds of plots, when an
+            % Experiment requires that.
+            
+            if isempty(obj.gAxes)
+                return
+            end
+            
+            % Check whether we have anything to plot
+            if obj.isPlotAlternate
+                data = exp.alternateSignal().value;
+            else
+                data = obj.signalParam.value;
+            end
+            
+            if isempty(data) || all(all(isnan(data)))
+                % Default plot
+                data = AxesHelper.DEFAULT_Y;
+            end
+            firstAxisVector = obj.mCurrentXAxisParam.value;
+            secondAxisVector = obj.mCurrentYAxisParam.value; % Just in case we need it
+            
+            d = obj.nDim;
+            
+            if isempty(obj.gAxes.Children)
+                % Nothing is plotted yet
+                bottomLabel = obj.mCurrentXAxisParam.label;
+                switch d
+                    case 1
+                        leftLabel = obj.signalParam.label;
+                        AxesHelper.fill(obj.gAxes, data, d, ...
+                            firstAxisVector, [], bottomLabel, leftLabel);
+                    case 2
+                        leftLabel = obj.mCurrentYAxisParam.label;
+                        AxesHelper.fill(obj.gAxes, data, d, ...
+                            firstAxisVector, secondAxisVector, bottomLabel, leftLabel);
+                    otherwise
+                        error('This shouldn''t have happenned!')
+                end
+                
+                % Maybe this experiment shows more than one x/y-axis
+                if ~isnan(obj.topParam)
+                    AxesHelper.addAxisAcross(obj.gAxes, 'x', ...
+                        obj.topParam.value, ...
+                        obj.topParam.label)
+                end
+                if ~isnan(obj.rightParam)
+                    AxesHelper.addAxisAcross(obj.gAxes, 'y', ...
+                        obj.rightParam.value, ...
+                        obj.rightParam.label)
+                end
+            else
+                switch d
+                    case 1
+                        AxesHelper.update(obj.gAxes, data, d, firstAxisVector)
+                    case 2
+                        AxesHelper.update(obj.gAxes, data, d, firstAxisVector, secondAxisVector)
+                end
+            end
+            
+            if isa(obj.signalParam2, 'ExpParameter') && ~isempty(obj.signalParam2.value)
+                % If there is more than one signal (Y) parameter, we want
+                % to plot it above the first one,
+                if ~obj.isPlotAlternate
+                    % unless We are in alternative display mode.
+                    data = obj.signalParam2.value;
+                    AxesHelper.add(obj.gAxes, data, firstAxisVector)
+                end
+            end
+            
+        end
+    end
+    
+    methods (Abstract, Access = protected)
         alternateSignal(obj)
         % Returns alternate view ("normalized") of the data, as an
         % ExpParam, if possible. If not, it returns an empty variable.
@@ -300,6 +436,15 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
         % When events happen, this function jumps.
         % Event is the event sent from the EventSender
         function onEvent(obj, event)
+            if strcmp(event.creator.name, SaveLoadCatExp.NAME) ...
+                    && isfield(event.extraInfo, SaveLoad.EVENT_SAVE_SUCCESS_LOCAL_TO_FILE) ...
+                    
+                folder = event.extraInfo.(SaveLoad.EVENT_FOLDER);
+                filename = event.extraInfo.(SaveLoad.EVENT_FILENAME);
+                obj.savePlot(folder, filename);
+                return
+            end
+            
             if isfield(event.extraInfo, StageScanner.EVENT_SCAN_STARTED)
                 obj.pause;
             elseif strcmp(obj.current, obj.NAME) ...
@@ -479,11 +624,14 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
                 % Get 'regular' Experiments
                 path = Experiment.PATH_ALL_EXPERIMENTS;
                 [~, expFileNames] = PathHelper.getAllFilesInFolder(path, 'm');
+                % Get Callibration Experiments
+                path2 = Experiment.PATH_CALIBRATIONS;
+                [~, calibFileNames] = PathHelper.getAllFilesInFolder(path2, 'm');
                 % Get Trackables
-                path2 = Trackable.PATH_ALL_TRACKABLES;
-                [~, trckblFileNames] = PathHelper.getAllFilesInFolder(path2, 'm');
+                path3 = Trackable.PATH_ALL_TRACKABLES;
+                [~, trckblFileNames] = PathHelper.getAllFilesInFolder(path3, 'm');
                 % Join
-                expFileNames = [expFileNames, trckblFileNames];
+                expFileNames = [expFileNames, calibFileNames, trckblFileNames];
                 
                 % Extract names
                 expClassNames = PathHelper.removeDotSuffix(expFileNames);

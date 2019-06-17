@@ -5,6 +5,8 @@ classdef ViewStagePanelMovementControl < GuiComponent & EventListener
     properties
         btnMoveLeft         % 1x3 button
         btnMoveRight        % 1x3 button
+        btnMoveFFLeft       % 1x3 button
+        btnMoveFFRight      % 1x3 button
         btnMoveStageToFixedPos  % button
         
         btnSendToFixed      % button
@@ -61,6 +63,15 @@ classdef ViewStagePanelMovementControl < GuiComponent & EventListener
                 uicontrol(obj.PROP_LABEL{:}, 'Parent', gridLeftSide, 'String', upper(obj.stageAxes(i)));
             end
             
+            % 1.5st column: ff left
+            obj.btnMoveFFLeft = gobjects(1, axesLen);
+            for i = 1: axesLen
+                obj.btnMoveFFLeft(i) = uicontrol(obj.PROP_BUTTON{:}, ...
+                    'Parent', gridLeftSide, ...
+                    'String', '<<', ...
+                    'FontSize', 20);
+            end
+            
             % 2nd column: arrow left
             obj.btnMoveLeft = gobjects(1, axesLen);
             for i = 1: axesLen
@@ -93,7 +104,17 @@ classdef ViewStagePanelMovementControl < GuiComponent & EventListener
                     'String', StringHelper.RIGHT_ARROW, ...
                     'FontSize', 20);
             end
-            gridWidths = [20 35 70 35];
+            
+            % 4.5st column: ff left
+            obj.btnMoveFFRight = gobjects(1, axesLen);
+            for i = 1: axesLen
+                obj.btnMoveFFRight(i) = uicontrol(obj.PROP_BUTTON{:}, ...
+                    'Parent', gridLeftSide, ...
+                    'String', '>>', ...
+                    'FontSize', 20);
+            end
+            
+            gridWidths = [20 35 35 70 35 35];
             gridWithdsRel = -1*gridWidths;
             heightGridTotalNoSpacing = 90;
             lineHeight = heightGridTotalNoSpacing / axesLen;
@@ -160,6 +181,8 @@ classdef ViewStagePanelMovementControl < GuiComponent & EventListener
                 isLeft = true;
                 obj.btnMoveLeft(i).Callback = @(h,e) obj.btnMoveCallback(i, isLeft);
                 obj.btnMoveRight(i).Callback = @(h,e) obj.btnMoveCallback(i, ~isLeft);
+                obj.btnMoveFFLeft(i).Callback = @(h,e) obj.btnMoveFFCallback(i, isLeft);
+                obj.btnMoveFFRight(i).Callback = @(h,e) obj.btnMoveFFCallback(i, ~isLeft);
             end
             
             
@@ -212,6 +235,17 @@ classdef ViewStagePanelMovementControl < GuiComponent & EventListener
             
             phAxis = ClassStage.getAxis(obj.stageAxes(index));
             step = BooleanHelper.ifTrueElse(trueForLeftFalseForRight,-1,1)*stage.stepSize;
+            stage.relativeMove(phAxis, step);
+        end
+        
+        function btnMoveFFCallback(obj,index,trueForLeftFalseForRight)
+            multiplier = 5;
+            
+            stage = getObjByName(obj.stageName);
+            if isempty(stage); throwBaseObjException(obj.stageName); end
+            
+            phAxis = ClassStage.getAxis(obj.stageAxes(index));
+            step = multiplier*BooleanHelper.ifTrueElse(trueForLeftFalseForRight,-1,1)*stage.stepSize;
             stage.relativeMove(phAxis, step);
         end
         

@@ -2,32 +2,32 @@ classdef ClassMCS2 < ClassStage
     % 
     % libfunctionsview('MCS2') to view functions
     
-    properties (Constant, Access = protected)
-        NAME = 'Stage (Coarse) - MCS2'
+    properties (Constant)
+        NAME = 'Stage (Fine) - MCS2'
         VALID_AXES = 'xyz';
         UNITS = 'um'
         
+        NEEDED_FIELDS = {'niDaqChannel', 'address'}
+        
         COMM_DELAY = 0.005; % 5ms delay needed between consecutive commands sent to the controllers.
         
-        LIB_DLL_FOLDER = 'C:/?';
-        LIB_DLL_FILENAME = '?';
-        LIB_H_FOLDER = 'C:/?/';
-        LIB_H_FILENAME = '?';
+        LIB_DLL_FOLDER = 'C:/Users/Owner/Google Drive/NV Lab/Control code/Drivers/SmarAct/MCS2/SDK/lib64/';
+        LIB_DLL_FILENAME = 'SmarActCTL.dll';
         LIB_ALIAS = 'MCS2';
 
-        POSITIVE_HARD_LIMITS = [8000 8000 8000];    % in um
-        NEGATIVE_HARD_LIMITS = [-8000 -8000 -8000]; % in um
-        STEP_MINIMUM_SIZE = 0.1                     % in um
-        STEP_DEFAULT_SIZE = 10                      % in um
-        
-        SERIAL_NUM = 'usb:sn:MCS2-00000XXX'
+        POSITIVE_HARD_LIMITS = [8000 8000 16000];   % in um
+        NEGATIVE_HARD_LIMITS = [-8000 -8000 0];     % in um
+        LOGICAL_SCALE_OFFSET = [0 0 -8e9];          % in pm
+        STEP_MINIMUM_SIZE = 0.001                   % in um
+        STEP_DEFAULT_SIZE = 0.02                    % in um
     end
        
     properties (Access = protected)
+        physicalAddress
         id
         posSoftRangeLimit
         negSoftRangeLimit
-        defaultVel
+        defaultVel = 1e3;   % in um/s (== 1mm/s)
         curPos
         curVel
         forceStop
@@ -65,32 +65,44 @@ classdef ClassMCS2 < ClassStage
             missingField = FactoryHelper.usualChecks(stageStruct, ClassMCS2.NEEDED_FIELDS);
             if ~isnan(missingField)
                 EventStation.anonymousError(...
-                    'Trying to create the ANC stage, needed field "%s" was missing. Aborting',...
+                    'Trying to create the MCS2 stage, needed field "%s" was missing. Aborting',...
                     missingField);
             end
             
             niDaqChannel = stageStruct.niDaqChannel;
+            address = stageStruct.address;
             removeObjIfExists(ClassMCS2.NAME);
-            obj = ClassMCS2(niDaqChannel);       
+            obj = ClassMCS2(address, niDaqChannel);
         end
     end
     
     methods (Access = protected) % Protected Functions
-        function obj = ClassMCS2()
+        function obj = ClassMCS2(address, niDaqChannel)
             % name - string
             % availableAxes - string. example: "xyz"
+            name = ClassMCS2.NAME;
+            availableAxes = ClassMCS2.VALID_AXES;
             obj@ClassStage(name, availableAxes)
             
             obj.tiltCorrectionEnable = 0;
             obj.tiltThetaXZ = 0;
             obj.tiltThetaYZ = 0;
+            obj.negSoftRangeLimit = obj.NEGATIVE_HARD_LIMITS;
+            obj.posSoftRangeLimit = obj.POSITIVE_HARD_LIMITS;
             
+            obj.physicalAddress = address;
             obj.LoadPiezoLibrary();
             obj.Connect;
+            
+            nidaq = getObjByName(NiDaq.NAME);
+            nidaq.registerChannel(niDaqChannel, obj.name);
+            
+            Initialization(obj);
         end
 
         function Connect(obj)
-            [obj.id, ~, ~] = obj.SendCommand('SA_CTL_Open', [], obj.SERIAL_NUM, []);
+            locator = obj.physicalAddress;
+            [obj.id, ~, ~] = obj.SendCommand('SA_CTL_Open', 0, locator, '');
         end
         
         function Delay(obj, seconds) %#ok<INUSL>
@@ -102,7 +114,7 @@ classdef ClassMCS2 < ClassStage
         
         function CommunicationDelay(obj)
             % Pauses for obj.commDelay seconds.
-            obj.Delay(obj.commDelay);
+            obj.Delay(obj.COMM_DELAY);
         end
         
         function varargout = SendCommand(obj, command, realAxis, varargin)
@@ -150,8 +162,10 @@ classdef ClassMCS2 < ClassStage
                             switch confirm
                                 case retryString
                                     obj.sendWarning(error.message);
+                                    % We stay in the loop
                                 case abortString
                                     obj.sendError(error.message);
+                                    % We exit the loop
                                 otherwise
                                     obj.sendError(error.message);
                             end
@@ -184,9 +198,10 @@ classdef ClassMCS2 < ClassStage
             
             if ~(returnCode == 0)   % All error codes appear in Appendix A of the Programmer's Guide
                 errorMessage = SendCommandWithoutReturnCode(obj, 'SA_CTL_GetResultInfo', returnCode);
-                errorId = sprintf('MCS2:%d', reutrnCode);
+                errorCode = lower(dec2hex(returnCode, 4));
+                errorId = sprintf('MCS2:x%s', errorCode);
                 error(errorId, 'The following error was received while attempting to communicate with MCS2 controller:\n%s Error  - %s',...
-                    returnCode, errorMessage);
+                    ['0x' errorCode], errorMessage);
             end
         end
         
@@ -196,9 +211,8 @@ classdef ClassMCS2 < ClassStage
             if ~libisloaded(obj.LIB_ALIAS)
                 % Only load dll if it wasn't loaded before.
                 shrlib = [obj.LIB_DLL_FOLDER, obj.LIB_DLL_FILENAME];
-                hfile = [obj.LIB_H_FOLDER, obj.LIB_H_FILENAME];
                 
-                loadlibrary(shrlib, hfile, 'alias', obj.LIB_ALIAS);
+                loadlibrary(shrlib, @mcs2proto, 'alias', obj.LIB_ALIAS);
                 fprintf('MCS2 library loaded.\n');
             end
         end
@@ -212,8 +226,8 @@ classdef ClassMCS2 < ClassStage
         function chState = getChannelState(obj, channelIndex)
             SA_CTL_PKEY_CHANNEL_STATE = 50659343;   % 0x0305000F
             
-            chState = obj.SendCommand(obj, 'SA_CTL_GetProperty_i32', obj.id, ...
-                channelIndex, SA_CTL_PKEY_CHANNEL_STATE, 0);
+            chState = SendCommand(obj, 'SA_CTL_GetProperty_i32', obj.id, ...
+                channelIndex, SA_CTL_PKEY_CHANNEL_STATE, 0, 1);
         end
         
         function axisIndex = GetAxisIndex(obj, phAxis)
@@ -223,8 +237,8 @@ classdef ClassMCS2 < ClassStage
             CheckAxis(obj, phAxis)
             axisIndex = zeros(size(phAxis));
             for i = 1:length(phAxis)
-                idx = strfind(obj.VALID_AXES, obj.axesName(phAxis(i)));
-                if isempty(idx)
+                idx = phAxis(i);
+                if idx > length(obj.availableAxes)
                     obj.sendError('Invalid axis')
                 end
                 axisIndex(i) = idx - 1;     % MATLAB starts counting from 1, but the stage counts from 0
@@ -242,7 +256,7 @@ classdef ClassMCS2 < ClassStage
                 else
                     string = 'axes are';
                 end
-                obj.sendError(sprintf('%s %s invalid for the MCS2 controller.', upper(obj.axesName(phAxis)), string));
+                obj.sendError(sprintf('%s %s invalid for the MCS2 controller.', upper(obj.SCAN_AXES(phAxis)), string));
             end
         end
         
@@ -257,7 +271,7 @@ classdef ClassMCS2 < ClassStage
             end
             
             % Otherwise
-            unreferncedAxesNames = obj.axesName(phAxis(~referenced));
+            unreferncedAxesNames = obj.VALID_AXES(phAxis(~referenced));
             if isscalar(unreferncedAxesNames)
                 questionStringPart1 = sprintf('WARNING!\n%s axis is unreferenced.\n', unreferncedAxesNames);
             else
@@ -291,7 +305,7 @@ classdef ClassMCS2 < ClassStage
             realAxis = obj.GetAxisIndex(phAxis);
             
             for i = 1:length(realAxis)
-                chState = obj.getChannelState(realAxis);
+                chState = obj.getChannelState(realAxis(i));
                 tf(i) = bitget(chState, 8);     % Bit 7, if we count from 0
             end
             tf = logical(tf);
@@ -306,16 +320,54 @@ classdef ClassMCS2 < ClassStage
             
             len = length(realAxis);
             isRef = zeros(1, len);
-            for i = 1:length(realAxis)
-                a = realAxis(i);
-                SendCommand(obj, 'SA_CTL_Reference', obj.id, a, 0);
-                WaitFor(obj, 'ReferencingDone', a)
-                isRef(i) = IsRefernced(obj, phAxis(i));
+            for i = 1:len
+                p = phAxis(i);
+                SendCommand(obj, 'SA_CTL_Reference', obj.id, realAxis(i), 0);
+                WaitFor(obj, 'ReferencingDone', p)
+                isRef(i) = IsRefernced(obj, p);
             end
             
             % Check if ready & if referenced succeeded
             if (~all(isRef))
                 obj.sendError(sprintf('Referencing failed for controller MCS2 with ID %d: Reason unknown.', ...
+                    obj.id));
+            end
+        end
+        
+        function tf = IsCalibrated(obj, phAxis)
+            % Check reference status for the given axis.
+            % 'phAxis' can be either a specific axis (x,y,z or 1 for x, 2 for y
+            % and 3 for z) or any vectorial combination of them.
+            len = length(phAxis);
+            tf = false(1, len);
+            realAxis = obj.GetAxisIndex(phAxis);
+            
+            for i = 1:length(realAxis)
+                chState = obj.getChannelState(realAxis(i));
+                tf(i) = bitget(chState, 7);     % Bit 6, if we count from 0
+            end
+            tf = logical(tf);
+        end
+        
+        function Calibrate(obj, phAxis)
+            % Reference the given axis.
+            % 'phAxis' can be either a specific axis (x,y,z or 1 for x, 2 for y
+            % and 3 for z) or any vectorial combination of them.
+            CheckAxis(obj, phAxis)
+            realAxis = GetAxisIndex(obj, phAxis);
+            
+            len = length(realAxis);
+            isCalib = zeros(1, len);
+            for i = 1:len
+                p = phAxis(i);
+                SendCommand(obj, 'SA_CTL_Calibrate', obj.id, realAxis(i), 0);
+                WaitFor(obj, 'CalibratingDone', p)
+                isCalib(i) = IsCalibrated(obj, p);
+            end
+            
+            % Check if ready & if referenced succeeded
+            if (~all(isCalib))
+                obj.sendError(sprintf('Calibration failed for controller MCS2 with ID %d: Reason unknown.', ...
                     obj.id));
             end
         end
@@ -327,10 +379,10 @@ classdef ClassMCS2 < ClassStage
             % Change to closed loop
             ChangeLoopMode(obj, 'Closed')
             
-            % Reference
+            % Checks
+%             CheckCalibration(obj, obj.VALID_AXES)
             CheckReference(obj, obj.VALID_AXES)
-            
-%             CheckLimits(obj);
+            CheckModuleParameters(obj);
             
             % Set velocity
             SetVelocity(obj, obj.VALID_AXES, zeros(size(obj.VALID_AXES))+obj.defaultVel);
@@ -339,45 +391,58 @@ classdef ClassMCS2 < ClassStage
             QueryPos(obj);
             QueryVel(obj);
             for i=1:length(obj.VALID_AXES)
-                fprintf('%s axis - Position: %.4f%s, Velocity: %d%s/s.\n', upper(obj.VALID_AXES(i)), obj.curPos(i), obj.units, obj.curVel(i), obj.units);
+                fprintf('%s axis - Position: %.4f%s, Velocity: %d%s/s.\n', upper(obj.VALID_AXES(i)), obj.curPos(i), obj.UNITS, obj.curVel(i), obj.UNITS);
             end
         end
         
-        function CheckLimits(obj)
-            % This function checks that the soft and hard limits matches
-            % the stage.
-            [szAxes, zerosVector] = ConvertAxis(obj, obj.VALID_AXES);
+        function CheckModuleParameters(obj)
+            % This function checks that the logical scale and the safe
+            % direction are defined according to our use.
             
-            % Physical limit check
-            [~, ~, negPhysicalLimitDistance, ~] = SendPICommand(obj, 'PI_qSPA', obj.ID, szAxes, zerosVector+47, zerosVector, '', 0);
-            [~, ~, posPhysicalLimitDistance, ~] = SendPICommand(obj, 'PI_qSPA', obj.ID, szAxes, zerosVector+23, zerosVector, '', 0);
             for i=1:length(obj.VALID_AXES)
-                if ((negPhysicalLimitDistance(i) ~= -obj.negRangeLimit(i)) || (posPhysicalLimitDistance(i) ~= obj.posRangeLimit(i)))
-                    obj.sendError(sprintf(['Physical limits for %s axis are incorrect!\nShould be: %d to %d.\n', ...
-                        'Real value: %d to %d.\nMaybe units are incorrect?'],...
-                        upper(obj.VALID_AXES(i)), obj.negRangeLimit(i), obj.posRangeLimit(i), ...
-                        -negPhysicalLimitDistance(i), posPhysicalLimitDistance(i)))
-                else
-                    fprintf('%s axis - Physical limits are from %d%s to %d%s.\n', ...
-                        upper(obj.VALID_AXES(i)), obj.negRangeLimit(i), obj.units, obj.posRangeLimit(i), obj.units);
+                realAxis = obj.GetAxisIndex(obj.VALID_AXES(i));
+                
+                % Logical Scale Offset
+                SA_CTL_PKEY_LOGICAL_SCALE_OFFSET = 33816612; % 0x02040024
+                offset = SendCommand(obj, 'SA_CTL_GetProperty_i64', obj.id, ...
+                    realAxis, SA_CTL_PKEY_LOGICAL_SCALE_OFFSET, 0, 1);
+                if offset ~= obj.LOGICAL_SCALE_OFFSET(i)
+                    SendCommand(obj, 'SA_CTL_SetProperty_i64', obj.id, realAxis, ...
+                        SA_CTL_PKEY_LOGICAL_SCALE_OFFSET, obj.LOGICAL_SCALE_OFFSET(i));
+                    obj.sendWarning(sprintf(['Scale offset in axis %s needed resetting. ', ...
+                        'If this a recurring problem, the code might need maintenance'], ...
+                        obj.VALID_AXES(i)));
                 end
-            end
-            
-            % Soft limit check.
-            SA_CTL_PKEY_RANGE_LIMIT_MIN = 33816608; % 0x02040020
-            SA_CTL_PKEY_RANGE_LIMIT_MAX = 33816609; % 0x02040021
-            
-            [~, ~, posSoftLimit, ~] = SendPICommand(obj, 'PI_qSPA', obj.ID, szAxes, zerosVector+21, zerosVector, '', 0);
-            [~, ~, negSoftLimit, ~] = SendPICommand(obj, 'PI_qSPA', obj.ID, szAxes, zerosVector+48, zerosVector, '', 0);
-            for i=1:length(obj.VALID_AXES)
-                if ((negSoftLimit(i) ~= obj.negSoftRangeLimit(i)) || (posSoftLimit(i) ~= obj.posSoftRangeLimit(i)))
-                    obj.sendError(sprintf(['Soft limits for %s axis are incorrect!\nShould be: %d to %d.\n', ...
-                        'Real value: %d to %d.\nMaybe units are incorrect?'], ...
-                        upper(obj.VALID_AXES(i)), obj.negSoftRangeLimit(i), obj.posSoftRangeLimit(i), ...
-                        negSoftLimit(i), posSoftLimit(i)))
-                else
-                    fprintf('%s axis - Soft limits are from %.1f%s to %.1f%s.\n', ...
-                        upper(obj.VALID_AXES(i)), obj.negSoftRangeLimit(i), obj.units, obj.posSoftRangeLimit(i), obj.units);
+                
+                % Logical Scale Inversion
+                SA_CTL_PKEY_LOGICAL_SCALE_INVERSION = 33816613; % 0x02040025
+                SA_CTL_INVERTED = 1;
+                isInverted = SendCommand(obj, 'SA_CTL_GetProperty_i32', obj.id, realAxis, SA_CTL_PKEY_LOGICAL_SCALE_INVERSION, 0, 1);
+                if isInverted ~= SA_CTL_INVERTED
+                    SendCommand(obj, 'SA_CTL_SetProperty_i32', obj.id, realAxis, ...
+                        SA_CTL_PKEY_LOGICAL_SCALE_INVERSION, SA_CTL_INVERTED);
+                    obj.sendWarning(sprintf(['Scale inversion in axis %s needed resetting. ', ...
+                        'If this a recurring problem, the code might need maintenance'], ...
+                        obj.VALID_AXES(i)));
+                end
+                
+                % Safe Direction
+                SA_CTL_PKEY_SAFE_DIRECTION = 50921511; % 0x03090027
+                SA_CTL_FORWARD_DIRECTION = 0;
+                safeDir = SendCommand(obj, 'SA_CTL_GetProperty_i32', obj.id, realAxis, SA_CTL_PKEY_SAFE_DIRECTION, 0, 1);
+                if safeDir ~= SA_CTL_FORWARD_DIRECTION
+                    SendCommand(obj, 'SA_CTL_SetProperty_i32', obj.id, realAxis, ...
+                        SA_CTL_PKEY_SAFE_DIRECTION, SA_CTL_FORWARD_DIRECTION);
+                    
+                    axisLetter = obj.VALID_AXES(i);
+                    phAxis = obj.getAxis(axisLetter);
+                    strTitle = sprintf('Calibration needed for MCS2 controller');
+                    strQstnMsg = sprintf('Axis %s requires calibration, which will move it.\nFailing to do so might result in unexpected behavior.', axisLetter);
+                    isOK = QuestionUserOkCancel(strTitle, strQstnMsg);
+                    if isOK
+                        Calibrate(obj, phAxis);
+                    end
+                    
                 end
             end
         end
@@ -387,7 +452,8 @@ classdef ClassMCS2 < ClassStage
             SA_CTL_PKEY_POSITION = 50659357; % 0x0305001D
             for i = 1:length(obj.VALID_AXES)
                 realAxis = GetAxisIndex(obj, obj.VALID_AXES(i));
-                obj.curPos(i) = SendCommand(obj, 'SA_CTL_GetProperty_i64', obj.id, realAxis, SA_CTL_PKEY_POSITION, 0);
+                pos = SendCommand(obj, 'SA_CTL_GetProperty_i64', obj.id, realAxis, SA_CTL_PKEY_POSITION, 0, 1);
+                obj.curPos(i) = double(pos) * 1e-6; % Convert from pm to um
             end
         end
         
@@ -396,7 +462,8 @@ classdef ClassMCS2 < ClassStage
             SA_CTL_PKEY_MOVE_VELOCITY = 50659369; % 0x03050029
             for i = 1:length(obj.VALID_AXES)
                 realAxis = GetAxisIndex(obj, obj.VALID_AXES(i));
-                obj.curVel(i) = SendCommand(obj, 'SA_CTL_GetProperty_i64', obj.id, realAxis, SA_CTL_PKEY_MOVE_VELOCITY, 0);
+                vel = SendCommand(obj, 'SA_CTL_GetProperty_i64', obj.id, realAxis, SA_CTL_PKEY_MOVE_VELOCITY, 0, 1);
+                obj.curVel(i) = double(vel) * 1e-6; % Convert from pm to um
             end
         end
         
@@ -427,23 +494,18 @@ classdef ClassMCS2 < ClassStage
                 % todo: $what options need to be set as constant properties for
                 % external methods to invoke
                 switch what
-                    case 'ReferencingDone'
-                        chState = getChannelState(obj, realAxis);
-                        isDone = bitget(chState, 4);	% Bit 3 (from 0) is SA_CTL_CH_STATE_BIT_REFERENCING
-                        wait = ~isDone;
                     case 'MovementDone'
                         chState = getChannelState(obj, realAxis);
                         isMoving = bitget(chState, 1);	% Bit 0 (1st bit) is SA_CTL_CH_STATE_BIT_ACTIVELY_MOVING
                         wait = isMoving;
-%                     case 'onTarget'
-%                         [~, onTarget] = SendPICommand(obj, 'PI_qONT', obj.ID, szAxes, zeroVector);
-%                         wait = ~all(onTarget);
-%                     case 'ControllerReady'
-%                         ready = SendPICommand(obj, 'PI_IsControllerReady', obj.ID, 0);
-%                         wait = ~ready;
-%                     case 'WaveGeneratorDone'
-%                         [~, running] = SendPICommand(obj, 'PI_IsGeneratorRunning', obj.ID, [], 1, 1);
-%                         wait = running;
+                    case 'CalibratingDone'
+                        chState = getChannelState(obj, realAxis);
+                        isCalibrating = bitget(chState, 3);	% Bit 2 (from 0) is SA_CTL_CH_STATE_BIT_CALIBRATING
+                        wait = isCalibrating;
+                    case 'ReferencingDone'
+                        chState = getChannelState(obj, realAxis);
+                        isReferencing = bitget(chState, 4);	% Bit 3 (from 0) is SA_CTL_CH_STATE_BIT_REFERENCING
+                        wait = isReferencing;
                     otherwise
                         obj.sendError(sprintf('Wrong Input %s', what));
                 end
@@ -507,6 +569,10 @@ classdef ClassMCS2 < ClassStage
             
             CheckReference(obj, phAxis)
             
+            % Convert position to pm, which are the units the stage
+            % recieves
+            pos = pos * 1e6;
+            
             % Send the move command
             SA_CTL_PKEY_MOVE_MODE = 50659463;   % 0x03050087
             SA_CTL_MOVE_MODE_CL_ABSOLUTE = 0;
@@ -514,11 +580,11 @@ classdef ClassMCS2 < ClassStage
             for i = 1:length(realAxes)
                 obj.SendCommand('SA_CTL_SetProperty_i32', obj.id, realAxes(i), ...
                     SA_CTL_PKEY_MOVE_MODE, SA_CTL_MOVE_MODE_CL_ABSOLUTE);
-                obj.SendCommand('SA_CTL_Move', obj.id, realAxes(i), 0, pos(i))
+                obj.SendCommand('SA_CTL_Move', obj.id, realAxes(i), pos(i), 0)
             end
             
             % Wait for move command to finish
-            WaitFor(obj, 'onTarget', phAxis)
+            WaitFor(obj, 'MovementDone', phAxis)
         end
 
         function HaltPrivate(obj, phAxis)
@@ -544,7 +610,8 @@ classdef ClassMCS2 < ClassStage
             SA_CTL_PKEY_MOVE_VELOCITY = 50659369;   % 0x03050029
             
             CheckAxis(obj, phAxis)
-            for i = 1:length(phAxes)
+            vel = vel * 1e6; % Convert from um/s to pm/s
+            for i = 1:length(phAxis)
                 realAxis = GetAxisIndex(obj, phAxis(i));
                 obj.SendCommand('SA_CTL_SetProperty_i64', obj.id, realAxis, ...
                     SA_CTL_PKEY_MOVE_VELOCITY, vel(i));
@@ -559,11 +626,11 @@ classdef ClassMCS2 < ClassStage
             % occurs.
             % Assumes the stage has all three xyz axes.
             phAxis = GetAxis(obj, phAxis);
-            if ~contains(obj.axesName(phAxis), 'z') % Only do something if there is no z axis
+            if ~contains(obj.SCAN_AXES(phAxis), 'z') % Only do something if there is no z axis
                 QueryPos(obj);
                 pos = [pos, obj.curPos(3)]; % Adds the z position command, start by writing the current position (as the base)
                 for i=1:length(phAxis)
-                    switch obj.axesName(phAxis)
+                    switch obj.SCAN_AXES(phAxis)
                         case 'x'
                             dx = pos(i) - obj.curPos(1);
                             pos(end) = pos(end) + dx*tan(obj.tiltThetaXZ*pi/180); % Adds movements according to the angles
@@ -607,7 +674,7 @@ classdef ClassMCS2 < ClassStage
             % limits of the given axis (x,y,z or 1 for x, 2 for y and 3 for z).
             % Vectorial axis is possible.
             CheckAxis(obj, phAxis)
-            axisIndex = GetAxisIndex(obj, phAxis);
+            axisIndex = GetAxis(obj, phAxis);
             ok = all((point >= obj.negSoftRangeLimit(axisIndex)) & (point <= obj.posSoftRangeLimit(axisIndex)));
         end
         
@@ -616,7 +683,7 @@ classdef ClassMCS2 < ClassStage
             % 2 for y and 3 for z).
             % Vectorial axis is possible.
             CheckAxis(obj, phAxis)
-            axisIndex = GetAxisIndex(obj, phAxis);
+            axisIndex = GetAxis(obj, phAxis);
             negSoftLimit = obj.negSoftRangeLimit(axisIndex);
             posSoftLimit = obj.posSoftRangeLimit(axisIndex);
         end
@@ -626,9 +693,9 @@ classdef ClassMCS2 < ClassStage
             % 2 for y and 3 for z).
             % Vectorial axis is possible.
             CheckAxis(obj, phAxis)
-            axisIndex = GetAxisIndex(obj, phAxis);
-            negHardLimit = obj.negRangeLimit(axisIndex);
-            posHardLimit = obj.posRangeLimit(axisIndex);
+            axisIndex = GetAxis(obj, phAxis);
+            negHardLimit = obj.NEGATIVE_HARD_LIMITS(axisIndex);
+            posHardLimit = obj.POSITIVE_HARD_LIMITS(axisIndex);
         end
         
         function SetSoftLimits(obj, phAxis, softLimit, negOrPos)
@@ -638,8 +705,8 @@ classdef ClassMCS2 < ClassStage
             % This is because each time this function is called only one of
             % the limits updates
             CheckAxis(obj, phAxis)
-            axisIndex = GetAxisIndex(obj, phAxis);
-            if ((softLimit >= obj.negRangeLimit(axisIndex)) && (softLimit <= obj.posRangeLimit(axisIndex)))
+            axisIndex = GetAxis(obj, phAxis);
+            if ((softLimit >= obj.NEGATIVE_HARD_LIMITS(axisIndex)) && (softLimit <= obj.POSITIVE_HARD_LIMITS(axisIndex)))
                 if negOrPos == 0
                     obj.negSoftRangeLimit(axisIndex) = softLimit;
                 else
@@ -647,7 +714,7 @@ classdef ClassMCS2 < ClassStage
                 end
             else
                 obj.sendError(sprintf('Soft limit %.4f is outside of the hard limits %.4f - %.4f', ...
-                    softLimit, obj.negRangeLimit(axisIndex), obj.posRangeLimit(axisIndex)))
+                    softLimit, obj.NEGATIVE_HARD_LIMITS(axisIndex), obj.POSITIVE_HARD_LIMITS(axisIndex)))
             end
         end
         
@@ -712,7 +779,7 @@ classdef ClassMCS2 < ClassStage
             end
             CheckAxis(obj, phAxis)
             QueryPos(obj);
-            axisIndex = GetAxisIndex(obj, phAxis);
+            axisIndex = GetAxis(obj, phAxis);
             Move(obj, phAxis, obj.curPos(axisIndex) + change); % Stage has its own "relative movement" option, but we do not use it.
         end
         
@@ -1028,7 +1095,7 @@ classdef ClassMCS2 < ClassStage
         
         function success = EnableTiltCorrection(obj, enable)
             % Enables the tilt correction according to the angles.
-            if ~strcmp(obj.VALID_AXES, obj.axesName)
+            if ~strcmp(obj.VALID_AXES, obj.SCAN_AXES)
                 string = BooleanHelper.ifTrueElse(isscalar(obj.VALID_AXES), 'axis', 'axes');
                 obj.sendWarning(sprintf('Controller %s has only %s %s, and can''t do tilt correction.', ...
                     obj.controllerModel, obj.VALID_AXES, string));

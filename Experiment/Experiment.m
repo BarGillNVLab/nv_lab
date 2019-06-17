@@ -182,12 +182,17 @@ classdef (Abstract) Experiment < EventSender & EventListener & Savable
             % Before we start, we want to initialize all devices
             obj.prepare;
             if obj.changeFlag
-                % We can't continue with the old Experiment; something
-                % critical has changed
-                obj.restartFlag = true;
-                obj.sendWarning('Critical parameters have been changed! Restarting Experiment.');
+                % We might not be able to continue with the old Experiment,
+                % since something critical has changed
                 obj.sendEventParamChanged;
                 obj.changeFlag = false;
+                
+                % Dialog box
+                strQuestion = sprintf('Critical parameters have been changed!\n Do you want to restart the Experiment?');
+                strTitle = 'Parameters changed';
+                if QuestionUserYesNo(strTitle, strQuestion)
+                    obj.restartFlag = true;
+                end
             end
             if obj.restartFlag
                 % Resetting data

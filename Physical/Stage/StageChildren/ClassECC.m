@@ -198,7 +198,7 @@ classdef ClassECC < ClassStage
         
         function LoadPiezoLibrary(obj)
             % libfunctionsview ecc
-            % Loads the PI MICOS dll file.
+            % Loads the ECC dll file.
             shrlib = [obj.dllFolder 'ecc.dll'];
             hfile = [obj.hFolder 'ecc.h'];
             

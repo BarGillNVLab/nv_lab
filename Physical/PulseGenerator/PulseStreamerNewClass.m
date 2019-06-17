@@ -24,13 +24,13 @@ classdef (Sealed) PulseStreamerNewClass < PulseGenerator
             obj@PulseGenerator;
         end
         
-        function Initialize(obj, ip, trigType) % doesn't need to be an input, and definitly not in the json (and it is now turned off)
+        function Initialize(obj, ip, trigType)
             % Normal mode
 %             obj.ps = PulseStreamer(ip);
 
             % Debug mode
             obj.ps = debug.PulseStreamer_RPCLogger(ip);
-            obj.ps.enableLog(100, 'C:\Users\OWNER\Google Drive\NV Lab\Control code\prod\PSdebug.mat');
+            obj.ps.enableLog(10000, sprintf('C:\\Users\\OWNER\\Google Drive\\NV Lab\\Control code\\prod\\PSdebug%s.mat', ip));
             
             obj.initSequence;
             switch lower(trigType)

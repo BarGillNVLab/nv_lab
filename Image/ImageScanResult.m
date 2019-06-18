@@ -512,7 +512,7 @@ classdef ImageScanResult < Savable & EventSender & EventListener
             newAxes = copyobj(obj.gAxes, fig);
             if obj.mDimNumber == 2
                 c = colorbar(newAxes);
-                xlabel(c, 'kcps')
+                xlabel(c, 'kcps');
             end
             
             try
@@ -536,6 +536,42 @@ classdef ImageScanResult < Savable & EventSender & EventListener
             end
         end
         
+        function saveWithScaleMarker(obj, fullpath)
+            lineWidth = 2;
+            color = 'k';
+            leftX = obj.gAxes.XLim(1); rightX = obj.gAxes.XLim(2);
+            lowestY = obj.gAxes.YLim(1); highestY = obj.gAxes.YLim(2);
+            imageWidth = rightX - leftX;
+            imageHeight = highestY - lowestY;
+            
+            barWidth = imageWidth * 0.3;
+            barHeight = imageHeight * 0.05;
+            numOfScales = 3;
+            
+            leftBottomX = leftX + imageWidth * 0.1;
+            leftBottomY = lowestY + imageHeight * 0.1;
+            xs = (1:barWidth) + leftBottomX;
+            ys = zeros(size(xs)) + leftBottomY;
+            
+            dummyFigure = obj.copyToFigure(true);
+            hold on;
+            plot(xs, ys, 'LineWidth', lineWidth, 'Color', color);
+            hold on;
+            
+            %add vertical scales
+            for n = 0:numOfScales
+                scaleXPosition = n * (barWidth / numOfScales) + leftBottomX;
+                ys = (0:barHeight) + leftBottomY;
+                xs = zeros(size(ys)) + scaleXPosition;
+
+                plot(xs, ys, 'LineWidth', lineWidth, 'Color', color);
+                hold on;
+            end
+            
+            text(scaleXPosition, leftBottomY, 'HHHWWW');
+            saveas(dummyFigure, fullpath);
+        end
+        
         %% Saving
         function fullpath = savePlottingImage(obj, folder, filename)
             % Create a new invisible figure, and than save it with a same
@@ -552,16 +588,15 @@ classdef ImageScanResult < Savable & EventSender & EventListener
             
             isVisible = false;
             figureInvis = obj.copyToFigure(isVisible);
-            
             filename = PathHelper.removeDotSuffix(filename);
             filename = [filename '.' ImageScanResult.IMAGE_FILE_SUFFIX];
             fullpath = PathHelper.joinToFullPath(folder, filename);
-            
             % Save png image
             saveas(figureInvis, fullpath);
-            
             % close the figure
             close(figureInvis);
+            %save the image with a scalebar
+            obj.saveWithScaleMarker(fullpath);
         end
     end
     
@@ -715,6 +750,7 @@ classdef ImageScanResult < Savable & EventSender & EventListener
                 subcat = Savable.SUB_CATEGORY_DEFAULT;
                 saveLoad = event.creator;
                 struct = saveLoad.getStructToSavable(obj);
+                disp(struct);
                 if ~isempty(struct)
                     obj.loadStateFromStruct(struct, category, subcat);
                 end

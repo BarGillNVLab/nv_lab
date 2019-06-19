@@ -537,38 +537,51 @@ classdef ImageScanResult < Savable & EventSender & EventListener
         end
         
         function saveWithScaleMarker(obj, fullpath)
-            lineWidth = 2;
-            color = 'k';
+            %Adds a sclaebar to the image and saves it in the file
+            % There are a lots of magic numbers describing the params of
+            % the scalebar - its clor, geometry and position relative to
+            % the wrapping image, and text label params (color, font size
+            % etc.)
+            
+            function [fd, multiplier] = getFirstSignifcantDigit(a)
+                %get first significant digit and multiplier
+                multiplier = 10 .^ (-fix(log10(a)));
+                fd = fix(a.* multiplier);
+            end
+            
             leftX = obj.gAxes.XLim(1); rightX = obj.gAxes.XLim(2);
             lowestY = obj.gAxes.YLim(1); highestY = obj.gAxes.YLim(2);
-            imageWidth = rightX - leftX;
-            imageHeight = highestY - lowestY;
-            
-            barWidth = imageWidth * 0.3;
-            barHeight = imageHeight * 0.05;
-            numOfScales = 3;
-            
+            imageWidth = rightX - leftX; imageHeight = highestY - lowestY;
+            [firstDigit, multiplier] = getFirstSignifcantDigit(imageWidth * 0.35);
+            barWidth = firstDigit / multiplier;
+            %Scalebar visual style and properties
+            lineWidth = 2; color = 'k';
+            barHeight = imageHeight * 0.035; numOfScales = 3;
+            %left-bottom scalebar in this position
             leftBottomX = leftX + imageWidth * 0.1;
             leftBottomY = lowestY + imageHeight * 0.1;
+            %calculate coordinates of dots for the bottom ruler 
             xs = (1:barWidth) + leftBottomX;
             ys = zeros(size(xs)) + leftBottomY;
+            %actual drawing. First, create a figure
+            dummyFigure = obj.copyToFigure(false); hold on;
+            %Now draw bottom ruler
+            plot(xs, ys, 'LineWidth', lineWidth, 'Color', color); hold on;
             
-            dummyFigure = obj.copyToFigure(true);
-            hold on;
-            plot(xs, ys, 'LineWidth', lineWidth, 'Color', color);
-            hold on;
-            
-            %add vertical scales
+            %... and add vertical scales
             for n = 0:numOfScales
                 scaleXPosition = n * (barWidth / numOfScales) + leftBottomX;
-                ys = (0:barHeight) + leftBottomY;
+                ys = (0:barHeight) + leftBottomY - imageHeight * 0.003;
                 xs = zeros(size(ys)) + scaleXPosition;
-
                 plot(xs, ys, 'LineWidth', lineWidth, 'Color', color);
                 hold on;
             end
             
-            text(scaleXPosition, leftBottomY, 'HHHWWW');
+            label = strcat(sprintf('%d', barWidth), '\mum');
+            %Add text
+            text(leftBottomX + barWidth / 3,...
+                leftBottomY - imageHeight * 0.02, label, 'FontSize', 12);
+            %and save the image on the figure to a file
             saveas(dummyFigure, fullpath);
         end
         
